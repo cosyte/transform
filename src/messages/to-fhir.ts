@@ -5,7 +5,8 @@
  * from NK1), establishing the message-map → resource-graph pattern the later phases reuse; Phase 3
  * adds the **ORU^R01** results graph (`DiagnosticReport` + `Observation`); Phase 4 adds the
  * order-entry graph — **ORM_O01 / OML_O21** ORC/OBR → `ServiceRequest` and **RXO** (+ RXR) →
- * `MedicationRequest`.
+ * `MedicationRequest`; Phase 5 adds the thin IG singles — **VXU_V04** RXA/RXR/ORC → `Immunization`,
+ * **SIU_S12** SCH/AIS/PID → `Appointment`, and **MDM_T02** TXA/OBX → `DocumentReference`.
  *
  * The fail-safe rule holds at the message level. Two message-level fail-safes join the datatype ones:
  *
@@ -41,9 +42,12 @@ import { ISSUE_CODES } from "../diagnostics/codes.js";
 import { issue, type TransformIssue } from "../diagnostics/issue.js";
 import { createNamingSystem } from "../terminology/naming-system.js";
 import type { TransformContext, TransformOptions } from "../terminology/context.js";
+import { buildAppointment, collectAppointment } from "./appointment.js";
 import { buildDiagnosticReport } from "./diagnostic-report.js";
+import { buildDocumentReference, collectDocument } from "./document-reference.js";
 import { buildEncounter } from "./encounter.js";
 import { EMIT_SCHEMAS } from "./emit-schemas.js";
+import { buildImmunization, collectImmunizationGroups } from "./immunization.js";
 import { buildMedicationRequest } from "./medication-request.js";
 import { buildMessageHeader } from "./message-header.js";
 import { buildObservation } from "./observation.js";
@@ -93,6 +97,27 @@ export const IG_MAPPED_ORU_TRIGGERS: ReadonlySet<string> = new Set(["R01"]);
  * {@link ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED}.
  */
 export const IG_MAPPED_ORDER_TRIGGERS: ReadonlySet<string> = new Set(["ORM^O01", "OML^O21"]);
+
+/**
+ * The immunization trigger the IG ships a **message** map for. The IG maps only `VXU^V04`; other VXU
+ * triggers still assemble their Immunization graph from the reusable RXA/RXR/ORC segment maps but are
+ * flagged {@link ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED}.
+ */
+export const IG_MAPPED_IMMUNIZATION_TRIGGERS: ReadonlySet<string> = new Set(["V04"]);
+
+/**
+ * The scheduling trigger the IG ships a **message** map for. The IG maps only `SIU^S12`; other SIU
+ * triggers still assemble their Appointment from the reusable SCH/AIS/PID segment maps but are flagged
+ * {@link ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED}.
+ */
+export const IG_MAPPED_APPOINTMENT_TRIGGERS: ReadonlySet<string> = new Set(["S12"]);
+
+/**
+ * The medical-document trigger the IG ships a **message** map for. The IG maps only `MDM^T02`; other MDM
+ * triggers still assemble their DocumentReference from the reusable TXA/OBX segment maps but are flagged
+ * {@link ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED}.
+ */
+export const IG_MAPPED_DOCUMENT_TRIGGERS: ReadonlySet<string> = new Set(["T02"]);
 
 interface Entry {
   readonly fullUrl: string;
@@ -203,6 +228,9 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
     trigger !== undefined &&
     ((code === "ADT" && IG_MAPPED_ADT_TRIGGERS.has(trigger)) ||
       (code === "ORU" && IG_MAPPED_ORU_TRIGGERS.has(trigger)) ||
+      (code === "VXU" && IG_MAPPED_IMMUNIZATION_TRIGGERS.has(trigger)) ||
+      (code === "SIU" && IG_MAPPED_APPOINTMENT_TRIGGERS.has(trigger)) ||
+      (code === "MDM" && IG_MAPPED_DOCUMENT_TRIGGERS.has(trigger)) ||
       IG_MAPPED_ORDER_TRIGGERS.has(`${code ?? ""}^${trigger}`));
   if (!messageMapGrounded) {
     issues.push(issue(ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED, "MSH.9"));
@@ -308,7 +336,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   // detail → ServiceRequest, an RXO pharmacy detail → MedicationRequest, both subject-wired to the
   // Patient. ORU is excluded — there its OBR anchors a DiagnosticReport, not a ServiceRequest.
   const orderResourceFullUrls: string[] = [];
-  if (code !== "ORU") {
+  if (code !== "ORU" && code !== "VXU" && code !== "SIU" && code !== "MDM") {
     const { groups, rxeCount } = collectOrderGroups(msg);
     if (rxeCount > 0) {
       // RXE has no IG segment map (nor RDE message map) — surfaced, never assembled from a guess.
@@ -358,12 +386,82 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
     }
   }
 
+  // VXU → the Immunization graph (Phase 5). Each ORC-anchored order group's RXA (+ RXR route, + ORC
+  // identifiers) becomes one Immunization, subject-wired to the Patient; the order-group OBX bodies
+  // become standalone patient Observations (the IG's Observation[2]).
+  const immunizationFullUrls: string[] = [];
+  if (code === "VXU") {
+    for (const group of collectImmunizationGroups(msg)) {
+      const built = buildImmunization(
+        group.rxa,
+        group.rxr,
+        group.orc,
+        patientFullUrl,
+        encounterFullUrl,
+        ctx,
+      );
+      issues.push(...built.issues);
+      if (built.value !== undefined && passesEmitGate(built.value, "RXA", "Immunization", issues)) {
+        const url = ids.next();
+        immunizationFullUrls.push(url);
+        focalEntries.push({ fullUrl: url, resource: built.value });
+      }
+    }
+    // OBX in a VXU are patient/immunization observations (Observation[1]/[2] in the IG bundle).
+    for (const seg of msg.allSegments()) {
+      if (seg.type !== "OBX") continue;
+      const built = buildObservation(seg, patientFullUrl, encounterFullUrl, ctx);
+      issues.push(...built.issues);
+      if (built.value !== undefined && passesEmitGate(built.value, "OBX", "Observation", issues)) {
+        focalEntries.push({ fullUrl: ids.next(), resource: built.value });
+      }
+    }
+  }
+
+  // SIU → a single Appointment (Phase 5). SCH anchors the Appointment; the bundle Patient is the
+  // required participant; AIS supplies the service type.
+  const appointmentFullUrls: string[] = [];
+  if (code === "SIU") {
+    const { sch, ais } = collectAppointment(msg);
+    if (sch !== undefined) {
+      const built = buildAppointment(sch, ais, patientFullUrl, ctx);
+      issues.push(...built.issues);
+      if (built.value !== undefined && passesEmitGate(built.value, "SCH", "Appointment", issues)) {
+        const url = ids.next();
+        appointmentFullUrls.push(url);
+        focalEntries.push({ fullUrl: url, resource: built.value });
+      }
+    }
+  }
+
+  // MDM → a single DocumentReference (Phase 5). TXA anchors the document metadata; the OBX segments
+  // carry the document body; the reference is subject-wired to the Patient.
+  const documentFullUrls: string[] = [];
+  if (code === "MDM") {
+    const { txa, obxs } = collectDocument(msg);
+    if (txa !== undefined) {
+      const built = buildDocumentReference(txa, obxs, patientFullUrl, ctx);
+      issues.push(...built.issues);
+      if (
+        built.value !== undefined &&
+        passesEmitGate(built.value, "TXA", "DocumentReference", issues)
+      ) {
+        const url = ids.next();
+        documentFullUrls.push(url);
+        focalEntries.push({ fullUrl: url, resource: built.value });
+      }
+    }
+  }
+
   // MSH → MessageHeader (first entry of a message Bundle), focus = the focal resources.
   const focus = [
     patientFullUrl,
     encounterFullUrl,
     ...diagnosticReportFullUrls,
     ...orderResourceFullUrls,
+    ...immunizationFullUrls,
+    ...appointmentFullUrls,
+    ...documentFullUrls,
   ].filter((u): u is string => u !== undefined);
   const header = buildMessageHeader(msg.meta, focus);
   issues.push(...header.issues);

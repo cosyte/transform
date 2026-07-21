@@ -30,7 +30,7 @@
  * @packageDocumentation
  */
 
-import type { ResourceSchema } from "@cosyte/fhir";
+import { UNBOUNDED, type ResourceSchema } from "@cosyte/fhir";
 
 /** The required-cardinality schemas the emit gate applies (lenient) to the non-`Patient` resources. */
 export const EMIT_SCHEMAS: readonly ResourceSchema[] = Object.freeze([
@@ -82,6 +82,39 @@ export const EMIT_SCHEMAS: readonly ResourceSchema[] = Object.freeze([
       intent: { min: 1, max: 1, types: ["code"] },
       subject: { min: 1, max: 1, types: ["Reference"] },
       medicationCodeableConcept: { min: 1, max: 1, types: ["CodeableConcept"] },
+    },
+  },
+  {
+    // Immunization: status (1..1 code), vaccineCode (1..1 CodeableConcept), patient (1..1 Reference), and
+    // occurrence[x] (1..1) are all required — the assembler only ever emits the occurrenceDateTime form, so
+    // it is required here. An RXA with no groundable status/vaccine/occurrence, or no bundle Patient, is
+    // withheld rather than emitted incomplete.
+    type: "Immunization",
+    elements: {
+      status: { min: 1, max: 1, types: ["code"] },
+      vaccineCode: { min: 1, max: 1, types: ["CodeableConcept"] },
+      patient: { min: 1, max: 1, types: ["Reference"] },
+      occurrenceDateTime: { min: 1, max: 1, types: ["dateTime"] },
+    },
+  },
+  {
+    // Appointment: status (1..1 code) and participant (1..* BackboneElement) are both required — an
+    // Appointment whose SCH-25 status could not be grounded via HL70278, or that has no resolvable Patient
+    // participant, is withheld rather than emitted with a guessed status or no participant.
+    type: "Appointment",
+    elements: {
+      status: { min: 1, max: 1, types: ["code"] },
+      participant: { min: 1, max: UNBOUNDED, types: ["BackboneElement"] },
+    },
+  },
+  {
+    // DocumentReference: status (1..1 code) and content (1..* BackboneElement) are both required — a
+    // reference whose TXA-19 is not "AV" (no groundable status), or that carries no document body from its
+    // OBX segments, is withheld rather than emitted with a guessed status or referencing nothing.
+    type: "DocumentReference",
+    elements: {
+      status: { min: 1, max: 1, types: ["code"] },
+      content: { min: 1, max: UNBOUNDED, types: ["BackboneElement"] },
     },
   },
 ]);

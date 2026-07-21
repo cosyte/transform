@@ -14,6 +14,41 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **Phase 5 — the thin IG singles: VXU_V04 → Immunization; SIU_S12 → Appointment; MDM_T02 →
+  DocumentReference** (roadmap §Phase 5). `toFhir(msg, opts?)` now assembles the three single-trigger IG
+  message families into a FHIR R4 message `Bundle`, alongside the Phase-2 `Patient`/`Encounter`. Every
+  segment/field/table/datatype map is grounded firsthand on the published HL7 v2-to-FHIR IG
+  (`hl7.fhir.uv.v2mappings`, STU1) ConceptMaps and cited in-source. **With Phase 5 the v2→FHIR direction
+  is feature-complete for the IG-covered message set.**
+  - **VXU_V04: RXA (+ RXR, ORC) → `Immunization`** (IG _Segment RXA/RXR/ORC to Immunization_; per the
+    VXU message map each `ORC` creates the Immunization and the `RXA`/`RXR` are incorporated): RXA-5 →
+    `vaccineCode`, RXA-3 → `occurrenceDateTime`, RXA-6/7 → `doseQuantity`, RXA-15 → `lotNumber`, RXA-16 →
+    `expirationDate`, RXA-18 → `statusReason`, RXA-19 → `reasonCode`, RXA-22/ORC-9 → `recorded`, RXR-1/2
+    → `route`/`site`, ORC-2/3 → `identifier` (PLAC/FILL), and `patient`/`encounter` wired to the bundle.
+    `status` follows the IG's three conditioned status rows: a delete action (RXA-21 = `D`) → the
+    IG-assigned `entered-in-error`, an unvalued RXA-20 → the IG-assigned `completed`, and a valued RXA-20
+    → the **`HL70322` → Event Status** ConceptMap (`IMMUNIZATION_STATUS_MAP`); a valued RXA-20 the map has
+    no target for is flagged and the Immunization withheld, never guessed. The order-group `OBX`s become
+    standalone patient `Observation`s.
+  - **SIU_S12: SCH (+ AIS, PID) → `Appointment`** (IG _Segment SCH/AIS/PID to Appointment_ + _Datatype TQ
+    to Appointment_): SCH-25 → `status` via the **`HL70278` → AppointmentStatus** ConceptMap
+    (`APPOINTMENT_STATUS_MAP`), SCH-1/2 → `identifier`, SCH-8 → `appointmentType`, SCH-7 → `reasonCode`,
+    SCH-9/10 → `minutesDuration`, SCH-11 TQ.4/TQ.5 → `start`/`end`, AIS-3 → `serviceType`, and the bundle
+    Patient wired as the required `participant`. An IG-unmatched filler status withholds the Appointment;
+    the participant's IG-unsourced required `status` is a `data-absent-reason` primitive, never fabricated.
+  - **MDM_T02: TXA (+ OBX) → `DocumentReference`** (IG _Segment TXA/OBX to DocumentReference_): TXA-2 →
+    `type`, TXA-6 → `date`, TXA-12 → `masterIdentifier`, TXA-16 → `identifier`, TXA-25 → `description`,
+    the `OBX` body → `content.attachment` (TX/FT base64-encoded verbatim, RP as a URL), and `subject`
+    wired to the Patient. `status` is grounded only for TXA-19 = `AV` → `current` (the IG ships no value
+    ConceptMap; `AV` has exactly one faithful `document-reference-status` target); every other
+    availability code withholds the resource and TXA-17 → `docStatus` is left absent (no IG value map).
+  - Fail-safe throughout: timezone-naked instants (Appointment `start`/`end`, DocumentReference `date`,
+    Immunization date fields) are dropped + flagged rather than assigned a fabricated UTC offset; a
+    non-mapped VXU/SIU/MDM trigger is segment-assembled + flagged, never invented; every emitted resource
+    passes the conservative-emit gate against `@cosyte/fhir` before it ships. New public exports:
+    `IMMUNIZATION_STATUS_MAP`, `APPOINTMENT_STATUS_MAP`, `IG_MAPPED_IMMUNIZATION_TRIGGERS`,
+    `IG_MAPPED_APPOINTMENT_TRIGGERS`, `IG_MAPPED_DOCUMENT_TRIGGERS`.
+
 - **Phase 4 — ORM_O01 / OML_O21 → ServiceRequest; RXO → MedicationRequest, the order-entry graph**
   (roadmap §Phase 4). `toFhir(msg, opts?)` now assembles order messages into a FHIR R4 message
   `Bundle`: each ORC-anchored order becomes a **`ServiceRequest`** (an `OBR` order detail) or a

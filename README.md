@@ -8,12 +8,14 @@ parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://g
 composites and produces validated [`@cosyte/fhir`](https://github.com/cosyte/fhir) model nodes,
 grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`).
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phases 1–4** — the
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phases 1–5** — the
 > six safety-critical datatype converters and the value-free diagnostic channel (Phase 1), the first
 > message-level assembly, HL7 v2 **ADT → FHIR Patient + Encounter** (Phase 2), the **ORU^R01 → FHIR
-> DiagnosticReport + Observation** results graph (Phase 3), and the order-entry graph — **ORM_O01 /
-> OML_O21 → ServiceRequest** and **RXO → MedicationRequest** (Phase 4) — all via `toFhir(msg)`. The thin
-> IG singles (immunization/appointment/document), terminology depth, and profiles land in later phases.
+> DiagnosticReport + Observation** results graph (Phase 3), the order-entry graph — **ORM_O01 /
+> OML_O21 → ServiceRequest** and **RXO → MedicationRequest** (Phase 4) — and the thin IG singles —
+> **VXU_V04 → Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference** (Phase 5) — all
+> via `toFhir(msg)`. With Phase 5 the v2→FHIR direction is feature-complete for the IG-covered message
+> set; terminology depth, profiles, and the reverse direction land in later phases.
 
 ## Install
 
@@ -99,6 +101,15 @@ The same `toFhir(msg)` handles the later message families: **ORU^R01** → `Diag
 grounded on the HL70119 → request-status ConceptMap and withheld when it cannot be grounded, and a
 `MedicationRequest` whose IG-ungrounded status is the honest `unknown` rather than a guess. `RXE` has no
 STU1 IG map and is flagged, never assembled.
+
+Phase 5 completes the IG-covered message set with the thin single-trigger families: **VXU_V04** RXA (+
+RXR route, ORC) → `Immunization` (status via the IG's three conditioned rows — a delete action →
+`entered-in-error`, an unvalued RXA-20 → `completed`, else the HL70322 → event-status ConceptMap, with a
+valued-but-unmapped code withheld), **SIU_S12** SCH/AIS/PID → `Appointment` (status via the
+HL70278 → appointmentstatus ConceptMap, the Patient wired as the required participant, its IG-unsourced
+required status a `data-absent-reason` primitive), and **MDM_T02** TXA/OBX → `DocumentReference` (status
+grounded only for TXA-19 `AV` → `current`, the document body base64-encoded verbatim, carried and never
+interpreted). Timezone-naked instants are dropped and flagged, never assigned a fabricated UTC offset.
 
 ## License
 
