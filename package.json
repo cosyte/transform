@@ -1,14 +1,16 @@
 {
   "name": "@cosyte/transform",
   "version": "0.0.0",
-  "description": "Transform parser, serializer, and builder for Node.js and TypeScript — lenient on parse, spec-clean on emit.",
+  "description": "HL7 v2 → FHIR R4 transformation library for Node.js and TypeScript — IG-grounded, fail-safe, value-free diagnostics; never a confident wrong FHIR value.",
   "keywords": [
+    "hl7",
+    "hl7v2",
+    "fhir",
     "transform",
-    "parser",
+    "v2-to-fhir",
     "healthcare",
     "interoperability",
-    "typescript",
-    "serializer"
+    "typescript"
   ],
   "homepage": "https://github.com/cosyte/transform#readme",
   "bugs": {
@@ -53,11 +55,16 @@
     "provenance": true
   },
   "prettier": "@cosyte/prettier-config",
+  "peerDependencies": {
+    "@cosyte/fhir": ">=0.0.0",
+    "@cosyte/hl7": ">=0.0.0"
+  },
   "scripts": {
     "build": "tsup",
     "changeset": "changeset",
     "typecheck": "tsc --noEmit",
     "phi-scan": "tsx scripts/phi-scan.ts",
+    "vendor:refresh": "bash scripts/vendor-refresh.sh",
     "lint": "eslint \"src/**/*.ts\" \"scripts/**/*.ts\" \"test/**/*.ts\" --max-warnings=0 --no-error-on-unmatched-pattern",
     "lint:fix": "eslint \"src/**/*.ts\" \"scripts/**/*.ts\" \"test/**/*.ts\" --fix --no-error-on-unmatched-pattern",
     "format": "prettier --write \"src/**/*.{ts,md}\" \"test/**/*.ts\" \"scripts/**/*.{ts,mjs}\" \"*.{json,md,yml}\"",
@@ -79,6 +86,8 @@
     "@arethetypeswrong/cli": "0.18.4",
     "@changesets/cli": "2.31.0",
     "@cosyte/eslint-config": "^0.0.4",
+    "@cosyte/fhir": "file:vendor/cosyte-fhir-0.0.0.tgz",
+    "@cosyte/hl7": "file:vendor/cosyte-hl7-0.0.0.tgz",
     "@cosyte/prettier-config": "^0.0.2",
     "@cosyte/test-utils": "^0.0.1",
     "@cosyte/tsconfig": "^0.0.2",

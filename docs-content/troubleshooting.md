@@ -6,46 +6,48 @@ sidebar_position: 1
 
 # Troubleshooting
 
-Common symptoms when integrating `@cosyte/transform`, and how to read what the parser is telling you.
+Common symptoms when converting v2 → FHIR, and how to read what the transform is telling you.
 
-## The parse "succeeded" but the result looks wrong
+## A converter returned `value: undefined`
 
-`@cosyte/transform` is lenient — it recovers from vendor quirks rather than throwing. That means a surprising
-result usually comes with an explanation in `warnings`. Inspect them first:
+Nothing could be **safely** emitted. This is by design, not an error — it happens for an empty input
+composite, an unparseable timestamp, or a numeric value that wasn't numeric. Check `issues` for the
+typed reason (e.g. `TRANSFORM_TIMESTAMP_INVALID`).
 
-```ts
-const { value, warnings } = parseTransform(raw);
+## A field I expected is missing from the output
 
-for (const w of warnings) {
-  console.warn(w.code, w.message, w.position);
-}
-```
+A missing FHIR element usually comes with a diagnostic explaining the refusal:
 
-Each warning carries a **stable code** (`WARNING_CODES`) and positional context. If a deviation
-should be a hard failure for your integration, re-parse with `{ strict: true }` to have it thrown
-instead.
+- **`Identifier.system` is absent** → `TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED`: the assigning
+  authority wasn't resolvable. Seed it via `createNamingSystem({ authorities: { … } })`. The value is
+  never attached to a guessed system.
+- **`Coding.system` is absent** → `TRANSFORM_CODE_SYSTEM_UNRESOLVED` (unknown mnemonic) or
+  `TRANSFORM_CODE_UNMAPPED` (no coding system at all). The code is preserved verbatim, never invented.
+- **`HumanName.use` / `Address.use` is absent** → the v2 code has no equivalent in the IG's table map
+  (`TRANSFORM_NAME_USE_UNMAPPED` / `TRANSFORM_ADDRESS_USE_UNMAPPED`). It is surfaced, never guessed.
 
-## A parse threw
+## My timestamp lost its time-of-day
 
-Only **Tier-3 fatal** conditions (`FATAL_CODES`) throw in lenient mode — these mark input the parser
-cannot recover into a structured result. In `{ strict: true }` mode, any tolerated deviation throws
-too. Catch and inspect the error's code to tell the two apart.
+`TRANSFORM_TIMESTAMP_NO_TIMEZONE`: the v2 timestamp had a time but no offset, and FHIR forbids a time
+without a zone — so it was reduced to date precision rather than assuming UTC (which would shift the
+clinical instant by hours). Supply `assumeTimezoneOffsetMinutes` if you know the sender's offset.
 
-## Warning messages and logs
+## My unit didn't populate `Quantity.code`
 
-Warning `message` fields are safe to log — they **never contain PHI**. Never log the raw payload
-itself; it may carry protected health information.
+`TRANSFORM_UNIT_NOT_UCUM`: the unit wasn't declared UCUM or failed the UCUM shape check, so it was
+preserved verbatim in `Quantity.unit` with `code`/`system` absent. Magnitudes are **never** converted
+(mg/dL ↔ mmol/L is analyte-dependent and unsafe to automate).
 
-## Known limitations
+## Are diagnostics safe to log?
 
-> **Status:** `@cosyte/transform` is a pre-alpha scaffold. `parseTransform` currently returns a structural stub
-> (`{ value: {}, warnings: [] }`); the real lenient tokenizer, immutable model, serializer, and the
-> full warning/fatal code sets land in subsequent phases.
+Yes. A `TransformIssue` carries only a stable code, a severity, a **positional** v2 location, and a
+FHIR path — **never a value**. Its `message` is static. Do not log the raw v2 message or the produced
+resource values; those carry PHI.
 
-- **`string` input only** for now — `Buffer` / `Uint8Array` support arrives with the real parser.
-- **Placeholder code registries** — `WARNING_CODES` / `FATAL_CODES` hold example entries until the
-  parser populates the real ones.
-- **No serializer yet** — the spec-clean emit side is added in a later phase.
+## Known limitations (Phase 1)
 
-The **API Reference** always reflects exactly what this release ships — treat it as the source of
-truth over any prose above.
+- **Datatype converters only** — message-level assembly (`toFhir(msg)`), abnormal-flag/status
+  semantics, terminology depth, profiles, and the reverse direction land in later phases.
+- **Minimal NamingSystem registry** — the built-in code-system seed is the FHIR-core-fixed systems;
+  the full HL7 THO crosswalk is Phase 6.
+- **No terminology content, no unit conversion, R4-only** — see the roadmap for the full non-goals.

@@ -1,42 +1,64 @@
 ---
 id: concepts-archetype
-title: The parser archetype
+title: Core concepts
 sidebar_position: 1
 ---
 
-# Core Concepts
+# Core concepts
 
-`@cosyte/transform` follows the shared **cosyte parser archetype** — the same mental model every `@cosyte/*`
-parser implements, so what you learn here transfers across the suite. `@cosyte/hl7` is the reference
-implementation; this package mirrors its shape.
+`@cosyte/transform` borrows the cosyte parser suite's **disciplines** — fail-safe on ambiguity, stable
+typed diagnostics, immutable output — without being a byte parser. There is no wire format here; both
+endpoints are typed models. What replaces Postel's Law is the **fail-safe rule**.
 
-## Postel's Law: lenient parse, strict emit
+## The fail-safe rule
 
-The parser is **liberal in what it accepts** and the serializer is **conservative in what it emits**.
-Vendor quirks and tolerated deviations don't fail a parse — they become **warnings** — while anything
-the serializer produces is spec-clean. A `{ strict: true }` option escalates every tolerated
-deviation to a thrown error for callers who want the parse to fail loudly instead.
+A transformed message drives treatment, filing, and identity matching, so the library's whole promise
+is: **never emit a confident wrong FHIR value.** On any ambiguity —
 
-## The tolerance tiers
+- a v2 timestamp with a time-of-day but **no timezone** (FHIR forbids time without a zone),
+- an assigning authority that can't be **resolved to a system URI**,
+- a code with an **unrecognized or absent coding system**,
+- a unit that isn't valid **UCUM**,
+- a source component with **no FHIR target** —
 
-Every deviation the parser encounters falls into one of three tiers:
+the converter produces the value it *can* faithfully emit (often reduced in precision) and raises a
+typed diagnostic. It never silently defaults, never pads a truncated date, never guesses a timezone,
+never synthesizes an identifier system, and never coerces an unmapped code to a plausible neighbor.
 
-- **Tier 1 — spec-clean.** No deviation; no warning.
-- **Tier 2 — recoverable.** A vendor quirk the parser tolerates. It returns a **warning** with a
-  stable code and positional context, and keeps going. Never thrown (unless `strict`).
-- **Tier 3 — fatal.** Unrecoverable structural corruption. **Always thrown**, even in lenient mode.
+## The diagnostic channel is value-free
 
-## Stable warning + fatal codes
+Every diagnostic is a `TransformIssue`: a stable `code`, a severity, the **v2 location** (a segment /
+field / component index — never a value), and the **FHIR path** it concerns. Messages are static and
+per-code, so **no patient data can reach a log line** — the same value-free `OperationOutcome`
+discipline `@cosyte/fhir` proves. Render a list of issues as a real FHIR `OperationOutcome` with
+`toOperationOutcome(issues)`.
 
-Warnings and fatal errors carry **stable codes** — `WARNING_CODES` (Tier 2) and `FATAL_CODES`
-(Tier 3). Consumers branch on these, so a code's name is part of the public contract: renaming or
-removing one is a **breaking change**. Codes are `key === value` entries, so the full set survives an
-`Object.values(...)` snapshot into a stability tripwire.
+Codes are `key === value` entries in `ISSUE_CODES` (non-fatal) and `FATAL_CODES`. Consumers branch on
+them, so a code's name is part of the public contract — renaming or removing one is a **breaking
+change**, and new codes are additions only.
 
-> **Status:** the code registries currently hold placeholder entries; the real codes are added as the
-> parser grows, phase by phase. See the **API Reference** for the exact set this release ships.
+## Grounded on the IG, never invented
+
+Every mapping is grounded firsthand on the published **HL7 Version 2 to FHIR** Implementation Guide's
+datatype and table ConceptMaps (LOINC/SNOMED URIs from the FHIR core terminology systems). Where the
+IG has no target for a code — an unmapped Table 0200 name-type, an unmapped Table 0190 address-type —
+the value is surfaced, **never guessed**.
+
+## The six Phase-1 converters
+
+| Converter | v2 → FHIR | Key fail-safe |
+|---|---|---|
+| `toFhirDateTime` | DTM/TS → `dateTime` | naked timestamp → date precision, never a guessed zone |
+| `toFhirIdentifier` | CX → `Identifier` | HD.1-only → value with no system, never synthesized |
+| `toFhirCodeableConcept` | CWE/CE → `CodeableConcept` | unmapped code → preserved, never coerced |
+| `toFhirHumanName` | XPN → `HumanName` | unmapped name-use → absent, never guessed |
+| `toFhirAddress` | XAD → `Address` | unmapped address-type → absent, never guessed |
+| `toFhirQuantity` | NM + units → `Quantity` | non-UCUM unit → verbatim, magnitude never converted |
+
+Each returns `{ value, issues }`; each output is designed to pass `@cosyte/fhir`'s `validateResource`
+when embedded in a resource — the transform's emit gate.
 
 ## Immutability
 
-Parsed values are immutable by default; mutation happens only through explicit methods. This keeps a
-parsed document safe to share across a pipeline without defensive copying.
+Produced nodes are `@cosyte/fhir` immutable model nodes, and the input v2 composites are never
+mutated. A converted value is safe to share across a pipeline without defensive copying.
