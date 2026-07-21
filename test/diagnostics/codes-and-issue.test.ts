@@ -15,9 +15,10 @@ describe("stable code registries", () => {
     for (const [key, value] of Object.entries(FATAL_CODES)) expect(key).toBe(value);
   });
 
-  it("pins the Phase-1 issue-code set (a rename/removal is a breaking change)", () => {
+  it("pins the issue-code set through Phase 2 (a rename/removal is a breaking change)", () => {
     expect(Object.values(ISSUE_CODES).sort()).toEqual(
       [
+        // Phase 1 — datatype + diagnostic foundation.
         "TRANSFORM_ADDRESS_USE_UNMAPPED",
         "TRANSFORM_CODE_SYSTEM_UNRESOLVED",
         "TRANSFORM_CODE_UNMAPPED",
@@ -28,6 +29,10 @@ describe("stable code registries", () => {
         "TRANSFORM_TIMESTAMP_INVALID",
         "TRANSFORM_TIMESTAMP_NO_TIMEZONE",
         "TRANSFORM_UNIT_NOT_UCUM",
+        // Phase 2 — message-level assembly (additions only).
+        "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+        "TRANSFORM_RESOURCE_INVALID",
+        "TRANSFORM_SEGMENT_ASSEMBLED",
       ].sort(),
     );
   });

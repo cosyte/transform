@@ -1,0 +1,163 @@
+/**
+ * Property + fuzz coverage over the **message boundary** (roadmap §6). For arbitrary — including
+ * hostile — parsed ADT messages, `toFhir` must:
+ *   1. **never throw** (the fail-safe rule at the message level);
+ *   2. raise only **registered**, **value-free** issue codes (a sentinel threaded through every PID/
+ *      PV1/NK1 value must never reach the diagnostic channel);
+ *   3. produce a bundle whose **references all resolve within it** (no dangling `urn:uuid:`); and
+ *   4. emit only **structurally-valid** focal resources — every `Patient` entry validates strict under
+ *      `@cosyte/fhir` (an invalid one is withheld, never shipped).
+ */
+
+import { describe, it, expect } from "vitest";
+import fc from "fast-check";
+import { parseHL7 } from "@cosyte/hl7";
+import {
+  parseResource,
+  serializeResource,
+  validateResource,
+  getProperty,
+  isList,
+  isComplex,
+} from "@cosyte/fhir";
+
+import {
+  toFhir,
+  createNamingSystem,
+  ISSUE_CODES,
+  ISSUE_REGISTRY,
+  type TransformResult,
+} from "../../src/index.js";
+import { EMIT_SCHEMAS } from "../../src/messages/emit-schemas.js";
+
+const SENTINEL = "PHIZZ";
+const registeredCodes = new Set<string>(Object.values(ISSUE_CODES));
+const numRuns = Number(process.env["FUZZ_RUNS"] ?? "300");
+
+/** A safe HL7 field token: no delimiters, always carrying the leak sentinel. */
+const token = fc.stringMatching(/^[A-Za-z0-9 ]{0,8}$/).map((s) => SENTINEL + s);
+const optToken = fc.option(token, { nil: undefined });
+const sexCode = fc.constantFrom("F", "M", "O", "U", "A", "N", "ZZ", "", "X");
+const classCode = fc.constantFrom("I", "O", "E", "P", "R", "B", "C", "N", "U", "Z", "");
+const trigger = fc.constantFrom("A01", "A02", "A05", "A08", "A31", "A40");
+
+let counter = 0;
+function seqId(): string {
+  return `00000000-0000-4000-8000-${String(++counter).padStart(12, "0")}`;
+}
+
+interface Parts {
+  readonly trig: string;
+  readonly family: string | undefined;
+  readonly given: string | undefined;
+  readonly mrn: string | undefined;
+  readonly sex: string;
+  readonly cls: string;
+  readonly visit: string | undefined;
+  readonly nkName: string | undefined;
+  readonly nkRel: string | undefined;
+}
+
+function build(p: Parts): string {
+  const pid5 = `${p.family ?? ""}^${p.given ?? ""}`;
+  const pid3 = p.mrn === undefined ? "" : `${p.mrn}^^^HOSP^MR`;
+  const lines = [
+    `MSH|^~\\&|APP|FAC|RCV|RFAC|20260101120000-0500||ADT^${p.trig}|MSGID1|P|2.5.1`,
+    `PID|1||${pid3}||${pid5}||19900101|${p.sex}`,
+    `PV1|1|${p.cls}|||||||||||||||||${p.visit ?? ""}`,
+  ];
+  if (p.nkName !== undefined || p.nkRel !== undefined) {
+    lines.push(`NK1|1|${p.nkName ?? ""}^X|${p.nkRel ?? ""}`);
+  }
+  return lines.join("\r");
+}
+
+/** Every `reference` and every `fullUrl` string in the serialized bundle. */
+function refsAndUrls(result: TransformResult): { refs: string[]; urls: Set<string> } {
+  const json = serializeResource(result.bundle);
+  const refs = [...json.matchAll(/"reference":"([^"]+)"/g)].map((m) => m[1] ?? "");
+  const urls = new Set([...json.matchAll(/"fullUrl":"([^"]+)"/g)].map((m) => m[1] ?? ""));
+  return { refs, urls };
+}
+
+function assertResult(result: TransformResult): void {
+  // (2) value-free + registered
+  const serialized = JSON.stringify(result.issues);
+  expect(serialized).not.toContain(SENTINEL);
+  for (const i of result.issues) {
+    expect(registeredCodes.has(i.code)).toBe(true);
+    expect(i.v2Location.length).toBeGreaterThan(0);
+    expect(i.message).toBe(ISSUE_REGISTRY[i.code].message);
+  }
+  // (3) references resolve within the bundle
+  const { refs, urls } = refsAndUrls(result);
+  for (const r of refs) expect(urls.has(r)).toBe(true);
+  // (4) every emitted resource is structurally valid — Patient strict, the rest against the emit
+  // schemas (lenient): a resource that would fail R4 required-cardinality is never in the bundle.
+  const parsed = parseResource(serializeResource(result.bundle)).resource;
+  const entry = getProperty(parsed, "entry");
+  if (entry !== undefined && isList(entry)) {
+    for (const e of entry.items) {
+      const res = isComplex(e) ? getProperty(e, "resource") : undefined;
+      if (res === undefined || !isComplex(res)) continue;
+      const rt = getProperty(res, "resourceType");
+      const type = rt !== undefined && "value" in rt ? (rt as { value: unknown }).value : undefined;
+      const check =
+        type === "Patient"
+          ? validateResource(res, { mode: "strict" })
+          : validateResource(res, { mode: "lenient", schemas: EMIT_SCHEMAS });
+      expect(check.valid).toBe(true);
+    }
+  }
+}
+
+describe("message boundary — fail-safe, value-free, references resolve, Patient validates", () => {
+  const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.3.4" } });
+
+  it("never throws and holds every invariant over structured ADT messages", () => {
+    const arb = fc.record({
+      trig: trigger,
+      family: optToken,
+      given: optToken,
+      mrn: optToken,
+      sex: sexCode,
+      cls: classCode,
+      visit: optToken,
+      nkName: optToken,
+      nkRel: fc.option(fc.constantFrom("SPO", "FTH", "MTH", "CHD", ""), { nil: undefined }),
+    });
+    fc.assert(
+      fc.property(arb, (p) => {
+        let result: TransformResult;
+        try {
+          result = toFhir(parseHL7(build(p)), { namingSystem: registry, generateId: seqId });
+        } catch (err) {
+          throw new Error("toFhir threw (message-level fail-safe violated)", { cause: err });
+        }
+        assertResult(result);
+      }),
+      { numRuns },
+    );
+  });
+
+  it("never throws on hostile arbitrary input that still parses as HL7", () => {
+    fc.assert(
+      fc.property(fc.string({ maxLength: 400 }), (raw) => {
+        let msg;
+        try {
+          msg = parseHL7(raw);
+        } catch {
+          return; // parser rejected it — that is @cosyte/hl7's contract, not ours
+        }
+        let result: TransformResult;
+        try {
+          result = toFhir(msg, { generateId: seqId });
+        } catch (err) {
+          throw new Error("toFhir threw on parseable input", { cause: err });
+        }
+        for (const i of result.issues) expect(registeredCodes.has(i.code)).toBe(true);
+      }),
+      { numRuns },
+    );
+  });
+});

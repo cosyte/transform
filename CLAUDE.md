@@ -19,17 +19,22 @@ the parser tier; third-party runtime deps stay zero) and `0002` (terminology is 
 
 ## Status
 
-- **Phase 1 shipped** (roadmap `operations/roadmaps/transform.md` §Phase 1). Pre-alpha `0.0.x`, not
-  yet published to npm. Ships the **six safety-critical datatype converters** (`toFhirDateTime`,
+- **Phases 1–2 shipped** (roadmap `operations/roadmaps/transform.md` §Phase 1–2). Pre-alpha `0.0.x`,
+  not yet published to npm. Phase 1: the **six safety-critical datatype converters** (`toFhirDateTime`,
   `toFhirIdentifier`, `toFhirCodeableConcept`, `toFhirHumanName`, `toFhirAddress`, `toFhirQuantity`),
   the **value-free diagnostic channel** (`ISSUE_CODES`/`FATAL_CODES`, `TransformIssue`,
-  `toOperationOutcome`), and the minimal **NamingSystem resolver** (`createNamingSystem`). Every
-  mapping is grounded firsthand on the IG's datatype/table ConceptMaps.
+  `toOperationOutcome`), and the minimal **NamingSystem resolver** (`createNamingSystem`). Phase 2: the
+  first **message-level assembly** — `toFhir(msg)` turns an HL7 v2 **ADT** message into a FHIR R4
+  **message `Bundle`** (MSH→`MessageHeader`, PID→`Patient`, PV1→`Encounter`, NK1→`RelatedPerson`, with
+  `urn:uuid:` reference wiring, the HL70001/HL70004 table maps, a segment-assembled fallback for
+  non-IG-mapped triggers, and a conservative-emit gate against `@cosyte/fhir.validateResource`). Every
+  segment→resource and field→element map is grounded firsthand on the IG's ConceptMaps and cited.
 - **Consumes two unpublished cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer
   dependencies**, vendored as `pnpm pack` tarballs in `vendor/` for dev/test (ADR 0001 + umbrella ADR 0008) — refresh with `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir `7a099b2`. **Third-party
   runtime deps: zero.**
-- **Deferred to later phases:** message-level assembly (`toFhir(msg)`), abnormal-flag/status
-  semantics, full terminology + ConceptMap application, profiles, and the reverse direction.
+- **Deferred to later phases:** ORU→DiagnosticReport/Observation and abnormal-flag/status semantics
+  (Phase 3), orders/medications (Phase 4), VXU/SIU/MDM (Phase 5), full terminology + ConceptMap
+  application (Phase 6), the reverse FHIR→v2 direction (Phase 7), and profiles (Phase 8).
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 
