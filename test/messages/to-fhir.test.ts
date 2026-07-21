@@ -189,9 +189,10 @@ describe("toFhir — reference wiring & fail-safe edges", () => {
     expect(entryTypes(result)).toContain("Patient");
   });
 
-  it("a non-ADT message (ORU) is also segment-assembled and still yields a Patient", () => {
+  it("an unmapped-trigger message is segment-assembled and still yields a Patient", () => {
+    // ORU^R01 is now IG-mapped (Phase 3); ORU^R30 has no IG message map → segment-assembled.
     const oru = [
-      "MSH|^~\\&|A|B|C|D|20260101||ORU^R01|M1|P|2.5.1",
+      "MSH|^~\\&|A|B|C|D|20260101||ORU^R30|M1|P|2.5.1",
       "PID|1||MRN1^^^HOSP^MR||Doe^Jane||19900101|M",
     ];
     const result = toFhir(msg(oru), { generateId: seq() });

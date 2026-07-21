@@ -7,11 +7,12 @@
  * STU Edition 1). Its whole promise is narrow and honest: **IG-grounded, fail-safe transformation
  * with typed, value-free diagnostics — never a confident wrong FHIR value.**
  *
- * This module ships **Phases 1–2**: the six safety-critical datatype converters, the immutable
+ * This module ships **Phases 1–3**: the six safety-critical datatype converters, the immutable
  * `OperationOutcome`-shaped diagnostic channel and the NamingSystem resolver they consult (Phase 1),
- * and the first message-level assembly — HL7 v2 **ADT → FHIR Patient + Encounter** via `toFhir(msg)`
- * (Phase 2). ORU/orders/immunization graphs, terminology depth, profiles, and the reverse direction
- * land in later phases (see `operations/roadmaps/transform.md` in the umbrella).
+ * the first message-level assembly — HL7 v2 **ADT → FHIR Patient + Encounter** (Phase 2) — and the
+ * **ORU^R01 → DiagnosticReport + Observation** results graph (Phase 3), all through `toFhir(msg)`.
+ * Orders/medications, immunization/appointment/document graphs, terminology depth, profiles, and the
+ * reverse direction land in later phases (see `operations/roadmaps/transform.md` in the umbrella).
  *
  * @packageDocumentation
  */
@@ -46,7 +47,11 @@ export { toFhirAddress, ADDRESS_USE_MAP, ADDRESS_TYPE_MAP } from "./datatypes/ad
 export { toFhirQuantity } from "./datatypes/quantity.js";
 
 // ── Message-level assembly: HL7 v2 ADT → FHIR Patient + Encounter graph (Phase 2) ────────────────
-export { toFhir, IG_MAPPED_ADT_TRIGGERS } from "./messages/to-fhir.js";
+export { toFhir, IG_MAPPED_ADT_TRIGGERS, IG_MAPPED_ORU_TRIGGERS } from "./messages/to-fhir.js";
 export type { TransformResult } from "./messages/to-fhir.js";
 export { ADMINISTRATIVE_GENDER_MAP } from "./messages/patient.js";
 export { ENCOUNTER_CLASS_V3_MAP, ENCOUNTER_STATUS_MAP } from "./messages/encounter.js";
+
+// ── Message-level assembly: HL7 v2 ORU^R01 → FHIR DiagnosticReport + Observation graph (Phase 3) ──
+export { OBSERVATION_STATUS_MAP, HL70078_INTERPRETATION_CODES } from "./messages/observation.js";
+export { DIAGNOSTIC_REPORT_STATUS_MAP } from "./messages/diagnostic-report.js";

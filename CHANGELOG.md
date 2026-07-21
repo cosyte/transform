@@ -14,6 +14,34 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **Phase 3 — ORU^R01 → DiagnosticReport + Observation, the results graph** (roadmap §Phase 3).
+  `toFhir(msg, opts?)` now assembles a parsed HL7 v2 **ORU^R01** message into a FHIR R4 message
+  `Bundle` carrying a **`DiagnosticReport`** per OBR with its **`Observation`** results, alongside the
+  Phase-2 `Patient`/`Encounter`. Every segment/field/table map is grounded firsthand on the published
+  HL7 v2-to-FHIR IG (`hl7.fhir.uv.v2mappings`, STU1) ConceptMaps and cited in-source.
+  - **OBR → `DiagnosticReport`** (IG _Segment OBR to DiagnosticReport_): OBR-2/3 → `identifier`
+    (PLAC/FILL, v2-0203), OBR-4 → `code`, OBR-7/8 → `effectiveDateTime`/`effectivePeriod`, OBR-22 →
+    `issued` (a zoned `instant` only; a naked/date-only value is dropped + flagged), OBR-24 →
+    `category` (v2-0074), OBR-25 → `status` via the `HL70123` → diagnostic-report-status ConceptMap
+    (`DIAGNOSTIC_REPORT_STATUS_MAP`), and the OBX children → `result` references.
+  - **OBX → `Observation`** (IG _Segment OBX to Observation_): **OBX-2 discriminates OBX-5 →
+    `value[x]`** (NM → `valueQuantity`, CWE/CE/CF/CNE/IS → `valueCodeableConcept`, SN → structured
+    `valueQuantity`/`valueRange`/`valueRatio`, ST/TX/FT → `valueString`; a type with no first-class
+    target preserves the raw value as `valueString` + flags it — never a fabricated `Quantity`), OBX-3
+    → `code`, OBX-6 → `valueQuantity` units (UCUM-gated), OBX-7 → `referenceRange.text`, OBX-8 →
+    `interpretation` via the `HL70078` ConceptMap (`HL70078_INTERPRETATION_CODES`), OBX-11 → `status`
+    via the `HL70085` → observation-status ConceptMap (`OBSERVATION_STATUS_MAP`), OBX-14 →
+    `effectiveDateTime`.
+  - **The "never a confident wrong result" fail-safes.** A **corrected (`C`) / cancelled (`X`)** result
+    is modelled exactly and **never emitted as `final`**; an OBX-11/OBR-25 status the IG map has **no
+    target** for leaves `status` absent + flagged (`TRANSFORM_CODE_UNMAPPED`) and the required-`status`
+    emit gate **withholds** the resource (`TRANSFORM_RESOURCE_INVALID`) rather than guessing; an
+    **unrecognized abnormal flag** is surfaced and dropped, never coerced to normal; a numeric
+    magnitude is carried through **precision-exact** (read from the raw OBX-5, not a lossy JS `number`).
+  - New public surface: `IG_MAPPED_ORU_TRIGGERS`, `DIAGNOSTIC_REPORT_STATUS_MAP`,
+    `OBSERVATION_STATUS_MAP`, `HL70078_INTERPRETATION_CODES`. No new issue codes — the existing
+    `TRANSFORM_CODE_UNMAPPED` now also covers a table code with no IG-ConceptMap target (its message was
+    generalized accordingly), and `TRANSFORM_ELEMENT_DROPPED` covers a deferred richer `value[x]` type.
 - **Phase 2 — ADT → Patient + Encounter, the first message-level assembly** (roadmap §Phase 2). The
   top-level entry `toFhir(msg, opts?)` assembles a parsed HL7 v2 **ADT** message into a FHIR R4
   **message `Bundle`** (a `MessageHeader` first, then the focal resources), establishing the

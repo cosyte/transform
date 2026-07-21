@@ -8,8 +8,9 @@ sidebar_position: 1
 
 The **datatype converters** each take a parsed `@cosyte/hl7` composite and return a `{ value, issues }`
 pair — the FHIR datatype node it could faithfully produce, plus the value-free diagnostics it raised.
-Phase 2 adds the **message-level** entry `toFhir(msg)`, which assembles a whole HL7 v2 **ADT** message
-into a FHIR **Patient + Encounter** bundle over those same converters.
+The **message-level** entry `toFhir(msg)` assembles a whole HL7 v2 message into a FHIR `Bundle` over
+those same converters: an **ADT** admit becomes a **Patient + Encounter** graph (Phase 2), and an
+**ORU^R01** lab result becomes a **DiagnosticReport + Observation** graph (Phase 3).
 
 ## Convert a name
 
@@ -79,6 +80,24 @@ import { ADMINISTRATIVE_GENDER_MAP, ENCOUNTER_CLASS_V3_MAP } from "@cosyte/trans
 
 ADMINISTRATIVE_GENDER_MAP["F"]; // => "female"
 ENCOUNTER_CLASS_V3_MAP["I"].code; // => "IMP"
+```
+
+## Lab results (ORU^R01)
+
+An `ORU^R01` assembles into a **`DiagnosticReport`** per OBR with its **`Observation`** results.
+`OBX-2` discriminates the value type — `NM` → `valueQuantity`, `CWE` → `valueCodeableConcept`, `SN` →
+a structured range/ratio/comparator quantity, `ST`/`TX` → `valueString` — so a result is **never**
+forced into a `Quantity` it isn't. The result-status maps are the clinical-safety heart of the graph
+and are exported for inspection: a **corrected** or **cancelled** result is modelled exactly and
+**never emitted as `final`**, and a status the IG map has no target for leaves `status` absent (the
+resource is then withheld) rather than being guessed.
+
+```ts runnable
+import { OBSERVATION_STATUS_MAP, DIAGNOSTIC_REPORT_STATUS_MAP } from "@cosyte/transform";
+
+OBSERVATION_STATUS_MAP["C"]; // => "corrected"
+OBSERVATION_STATUS_MAP["X"]; // => "cancelled"
+DIAGNOSTIC_REPORT_STATUS_MAP["F"]; // => "final"
 ```
 
 ## Next

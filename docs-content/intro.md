@@ -14,9 +14,11 @@ parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://g
 composites and produces validated [`@cosyte/fhir`](https://github.com/cosyte/fhir) model nodes,
 grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`).
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phase 1** — the six
-> safety-critical datatype converters and the value-free diagnostic channel. Message-level assembly
-> (`toFhir(msg)`), terminology depth, and profiles land in later phases.
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phases 1–3** — the
+> six safety-critical datatype converters and the value-free diagnostic channel (Phase 1), and
+> message-level assembly via `toFhir(msg)` for HL7 v2 **ADT → Patient + Encounter** (Phase 2) and
+> **ORU^R01 → DiagnosticReport + Observation** (Phase 3). Orders/medications, terminology depth, and
+> profiles land in later phases.
 
 ## The fail-safe promise
 
