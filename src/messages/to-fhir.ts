@@ -2,7 +2,10 @@
  * `toFhir` — the message-level entry point: assemble a parsed HL7 v2 message into a FHIR R4
  * **message Bundle** (a `MessageHeader` first, then the focal resources), grounded on the IG message
  * and segment maps. Phase 2 covers the **ADT** family → **Patient + Encounter** (+ `RelatedPerson`
- * from NK1), establishing the message-map → resource-graph pattern the later phases reuse.
+ * from NK1), establishing the message-map → resource-graph pattern the later phases reuse; Phase 3
+ * adds the **ORU^R01** results graph (`DiagnosticReport` + `Observation`); Phase 4 adds the
+ * order-entry graph — **ORM_O01 / OML_O21** ORC/OBR → `ServiceRequest` and **RXO** (+ RXR) →
+ * `MedicationRequest`.
  *
  * The fail-safe rule holds at the message level. Two message-level fail-safes join the datatype ones:
  *
@@ -41,12 +44,15 @@ import type { TransformContext, TransformOptions } from "../terminology/context.
 import { buildDiagnosticReport } from "./diagnostic-report.js";
 import { buildEncounter } from "./encounter.js";
 import { EMIT_SCHEMAS } from "./emit-schemas.js";
+import { buildMedicationRequest } from "./medication-request.js";
 import { buildMessageHeader } from "./message-header.js";
 import { buildObservation } from "./observation.js";
+import { collectOrderGroups } from "./orders.js";
 import { collectReportGroups } from "./oru.js";
 import { buildPatient } from "./patient.js";
 import { buildRelatedPerson } from "./related-person.js";
 import { IdAllocator } from "./reference.js";
+import { buildServiceRequest } from "./service-request.js";
 
 /**
  * The immutable result of a message-level transform: the FHIR `Bundle` model and the value-free
@@ -79,6 +85,14 @@ export const IG_MAPPED_ADT_TRIGGERS: ReadonlySet<string> = new Set([
  * {@link ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED}.
  */
 export const IG_MAPPED_ORU_TRIGGERS: ReadonlySet<string> = new Set(["R01"]);
+
+/**
+ * The order-message trigger events the IG ships a **message** map for, keyed `CODE^TRIGGER`. Only
+ * `ORM^O01` and `OML^O21` are message-map-grounded; other order families (`OMP`, `OMG`, `RDE`, …)
+ * still assemble their request graph from the reusable ORC/OBR/RXO/RXR segment maps but are flagged
+ * {@link ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED}.
+ */
+export const IG_MAPPED_ORDER_TRIGGERS: ReadonlySet<string> = new Set(["ORM^O01", "OML^O21"]);
 
 interface Entry {
   readonly fullUrl: string;
@@ -188,7 +202,8 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   const messageMapGrounded =
     trigger !== undefined &&
     ((code === "ADT" && IG_MAPPED_ADT_TRIGGERS.has(trigger)) ||
-      (code === "ORU" && IG_MAPPED_ORU_TRIGGERS.has(trigger)));
+      (code === "ORU" && IG_MAPPED_ORU_TRIGGERS.has(trigger)) ||
+      IG_MAPPED_ORDER_TRIGGERS.has(`${code ?? ""}^${trigger}`));
   if (!messageMapGrounded) {
     issues.push(issue(ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED, "MSH.9"));
   }
@@ -288,10 +303,68 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
     }
   }
 
+  // Order messages (ORM/OML, and segment-assembled OMP/OMG/RDE/…) → the ServiceRequest /
+  // MedicationRequest graph (Phase 4). Each ORC-anchored order becomes one request: an OBR order
+  // detail → ServiceRequest, an RXO pharmacy detail → MedicationRequest, both subject-wired to the
+  // Patient. ORU is excluded — there its OBR anchors a DiagnosticReport, not a ServiceRequest.
+  const orderResourceFullUrls: string[] = [];
+  if (code !== "ORU") {
+    const { groups, rxeCount } = collectOrderGroups(msg);
+    if (rxeCount > 0) {
+      // RXE has no IG segment map (nor RDE message map) — surfaced, never assembled from a guess.
+      issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "RXE", "MedicationRequest"));
+    }
+    for (const group of groups) {
+      // ServiceRequest: an OBR order detail, or an ORC that opened a non-pharmacy order.
+      if (group.obr !== undefined || (group.orc !== undefined && group.rxo === undefined)) {
+        const built = buildServiceRequest(
+          group.orc,
+          group.obr,
+          patientFullUrl,
+          encounterFullUrl,
+          ctx,
+        );
+        issues.push(...built.issues);
+        const loc = group.orc !== undefined ? "ORC" : "OBR";
+        if (
+          built.value !== undefined &&
+          passesEmitGate(built.value, loc, "ServiceRequest", issues)
+        ) {
+          const url = ids.next();
+          orderResourceFullUrls.push(url);
+          focalEntries.push({ fullUrl: url, resource: built.value });
+        }
+      }
+      // MedicationRequest: an RXO pharmacy order detail (+ its first RXR route, its opening ORC).
+      if (group.rxo !== undefined) {
+        const built = buildMedicationRequest(
+          group.rxo,
+          group.rxrs[0],
+          group.orc,
+          patientFullUrl,
+          encounterFullUrl,
+          ctx,
+        );
+        issues.push(...built.issues);
+        if (
+          built.value !== undefined &&
+          passesEmitGate(built.value, "RXO", "MedicationRequest", issues)
+        ) {
+          const url = ids.next();
+          orderResourceFullUrls.push(url);
+          focalEntries.push({ fullUrl: url, resource: built.value });
+        }
+      }
+    }
+  }
+
   // MSH → MessageHeader (first entry of a message Bundle), focus = the focal resources.
-  const focus = [patientFullUrl, encounterFullUrl, ...diagnosticReportFullUrls].filter(
-    (u): u is string => u !== undefined,
-  );
+  const focus = [
+    patientFullUrl,
+    encounterFullUrl,
+    ...diagnosticReportFullUrls,
+    ...orderResourceFullUrls,
+  ].filter((u): u is string => u !== undefined);
   const header = buildMessageHeader(msg.meta, focus);
   issues.push(...header.issues);
   const entries: Entry[] = [];

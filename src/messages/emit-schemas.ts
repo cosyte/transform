@@ -20,6 +20,12 @@
  *   a report from an unmapped/absent OBR-25 result status (no `status`) is withheld, never guessed.
  * - **Observation**: `status` (1..1 code) and `code` (1..1 CodeableConcept) are both required — so a
  *   result from an unmapped/absent OBX-11 status (no `status`) is withheld, never emitted as `final`.
+ * - **ServiceRequest**: `status` (1..1 code), `intent` (1..1 code), and `subject` (1..1 Reference) are
+ *   all required — so an order whose `status` could not be grounded via HL70119 (or whose Patient was
+ *   withheld) is withheld, never emitted with a guessed status or a dangling subject.
+ * - **MedicationRequest**: `status` (1..1 code), `intent` (1..1 code), `subject` (1..1 Reference), and
+ *   `medication[x]` (1..1) are all required; the assembler only ever emits the `medicationCodeableConcept`
+ *   form, so it is required here — a pharmacy order with no give code (no `medication[x]`) is withheld.
  *
  * @packageDocumentation
  */
@@ -59,6 +65,23 @@ export const EMIT_SCHEMAS: readonly ResourceSchema[] = Object.freeze([
     elements: {
       status: { min: 1, max: 1, types: ["code"] },
       code: { min: 1, max: 1, types: ["CodeableConcept"] },
+    },
+  },
+  {
+    type: "ServiceRequest",
+    elements: {
+      status: { min: 1, max: 1, types: ["code"] },
+      intent: { min: 1, max: 1, types: ["code"] },
+      subject: { min: 1, max: 1, types: ["Reference"] },
+    },
+  },
+  {
+    type: "MedicationRequest",
+    elements: {
+      status: { min: 1, max: 1, types: ["code"] },
+      intent: { min: 1, max: 1, types: ["code"] },
+      subject: { min: 1, max: 1, types: ["Reference"] },
+      medicationCodeableConcept: { min: 1, max: 1, types: ["CodeableConcept"] },
     },
   },
 ]);

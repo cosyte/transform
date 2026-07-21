@@ -14,6 +14,38 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **Phase 4 — ORM_O01 / OML_O21 → ServiceRequest; RXO → MedicationRequest, the order-entry graph**
+  (roadmap §Phase 4). `toFhir(msg, opts?)` now assembles order messages into a FHIR R4 message
+  `Bundle`: each ORC-anchored order becomes a **`ServiceRequest`** (an `OBR` order detail) or a
+  **`MedicationRequest`** (an `RXO` pharmacy detail), alongside the Phase-2 `Patient`/`Encounter`.
+  Every segment/field/table map is grounded firsthand on the published HL7 v2-to-FHIR IG
+  (`hl7.fhir.uv.v2mappings`, STU1) ConceptMaps and cited in-source.
+  - **ORC + OBR → `ServiceRequest`** (IG _Segment ORC/OBR to ServiceRequest_; per the ORM_O01/OML_O21
+    message maps the `ORC` creates the request and the `OBR` is incorporated into it): ORC-2/3 or
+    OBR-2/3 → `identifier` (PLAC/FILL, v2-0203), ORC-1 → `status` via the **`HL70119` → request-status**
+    ConceptMap (`REQUEST_STATUS_MAP`, only when ORC-5 is not valued), OBR-4 → `code`, OBR-6 →
+    `occurrenceDateTime`, ORC-9 → `authoredOn` (for a `NW` order), OBR-31 → `reasonCode`, and
+    `subject`/`encounter` wired to the bundle's Patient/Encounter. `intent` is fixed to the
+    `request-intent` code `order` from the order-message context (the IG maps `→ intent` with no value
+    table) — a resource-level constant, not a fabricated per-code row.
+  - **RXO (+ RXR) → `MedicationRequest`** (IG _Segment RXO/RXR to MedicationRequest_): RXO-1 →
+    `medicationCodeableConcept`, RXO-2/3 (+ RXO-4 units) → `dosageInstruction.doseAndRate.doseRange`,
+    RXR-1/2/4 → `dosageInstruction.route`/`.site`/`.method`, RXO-11/12 → `dispenseRequest.quantity`,
+    RXO-13 → `dispenseRequest.numberOfRepeatsAllowed`, ORC-9 → `authoredOn`. Doses/dispense amounts
+    carry the magnitude **precision-exact** and gate units against UCUM (a non-UCUM unit is preserved
+    verbatim, `code`/`system` absent + flagged) — never a rescaled magnitude or a fabricated UCUM code.
+  - **The fail-safes (never a confident wrong request).** A `ServiceRequest.status` that cannot be
+    grounded — an ORC-1 in the IG's HL70119 `(unmapped)` group, or a valued ORC-5 the IG routes through
+    an unspecified mapping — is left absent + flagged (`TRANSFORM_CODE_UNMAPPED`) and the required-`status`
+    emit gate **withholds** the request rather than guessing. The IG grounds **no** `MedicationRequest`
+    status, so it is set to the value-set's own `unknown` (an honest "not known", asserting nothing) +
+    flagged (`TRANSFORM_REQUIRED_ELEMENT_UNKNOWN`) — the `request-status` codes the HL70119 table yields
+    (`revoked`, …) are **not** valid `medicationrequest-status` codes and are never borrowed. **`RXE` has
+    no IG segment map (nor RDE message map) in STU1**, so any `RXE` is flagged (`TRANSFORM_ELEMENT_DROPPED`)
+    rather than assembled from a guessed layout, and non-`ORM^O01`/`OML^O21` order families (`OMP`, `OMG`,
+    `RDE`, …) are flagged `TRANSFORM_SEGMENT_ASSEMBLED`.
+  - New public export: **`REQUEST_STATUS_MAP`** (HL70119 → request-status) and
+    **`IG_MAPPED_ORDER_TRIGGERS`**.
 - **Phase 3 — ORU^R01 → DiagnosticReport + Observation, the results graph** (roadmap §Phase 3).
   `toFhir(msg, opts?)` now assembles a parsed HL7 v2 **ORU^R01** message into a FHIR R4 message
   `Bundle` carrying a **`DiagnosticReport`** per OBR with its **`Observation`** results, alongside the
