@@ -14,6 +14,7 @@
  * | ORC-3 / OBR-3 Filler Order Number | `identifier` (type `FILL`) | {@link orderIdentifier} |
  * | ORC-9 Date/Time of Order Event | `authoredOn` | {@link toFhirDateTime}, *IF ORC-1 = `NW`* |
  * | OBR-4 Universal Service Identifier (CWE) | `ServiceRequest.code` | {@link toFhirCodeableConcept} |
+ * | OBR-5 Priority (v2-0485) | `ServiceRequest.priority` | {@link SERVICE_REQUEST_PRIORITY_MAP} (HL70485) |
  * | OBR-6 Requested Date/Time | `occurrenceDateTime` | {@link toFhirDateTime} |
  * | OBR-31 Reason for Study (CWE) | `reasonCode` | {@link toFhirCodeableConcept} |
  * | (order message context) | `intent` = `order` | see below |
@@ -37,10 +38,18 @@
  * - **`subject` (required 1..1).** Wired to the bundle's Patient; a request with no resolvable Patient
  *   is withheld rather than emitted with a dangling/absent subject.
  *
+ * - **`priority` (0..1) — value-translated (Phase 6).** OBR-5 → `ServiceRequest.priority` via the IG
+ *   **Table HL70485 to Request Priority** ConceptMap ({@link SERVICE_REQUEST_PRIORITY_MAP}): only
+ *   `S→stat`, `A→asap`, `R→routine` carry a target (each `equivalent`, and all three are valid
+ *   `request-priority` members). Every other v2-0485 code — `P`, `C`, `T`, the `T{S,M,H,D,W,L}<integer>`
+ *   timing-critical family, `PRN` — sits in the IG map's `(unmapped)` group, so a valued OBR-5 the map
+ *   has no target for leaves `priority` absent + flagged {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED},
+ *   never guessed. (`priority` is 0..1, so an unmapped value simply omits it — the request still emits.)
+ *
  * Deferred and flagged elsewhere, not silently mapped: ORC-7/OBR-27 timing (`$this`), ORC-12/OBR-16
  * requester + ORC-21..24 ordering facility/provider (need Practitioner/PractitionerRole/Organization
- * resources), OBR-5 priority (HL70485 value translation → Phase 6), OBR-29 basedOn, specimen, and the
- * ORC-1/ORC-9/OBR-13 order-control/supporting-info extensions.
+ * resources), OBR-29 basedOn, specimen, and the ORC-1/ORC-9/OBR-13 order-control/supporting-info
+ * extensions.
  *
  * @packageDocumentation
  */
@@ -86,6 +95,21 @@ export const REQUEST_STATUS_MAP: Readonly<Record<string, string>> = Object.freez
   RL: "active",
   RO: "active",
   RQ: "active",
+});
+
+/**
+ * HL7 v2 Table 0485 (Extended Priority Codes) → FHIR `request-priority` (`ServiceRequest.priority`),
+ * per the IG **Table HL70485 to Request Priority** ConceptMap (each `is equivalent to`; verified
+ * firsthand against the published v1.0.0 ConceptMap). Only these **three** source codes carry a
+ * target; every other v2-0485 code — `P` (Preop), `C` (Callback), `T` (Timing critical), the
+ * `T{S,M,H,D,W,L}<integer>` timing-critical family, and `PRN` (As needed) — sits in the IG's
+ * `(unmapped)` group with no target, so an OBR-5 carrying one leaves `priority` absent + flagged.
+ * All three targets (`stat`/`asap`/`routine`) are valid `request-priority` members.
+ */
+export const SERVICE_REQUEST_PRIORITY_MAP: Readonly<Record<string, string>> = Object.freeze({
+  S: "stat",
+  A: "asap",
+  R: "routine",
 });
 
 /** The `request-intent` code fixed for order-message requests (see the module fail-safe note). */
@@ -161,6 +185,26 @@ export function buildServiceRequest(
     const code = toFhirCodeableConcept(obr.field(4).asCwe(), ctx);
     issues.push(...code.issues);
     if (code.value !== undefined) props.push({ name: "code", value: code.value });
+  }
+
+  // OBR-5 → priority (HL70485 → request-priority; value-translated). Applied only when OBR-5 is a
+  // v2-0485 code (CWE.3 absent or names HL70485); a code from a foreign coding system, or one the IG
+  // leaves in its (unmapped) group, is flagged and priority left absent (0..1) — never guessed.
+  const obr5cwe = obr?.field(5).asCwe();
+  const obr5 = obr5cwe?.identifier ?? "";
+  if (obr5 !== "") {
+    const mnemonic = obr5cwe?.nameOfCodingSystem;
+    const fromTable =
+      mnemonic === undefined || mnemonic === "" || mnemonic === "HL70485" || mnemonic === "0485";
+    const priority =
+      fromTable && Object.hasOwn(SERVICE_REQUEST_PRIORITY_MAP, obr5)
+        ? SERVICE_REQUEST_PRIORITY_MAP[obr5]
+        : undefined;
+    if (priority === undefined) {
+      issues.push(issue(ISSUE_CODES.TRANSFORM_CODE_UNMAPPED, "OBR.5", "ServiceRequest.priority"));
+    } else {
+      props.push({ name: "priority", value: primitive(priority) });
+    }
   }
 
   // subject / encounter → the bundle's Patient / Encounter (message-map reference wiring).

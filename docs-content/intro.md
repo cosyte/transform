@@ -14,13 +14,15 @@ parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://g
 composites and produces validated [`@cosyte/fhir`](https://github.com/cosyte/fhir) model nodes,
 grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`).
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phases 1–5** — the
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phases 1–6** — the
 > six safety-critical datatype converters and the value-free diagnostic channel (Phase 1), and
 > message-level assembly via `toFhir(msg)` for HL7 v2 **ADT → Patient + Encounter** (Phase 2),
 > **ORU^R01 → DiagnosticReport + Observation** (Phase 3), the order-entry graph **ORM_O01 / OML_O21 →
 > ServiceRequest** and **RXO → MedicationRequest** (Phase 4), and the thin IG singles **VXU_V04 →
-> Immunization**, **SIU_S12 → Appointment**, and **MDM_T02 → DocumentReference** (Phase 5). With Phase 5
-> the v2→FHIR direction is feature-complete for the IG-covered message set; terminology depth, profiles,
+> Immunization**, **SIU_S12 → Appointment**, and **MDM_T02 → DocumentReference** (Phase 5), plus
+> **terminology value translation** of coded fields (Phase 6) — route/site, appointment type, order
+> priority, and substitution translated through their IG `mappedVia` ConceptMaps. With Phase 5 the
+> v2→FHIR direction is feature-complete for the IG-covered message set; deeper terminology, profiles,
 > and the reverse direction land in later phases.
 
 ## The fail-safe promise

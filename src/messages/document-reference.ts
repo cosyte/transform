@@ -9,7 +9,7 @@
  * | v2 field | FHIR target | via |
  * |---|---|---|
  * | TXA-19 Document Availability Status | `status` (required 1..1) | `AV` → `current` only (see below) |
- * | TXA-2 Document Type (CWE) | `type` | {@link toFhirCodeableConcept} |
+ * | TXA-2 Document Type (CWE) | `type` | {@link toFhirCodeableConcept} (structural — no IG value map) |
  * | TXA-6 Origination Date/Time (DTM) | `date` (an `instant`) | {@link toFhirDateTime}, fully-zoned only |
  * | TXA-12 Unique Document Number | `masterIdentifier` | EI.1 → `Identifier.value` |
  * | TXA-16 Unique Document File Name | `identifier` | ST → `Identifier.value` |
@@ -166,7 +166,10 @@ export function buildDocumentReference(
     );
   }
 
-  // TXA-2 → type.
+  // TXA-2 → type: carried **structurally** (system recognized, value preserved). The IG's
+  // TXA→DocumentReference segment map ships **no** `mappedVia` value ConceptMap for TXA-2 (verified
+  // firsthand — only TXA-18 securityLabel carries one), so a value translation is never invented for it
+  // (ADR 0018 applied to mappings); the document-type code (typically LOINC) is emitted as-is.
   if (txa.field(2).value !== "") {
     const type = toFhirCodeableConcept(txa.field(2).asCwe(), ctx);
     issues.push(...type.issues);

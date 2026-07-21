@@ -10,7 +10,7 @@
  *
  * | v2 field | FHIR target | via |
  * |---|---|---|
- * | RXA-5 Administered Code (CE) | `vaccineCode` (required 1..1) | {@link toFhirCodeableConcept} |
+ * | RXA-5 Administered Code (CE) | `vaccineCode` (required 1..1) | {@link toFhirCodeableConcept} (structural — no IG value map) |
  * | RXA-3 Date/Time Start of Administration (DTM) | `occurrenceDateTime` (required, occurrence[x]) | {@link toFhirDateTime} |
  * | RXA-20 Completion Status + RXA-21 Action Code | `status` (required 1..1) | {@link buildStatus} (HL70322 + IG assignments) |
  * | RXA-6 Administered Amount + RXA-7 Units | `doseQuantity` | {@link quantityFromRawMagnitude} |
@@ -19,7 +19,8 @@
  * | RXA-18 Substance/Treatment Refusal Reason (CWE) | `statusReason` | {@link toFhirCodeableConcept} |
  * | RXA-19 Indication (CWE) | `reasonCode` | {@link toFhirCodeableConcept} |
  * | RXA-22 System Entry Date/Time (DTM) | `recorded` | {@link toFhirDateTime} (ORC-9 fallback) |
- * | RXR-1 Route / RXR-2 Administration Site (CWE) | `route` / `site` | {@link toFhirCodeableConcept} |
+ * | RXR-1 Route (CWE) | `route` | {@link ROUTE_VALUE_MAP} (HL70162, value-translated) |
+ * | RXR-2 Administration Site (CWE) | `site` | {@link SITE_VALUE_MAP} (HL70550, value-translated) |
  * | ORC-2 / ORC-3 Placer/Filler Order Number | `identifier` (PLAC / FILL) | {@link orderIdentifier} |
  * | ORC-9 Date/Time of Order Event | `recorded` (fallback) | {@link toFhirDateTime} |
  * | (message-map wiring) | `patient` (required 1..1) / `encounter` | the bundle's Patient / Encounter |
@@ -38,6 +39,13 @@
  *   withheld by the emit gate rather than emitted incomplete.
  * - **Dose.** RXA-6/RXA-7 → `doseQuantity` via {@link quantityFromRawMagnitude}: precision-exact magnitude,
  *   non-UCUM unit preserved verbatim with `.code`/`.system` absent + flagged — never a fabricated UCUM code.
+ * - **Route/site value translation (Phase 6).** RXR-1 route → {@link ROUTE_VALUE_MAP} (HL70162) and
+ *   RXR-2 site → {@link SITE_VALUE_MAP} (HL70550) are value-translated additively (derived target coding
+ *   added, raw coding preserved); a code outside the table is preserved + flagged, never coerced.
+ * - **`vaccineCode` is NOT value-translated — by grounding, not omission.** RXA-5 has **no** `mappedVia`
+ *   value ConceptMap in the IG's RXA→Immunization segment map (verified firsthand), so the code (typically
+ *   CVX) is carried **structurally** (system recognized, value preserved) — a translation is never
+ *   invented for it (ADR 0018 applied to mappings).
  *
  * Deferred and flagged elsewhere, not silently mapped: RXA-10 performer, RXA-17 manufacturer, RXA-27/28
  * location, ORC-12 performer (all need Practitioner/Organization/Location resources this phase does not build).
@@ -54,6 +62,12 @@ import { quantityFromRawMagnitude } from "../datatypes/quantity.js";
 import { issue, type TransformIssue } from "../diagnostics/issue.js";
 import { ISSUE_CODES } from "../diagnostics/codes.js";
 import type { ConvertResult } from "../diagnostics/result.js";
+import {
+  toFhirCodeableConceptVia,
+  ROUTE_VALUE_MAP,
+  SITE_VALUE_MAP,
+  type CodedValueMap,
+} from "../terminology/concept-map.js";
 import type { TransformContext } from "../terminology/context.js";
 import { orderIdentifier, reference } from "./reference.js";
 
@@ -160,15 +174,19 @@ function buildStatus(rxa: Segment, issues: TransformIssue[]): string | undefined
   return mapped;
 }
 
-/** Build a `route`/`site` CodeableConcept from an RXR CWE field, or `undefined` when the field is empty. */
-function codeableFrom(
+/**
+ * Value-translate an RXR CWE field (route/site) to a CodeableConcept via a license-clean
+ * {@link CodedValueMap} (HL70162 route / HL70550 site), additive and fail-safe; `undefined` when empty.
+ */
+function translatedFrom(
   seg: Segment,
   index: number,
+  map: CodedValueMap,
   ctx: TransformContext,
   issues: TransformIssue[],
 ): FhirComplex | undefined {
   if (seg.field(index).value === "") return undefined;
-  const cc = toFhirCodeableConcept(seg.field(index).asCwe(), ctx);
+  const cc = toFhirCodeableConceptVia(seg.field(index).asCwe(), map, ctx);
   issues.push(...cc.issues);
   return cc.value;
 }
@@ -301,11 +319,11 @@ export function buildImmunization(
       props.push({ name: "reasonCode", value: list([indication.value]) });
   }
 
-  // RXR-1 → route; RXR-2 → site.
+  // RXR-1 → route (HL70162); RXR-2 → site (HL70550) — both value-translated via their license-clean maps.
   if (rxr !== undefined) {
-    const route = codeableFrom(rxr, 1, ctx, issues);
+    const route = translatedFrom(rxr, 1, ROUTE_VALUE_MAP, ctx, issues);
     if (route !== undefined) props.push({ name: "route", value: route });
-    const site = codeableFrom(rxr, 2, ctx, issues);
+    const site = translatedFrom(rxr, 2, SITE_VALUE_MAP, ctx, issues);
     if (site !== undefined) props.push({ name: "site", value: site });
   }
 

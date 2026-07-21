@@ -44,7 +44,7 @@ Yes. A `TransformIssue` carries only a stable code, a severity, a **positional**
 FHIR path — **never a value**. Its `message` is static. Do not log the raw v2 message or the produced
 resource values; those carry PHI.
 
-## Known limitations (Phases 1–5)
+## Known limitations (Phases 1–6)
 
 - **Message families so far: the IG-covered set** — `toFhir(msg)` assembles ADT → Patient + Encounter
   (Phase 2), ORU^R01 → DiagnosticReport + Observation (Phase 3), ORM_O01 / OML_O21 → ServiceRequest and
@@ -67,6 +67,13 @@ resource values; those carry PHI.
   later concern), and OBR performers/specimen and `basedOn` ServiceRequest are deferred. An OBX value
   type with no first-class FHIR `value[x]` (`NA`, `ED`, `DR`, `TM`, `NR`, …) preserves the raw value as
   `valueString` and flags it — never a fabricated typed value.
-- **Minimal NamingSystem registry** — the built-in code-system seed is the FHIR-core-fixed systems;
-  the full HL7 THO crosswalk is Phase 6.
+- **Terminology value translation (Phase 6)** — coded fields with an IG `mappedVia` value ConceptMap
+  are value-translated via `toFhirCodeableConceptVia`: RXR route/site (HL70162/HL70550), SCH-8
+  appointment type (HL70277), RXO-9 substitution (HL70161), and OBR-5 priority (HL70485). Each map is
+  transcribed and verified firsthand against the raw published IG ConceptMap JSON; a source code the IG
+  leaves in its `(unmapped)` group is flagged (`TRANSFORM_CODE_UNMAPPED`), never coerced. Two fields the
+  IG maps into **SNOMED CT** (RXR-4 method, SCH-7 reason) stay structural (SNOMED is not bundled — BYO
+  ConceptMap), and fields the IG ships no value map for (TXA-2 document type, RXA-5 vaccine code) are
+  carried as-is. The built-in NamingSystem code-system seed is still the FHIR-core-fixed systems; the
+  full HL7 THO crosswalk beyond these maps is later work.
 - **No terminology content, no unit conversion, R4-only** — see the roadmap for the full non-goals.

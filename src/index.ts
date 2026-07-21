@@ -7,15 +7,17 @@
  * STU Edition 1). Its whole promise is narrow and honest: **IG-grounded, fail-safe transformation
  * with typed, value-free diagnostics — never a confident wrong FHIR value.**
  *
- * This module ships **Phases 1–4**: the six safety-critical datatype converters, the immutable
+ * This module ships **Phases 1–6**: the six safety-critical datatype converters, the immutable
  * `OperationOutcome`-shaped diagnostic channel and the NamingSystem resolver they consult (Phase 1),
  * the first message-level assembly — HL7 v2 **ADT → FHIR Patient + Encounter** (Phase 2) — the
  * **ORU^R01 → DiagnosticReport + Observation** results graph (Phase 3), the order-entry graph —
- * **ORM_O01 / OML_O21 → ServiceRequest** and **RXO → MedicationRequest** (Phase 4) — and the thin IG
+ * **ORM_O01 / OML_O21 → ServiceRequest** and **RXO → MedicationRequest** (Phase 4) — the thin IG
  * singles — **VXU_V04 → Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference**
- * (Phase 5) — all through `toFhir(msg)`. With Phase 5 the v2→FHIR direction is feature-complete for the
- * IG-covered message set; terminology depth, profiles, and the reverse direction land in later phases
- * (see `operations/roadmaps/transform.md`).
+ * (Phase 5) — all through `toFhir(msg)`, and the **terminology value-translation** layer (Phase 6): a
+ * `$translate`-shaped {@link toFhirCodeableConceptVia} engine applying the license-clean IG value
+ * ConceptMaps to the previously structural-only coded fields (route/site, appointment type, order
+ * priority, substitution). Terminology **depth beyond these maps**, profiles, and the reverse direction
+ * land in later phases (see `operations/roadmaps/transform.md`).
  *
  * @packageDocumentation
  */
@@ -75,3 +77,21 @@ export {
 } from "./messages/to-fhir.js";
 export { IMMUNIZATION_STATUS_MAP } from "./messages/immunization.js";
 export { APPOINTMENT_STATUS_MAP } from "./messages/appointment.js";
+
+// ── Terminology value translation: the $translate-shaped ConceptMap engine + maps (Phase 6) ──────
+export {
+  toFhirCodeableConceptVia,
+  translateBound,
+  codeableConceptFromTarget,
+  ROUTE_VALUE_MAP,
+  SITE_VALUE_MAP,
+  APPOINTMENT_TYPE_VALUE_MAP,
+  SUBSTITUTION_VALUE_MAP,
+  V2_0162_SYSTEM,
+  V3_ROUTE_OF_ADMINISTRATION_SYSTEM,
+  V2_0550_SYSTEM,
+  V2_0277_SYSTEM,
+  V2_0161_SYSTEM,
+} from "./terminology/concept-map.js";
+export type { CodedTarget, CodedValueMap } from "./terminology/concept-map.js";
+export { SERVICE_REQUEST_PRIORITY_MAP } from "./messages/service-request.js";

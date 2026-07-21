@@ -14,6 +14,43 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **Phase 6 — terminology value translation of coded fields** (roadmap §Phase 6). Coded fields that
+  earlier phases carried **structurally** (code preserved, system recognized) are now
+  **value-translated** through their IG segment-map `mappedVia` ConceptMaps. Adds a `$translate`-shaped,
+  additive, fail-safe engine — `toFhirCodeableConceptVia(cwe, map, ctx?)` — and the license-clean value
+  maps it applies, each transcribed and verified **firsthand against the raw published IG ConceptMap
+  JSON** (`hl7.fhir.uv.v2mappings`, STU1), down to the nested `TypeInfo → mappedVia` extension rows.
+  - **RXR-1 route → `route`/`dosageInstruction.route`** via `table-hl70162-to-v2-0162`
+    (`ROUTE_VALUE_MAP`): a 41-code identity group into `v2-0162` plus a 6-code remap into
+    `v3-RouteOfAdministration` (`ID→IDINJ`, `IM→IM`, `IV→IVINJ`, `PO→PO`, `SC→SQ`, `TD→TRNSDERM`).
+  - **RXR-2 site → `site`/`dosageInstruction.site`** via `table-hl70550-to-v2-0550` (`SITE_VALUE_MAP`):
+    the 443-code body-part identity map into `v2-0550`, transcribed verbatim (including the IG's
+    as-published `Â` encoding artifacts, preserved for source-fidelity and inert).
+  - **SCH-8 appointment type → `appointmentType`** via `table-hl70277-to-v2-0277`
+    (`APPOINTMENT_TYPE_VALUE_MAP`).
+  - **RXO-9 allow-substitution → `substitution.allowedCodeableConcept`** via `table-hl70161-to-v2-0161`
+    (`SUBSTITUTION_VALUE_MAP`, `N`/`G`/`T`), translate-or-withhold — a substitution permission is never
+    emitted from an unrecognized code.
+  - **OBR-5 priority → `ServiceRequest.priority`** via `table-hl70485-to-request-priority`
+    (`SERVICE_REQUEST_PRIORITY_MAP`: `S→stat`, `A→asap`, `R→routine`; every other v2-0485 code — the
+    whole `T{S,M,H,D,W,L}<integer>` timing-critical family and `PRN` included — is in the IG's
+    `(unmapped)` group → flagged, `priority` left absent).
+
+  **Grounding discipline — no invented targets.** A source code in the IG map's `(unmapped)` group is
+  flagged `TRANSFORM_CODE_UNMAPPED` and the raw coding preserved (or the value withheld), never coerced.
+  Translation is **additive** (the derived coding is added alongside the preserved raw coding, including
+  any CWE.4/5/6 alternate triplet and CWE.7 version) and **bound-table-guarded** — it fires only when the
+  field's primary coding is from the source table (CWE.3 absent or naming it); a field declaring a
+  _foreign_ coding system is carried structurally + flagged, never asserted as the standard concept. Two
+  fields the IG maps into **SNOMED CT** — **RXR-4 method** (`table-hl70165-to-sct`) and **SCH-7 reason**
+  (`table-hl70276-to-sct`) — stay structurally carried (BYO ConceptMap): SNOMED is license-encumbered
+  and **not bundled** (§5). Two fields the IG ships **no** value ConceptMap for — **TXA-2 document type**
+  and **RXA-5 vaccineCode** — are documented as such and left structural, never given an invented
+  translation (ADR 0018). Zero encumbered terminology content is bundled. New public surface (additions
+  only): `toFhirCodeableConceptVia`, `codeableConceptFromTarget`, `CodedTarget`, `CodedValueMap`,
+  `ROUTE_VALUE_MAP`, `SITE_VALUE_MAP`, `APPOINTMENT_TYPE_VALUE_MAP`, `SUBSTITUTION_VALUE_MAP`,
+  `SERVICE_REQUEST_PRIORITY_MAP`, and the target-system URI constants. No new issue codes.
+
 - **Phase 5 — the thin IG singles: VXU_V04 → Immunization; SIU_S12 → Appointment; MDM_T02 →
   DocumentReference** (roadmap §Phase 5). `toFhir(msg, opts?)` now assembles the three single-trigger IG
   message families into a FHIR R4 message `Bundle`, alongside the Phase-2 `Patient`/`Encounter`. Every
