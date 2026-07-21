@@ -56,23 +56,61 @@ export function toFhirQuantity(
   units: CWE,
   ctx: TransformContext = {},
 ): ConvertResult<FhirComplex> {
-  const issues: TransformIssue[] = [];
-
   // No numeric magnitude → nothing safe to emit as a Quantity (never guess a value).
   if (value.value === undefined || value.raw === "") {
+    return { value: undefined, issues: [] };
+  }
+  return quantityFromRawMagnitude(value.raw, units, ctx);
+}
+
+/**
+ * Build a FHIR `Quantity` from a **raw lexical magnitude string** plus its units, fail-safe on both
+ * the magnitude and the unit, with an optional `Quantity.comparator`. This is the shared core behind
+ * {@link toFhirQuantity} (NM) and the SN → `valueQuantity`/`valueRange`/`valueRatio` observation path
+ * (§4.7): both must carry the magnitude through **precision-exact** as a string-backed `decimal` and
+ * apply the identical no-fabricated-UCUM unit gate — so they share one implementation rather than two
+ * that could drift.
+ *
+ * Returns `{ value: undefined }` (+ a {@link ISSUE_CODES.TRANSFORM_QUANTITY_VALUE_INVALID} issue) when
+ * the raw magnitude is not a faithful FHIR `decimal` literal — never a canonicalized (altered) value.
+ *
+ * @param raw - The magnitude's exact lexical form (e.g. OBX-5 NM `.raw`, or an SN component string).
+ * @param units - The units component (a CWE); its CWE.1 is the candidate UCUM code.
+ * @param ctx - The transform context; used to recognize the UCUM coding system.
+ * @param comparator - An optional FHIR `Quantity.comparator` (`<` `<=` `>=` `>`), from an SN comparator.
+ * @param valueLocation - The v2 location of the magnitude, for the invalid-value issue (default `OBX.5`).
+ * @example
+ * ```ts
+ * // internal shared core (used by toFhirQuantity for NM and the observation SN path):
+ * // const { value } = quantityFromRawMagnitude("90", { identifier: "mg/dL", nameOfCodingSystem: "UCUM" }, {}, ">");
+ * // value === Quantity { comparator: ">", value: 90, unit: "mg/dL", system: UCUM, code: "mg/dL" }
+ * ```
+ */
+export function quantityFromRawMagnitude(
+  raw: string,
+  units: CWE,
+  ctx: TransformContext = {},
+  comparator?: string,
+  valueLocation = "OBX.5",
+): ConvertResult<FhirComplex> {
+  const issues: TransformIssue[] = [];
+
+  if (raw === "") {
     return { value: undefined, issues };
   }
-  // `NM` keeps its raw lexical form (v2 allows a leading `+`, leading zeros, a trailing dot), but the
-  // FHIR `decimal` literal forbids those. Rather than canonicalize — which would ALTER the magnitude's
-  // lexical form — fail safe: if a faithful decimal can't be built, emit a typed issue and no value.
-  // (`decimal` throws on a non-conforming literal; catch it so the converter never throws — §4.6.)
+  // A raw magnitude keeps its v2 lexical form (v2 allows a leading `+`, leading zeros, a trailing dot),
+  // but the FHIR `decimal` literal forbids those. Rather than canonicalize — which would ALTER the
+  // magnitude's lexical form — fail safe: if a faithful decimal can't be built, emit a typed issue and
+  // no value. (`decimal` throws on a non-conforming literal; catch it so this never throws — §4.6.)
   let valueNode: FhirNode;
   try {
-    valueNode = primitive(decimal(value.raw));
+    valueNode = primitive(decimal(raw));
   } catch {
     return {
       value: undefined,
-      issues: [issue(ISSUE_CODES.TRANSFORM_QUANTITY_VALUE_INVALID, "OBX.5", "Quantity.value")],
+      issues: [
+        issue(ISSUE_CODES.TRANSFORM_QUANTITY_VALUE_INVALID, valueLocation, "Quantity.value"),
+      ],
     };
   }
 
@@ -107,6 +145,7 @@ export function toFhirQuantity(
   }
 
   const quantity = object([
+    ["comparator", text(comparator)],
     ["value", valueNode],
     ["unit", text(unitStr)],
     ["system", text(system)],

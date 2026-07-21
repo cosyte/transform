@@ -39,8 +39,11 @@ export const ISSUE_CODES = {
    * NamingSystem registry. The identifier is emitted with its value and **no** system — a system URI
    * is **never** synthesized from HD.1 alone. (§4.2) */
   TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED: "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
-  /** A coded value carried no coding-system context (CWE.3 absent), so it could not be mapped to a
-   * FHIR system. The original code is preserved verbatim; **never** coerced to a neighbor. (§4.3) */
+  /** A coded value could not be mapped to a FHIR concept — either it carried no coding-system context
+   * (CWE.3 absent), or it is a table code the IG ConceptMap has **no target** for (e.g. an OBX-11/
+   * OBR-25 result status the HL70085/HL70123 map does not carry, or an OBX-8 abnormal flag absent from
+   * HL70078). The original code is preserved / the FHIR value left absent; **never** coerced to a
+   * neighbor and **never** guessed to `final`/`normal`. (§4.3, §4.7) */
   TRANSFORM_CODE_UNMAPPED: "TRANSFORM_CODE_UNMAPPED",
   /** A coding-system mnemonic (CWE.3 / CWE.6) was not recognized, so no canonical system URI could
    * be emitted. The code is preserved; a URI is **never** invented. (§4.3) */

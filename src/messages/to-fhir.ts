@@ -38,9 +38,12 @@ import { ISSUE_CODES } from "../diagnostics/codes.js";
 import { issue, type TransformIssue } from "../diagnostics/issue.js";
 import { createNamingSystem } from "../terminology/naming-system.js";
 import type { TransformContext, TransformOptions } from "../terminology/context.js";
+import { buildDiagnosticReport } from "./diagnostic-report.js";
 import { buildEncounter } from "./encounter.js";
 import { EMIT_SCHEMAS } from "./emit-schemas.js";
 import { buildMessageHeader } from "./message-header.js";
+import { buildObservation } from "./observation.js";
+import { collectReportGroups } from "./oru.js";
 import { buildPatient } from "./patient.js";
 import { buildRelatedPerson } from "./related-person.js";
 import { IdAllocator } from "./reference.js";
@@ -69,6 +72,13 @@ export const IG_MAPPED_ADT_TRIGGERS: ReadonlySet<string> = new Set([
   "A11",
   "A17",
 ]);
+
+/**
+ * The ORU trigger events the IG ships a **message** map for. The IG maps only `R01`; other ORU triggers
+ * still assemble their results graph from the reusable OBR/OBX segment maps but are flagged
+ * {@link ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED}.
+ */
+export const IG_MAPPED_ORU_TRIGGERS: ReadonlySet<string> = new Set(["R01"]);
 
 interface Entry {
   readonly fullUrl: string;
@@ -171,10 +181,14 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   const ctx: TransformContext = { namingSystem, options: opts };
   const ids = new IdAllocator(opts);
 
-  // Dispatch: an IG-mapped ADT trigger is message-map-grounded; anything else is segment-assembled.
+  // Dispatch: an IG-mapped ADT or ORU trigger is message-map-grounded; anything else is
+  // segment-assembled (best-effort from the reusable IG segment maps, flagged as such).
+  const code = msg.meta.messageCode;
   const trigger = msg.meta.triggerEvent;
   const messageMapGrounded =
-    msg.meta.messageCode === "ADT" && trigger !== undefined && IG_MAPPED_ADT_TRIGGERS.has(trigger);
+    trigger !== undefined &&
+    ((code === "ADT" && IG_MAPPED_ADT_TRIGGERS.has(trigger)) ||
+      (code === "ORU" && IG_MAPPED_ORU_TRIGGERS.has(trigger)));
   if (!messageMapGrounded) {
     issues.push(issue(ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED, "MSH.9"));
   }
@@ -225,8 +239,59 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
     issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "NK1", "RelatedPerson.patient"));
   }
 
+  // ORU → the DiagnosticReport + Observation results graph (Phase 3). OBR anchors a DiagnosticReport;
+  // its OBX children become Observations, each subject-wired to the Patient. A withheld Observation is
+  // simply absent from DiagnosticReport.result (references always resolve within the bundle), and a
+  // withheld DiagnosticReport (unmapped/absent OBR-25 status) still leaves its valid Observations.
+  const diagnosticReportFullUrls: string[] = [];
+  if (code === "ORU") {
+    const { groups, orphanObxCount } = collectReportGroups(msg);
+    if (orphanObxCount > 0) {
+      // OBX with no preceding OBR — no report to anchor it; surfaced rather than silently dropped.
+      issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "OBX", "DiagnosticReport.result"));
+    }
+    for (const group of groups) {
+      const resultFullUrls: string[] = [];
+      const observationEntries: Entry[] = [];
+      for (let i = 0; i < group.observations.length; i++) {
+        const obx = group.observations[i];
+        if (obx === undefined) continue;
+        const built = buildObservation(obx, patientFullUrl, encounterFullUrl, ctx);
+        issues.push(...built.issues);
+        if (
+          built.value !== undefined &&
+          passesEmitGate(built.value, `OBX[${String(i)}]`, "Observation", issues)
+        ) {
+          const url = ids.next();
+          resultFullUrls.push(url);
+          observationEntries.push({ fullUrl: url, resource: built.value });
+        }
+      }
+      const report = buildDiagnosticReport(
+        group.obr,
+        resultFullUrls,
+        patientFullUrl,
+        encounterFullUrl,
+        ctx,
+      );
+      issues.push(...report.issues);
+      if (
+        report.value !== undefined &&
+        passesEmitGate(report.value, "OBR", "DiagnosticReport", issues)
+      ) {
+        const reportUrl = ids.next();
+        diagnosticReportFullUrls.push(reportUrl);
+        focalEntries.push({ fullUrl: reportUrl, resource: report.value });
+      }
+      // The Observations follow their report in the bundle (references resolve regardless of order).
+      focalEntries.push(...observationEntries);
+    }
+  }
+
   // MSH → MessageHeader (first entry of a message Bundle), focus = the focal resources.
-  const focus = [patientFullUrl, encounterFullUrl].filter((u): u is string => u !== undefined);
+  const focus = [patientFullUrl, encounterFullUrl, ...diagnosticReportFullUrls].filter(
+    (u): u is string => u !== undefined,
+  );
   const header = buildMessageHeader(msg.meta, focus);
   issues.push(...header.issues);
   const entries: Entry[] = [];

@@ -44,10 +44,17 @@ Yes. A `TransformIssue` carries only a stable code, a severity, a **positional**
 FHIR path — **never a value**. Its `message` is static. Do not log the raw v2 message or the produced
 resource values; those carry PHI.
 
-## Known limitations (Phase 1)
+## Known limitations (Phases 1–3)
 
-- **Datatype converters only** — message-level assembly (`toFhir(msg)`), abnormal-flag/status
-  semantics, terminology depth, profiles, and the reverse direction land in later phases.
+- **Message families so far: ADT and ORU^R01 only** — `toFhir(msg)` assembles ADT → Patient +
+  Encounter (Phase 2) and ORU^R01 → DiagnosticReport + Observation (Phase 3). Orders/medications
+  (ServiceRequest / MedicationRequest), immunization/appointment/document graphs, and the reverse
+  direction land in later phases.
+- **ORU scope** — `DiagnosticReport.category` is not defaulted (the IG segment map sets none; it is
+  realm-dependent), the results graph uses the first PID/PV1 (multiple patient result groups are a
+  later concern), and OBR performers/specimen and `basedOn` ServiceRequest are deferred. An OBX value
+  type with no first-class FHIR `value[x]` (`NA`, `ED`, `DR`, `TM`, `NR`, …) preserves the raw value as
+  `valueString` and flags it — never a fabricated typed value.
 - **Minimal NamingSystem registry** — the built-in code-system seed is the FHIR-core-fixed systems;
   the full HL7 THO crosswalk is Phase 6.
 - **No terminology content, no unit conversion, R4-only** — see the roadmap for the full non-goals.

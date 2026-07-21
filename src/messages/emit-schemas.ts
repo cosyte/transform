@@ -16,6 +16,10 @@
  *   without its mandatory event.
  * - **RelatedPerson**: `patient` (1..1 Reference) is required (defence-in-depth; the assembler only
  *   builds a RelatedPerson when a Patient exists to anchor it).
+ * - **DiagnosticReport**: `status` (1..1 code) and `code` (1..1 CodeableConcept) are both required — so
+ *   a report from an unmapped/absent OBR-25 result status (no `status`) is withheld, never guessed.
+ * - **Observation**: `status` (1..1 code) and `code` (1..1 CodeableConcept) are both required — so a
+ *   result from an unmapped/absent OBX-11 status (no `status`) is withheld, never emitted as `final`.
  *
  * @packageDocumentation
  */
@@ -41,6 +45,20 @@ export const EMIT_SCHEMAS: readonly ResourceSchema[] = Object.freeze([
     type: "RelatedPerson",
     elements: {
       patient: { min: 1, max: 1, types: ["Reference"] },
+    },
+  },
+  {
+    type: "DiagnosticReport",
+    elements: {
+      status: { min: 1, max: 1, types: ["code"] },
+      code: { min: 1, max: 1, types: ["CodeableConcept"] },
+    },
+  },
+  {
+    type: "Observation",
+    elements: {
+      status: { min: 1, max: 1, types: ["code"] },
+      code: { min: 1, max: 1, types: ["CodeableConcept"] },
     },
   },
 ]);

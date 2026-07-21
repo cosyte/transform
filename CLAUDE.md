@@ -19,7 +19,7 @@ the parser tier; third-party runtime deps stay zero) and `0002` (terminology is 
 
 ## Status
 
-- **Phases 1–2 shipped** (roadmap `operations/roadmaps/transform.md` §Phase 1–2). Pre-alpha `0.0.x`,
+- **Phases 1–3 shipped** (roadmap `operations/roadmaps/transform.md` §Phase 1–3). Pre-alpha `0.0.x`,
   not yet published to npm. Phase 1: the **six safety-critical datatype converters** (`toFhirDateTime`,
   `toFhirIdentifier`, `toFhirCodeableConcept`, `toFhirHumanName`, `toFhirAddress`, `toFhirQuantity`),
   the **value-free diagnostic channel** (`ISSUE_CODES`/`FATAL_CODES`, `TransformIssue`,
@@ -27,14 +27,21 @@ the parser tier; third-party runtime deps stay zero) and `0002` (terminology is 
   first **message-level assembly** — `toFhir(msg)` turns an HL7 v2 **ADT** message into a FHIR R4
   **message `Bundle`** (MSH→`MessageHeader`, PID→`Patient`, PV1→`Encounter`, NK1→`RelatedPerson`, with
   `urn:uuid:` reference wiring, the HL70001/HL70004 table maps, a segment-assembled fallback for
-  non-IG-mapped triggers, and a conservative-emit gate against `@cosyte/fhir.validateResource`). Every
-  segment→resource and field→element map is grounded firsthand on the IG's ConceptMaps and cited.
+  non-IG-mapped triggers, and a conservative-emit gate against `@cosyte/fhir.validateResource`). Phase
+  3: the **ORU^R01 → DiagnosticReport + Observation** results graph — OBR→`DiagnosticReport` (status via
+  HL70123, `DIAGNOSTIC_REPORT_STATUS_MAP`), OBX→`Observation` with **OBX-2 value-type discrimination**
+  of OBX-5→`value[x]` (NM→`valueQuantity`, CWE→`valueCodeableConcept`, SN→structured, ST/TX→`valueString`),
+  OBX-8→`interpretation` (HL70078, `HL70078_INTERPRETATION_CODES`), OBX-11→`status` (HL70085,
+  `OBSERVATION_STATUS_MAP`), with the "never a confident wrong result" fail-safes (a corrected/cancelled
+  result never emits as `final`; an unmapped status withholds the resource; a precision-exact magnitude
+  read from the raw OBX-5). Every segment→resource and field→element map is grounded firsthand on the
+  IG's ConceptMaps and cited.
 - **Consumes two unpublished cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer
   dependencies**, vendored as `pnpm pack` tarballs in `vendor/` for dev/test (ADR 0001 + umbrella ADR 0008) — refresh with `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir `7a099b2`. **Third-party
   runtime deps: zero.**
-- **Deferred to later phases:** ORU→DiagnosticReport/Observation and abnormal-flag/status semantics
-  (Phase 3), orders/medications (Phase 4), VXU/SIU/MDM (Phase 5), full terminology + ConceptMap
-  application (Phase 6), the reverse FHIR→v2 direction (Phase 7), and profiles (Phase 8).
+- **Deferred to later phases:** orders/medications → ServiceRequest/MedicationRequest (Phase 4),
+  VXU/SIU/MDM (Phase 5), full terminology + ConceptMap application (Phase 6), the reverse FHIR→v2
+  direction (Phase 7), and profiles (Phase 8).
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 

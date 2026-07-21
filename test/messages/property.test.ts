@@ -140,6 +140,56 @@ describe("message boundary — fail-safe, value-free, references resolve, Patien
     );
   });
 
+  it("never throws and holds every invariant over ORU^R01 result messages", () => {
+    const valueType = fc.constantFrom("NM", "SN", "CWE", "CE", "ST", "TX", "DT", "NA", "ZZ");
+    const statusCode = fc.constantFrom("F", "C", "X", "P", "R", "N", "ZZ", "");
+    const flag = fc.constantFrom("H", "HH", "L", "N", "A", "ZZ", "");
+    const obxArb = fc.record({
+      vt: valueType,
+      id: optToken,
+      val: optToken,
+      units: optToken,
+      status: statusCode,
+      flag,
+    });
+    const arb = fc.record({
+      trig: fc.constantFrom("R01", "R30"),
+      mrn: optToken,
+      obrStatus: statusCode,
+      obrCode: optToken,
+      obx: fc.array(obxArb, { maxLength: 5 }),
+    });
+    fc.assert(
+      fc.property(arb, (p) => {
+        const lines = [
+          `MSH|^~\\&|LAB|F|EHR|H|20260101120000-0500||ORU^${p.trig}|MSGID1|P|2.5.1`,
+          `PID|1||${p.mrn === undefined ? "" : `${p.mrn}^^^HOSP^MR`}||Doe^Jane||19900101|F`,
+          `OBR|1||FILL1|${p.obrCode ?? ""}^Test^LN|||||||||||||||||||||${p.obrStatus}`,
+        ];
+        for (let i = 0; i < p.obx.length; i++) {
+          const o = p.obx[i];
+          if (o === undefined) continue;
+          lines.push(
+            `OBX|${String(i + 1)}|${o.vt}|${o.id ?? ""}^N^LN||${o.val ?? ""}|${o.units ?? ""}^u^UCUM||${o.flag}|||${o.status}`,
+          );
+        }
+        let result: TransformResult;
+        try {
+          result = toFhir(parseHL7(lines.join("\r")), {
+            namingSystem: registry,
+            generateId: seqId,
+          });
+        } catch (err) {
+          throw new Error("toFhir threw on an ORU message (message-level fail-safe violated)", {
+            cause: err,
+          });
+        }
+        assertResult(result);
+      }),
+      { numRuns },
+    );
+  });
+
   it("never throws on hostile arbitrary input that still parses as HL7", () => {
     fc.assert(
       fc.property(fc.string({ maxLength: 400 }), (raw) => {

@@ -74,7 +74,8 @@ export const ISSUE_REGISTRY: Readonly<Record<IssueCode, IssueMeta>> = Object.fre
   [ISSUE_CODES.TRANSFORM_CODE_UNMAPPED]: {
     severity: "warning",
     fhirIssueType: "code-invalid",
-    message: "coded value carried no coding system; original code preserved, never coerced.",
+    message:
+      "coded value could not be mapped to a FHIR concept (no coding system, or no target in the IG ConceptMap); original code preserved / FHIR value left absent, never coerced or guessed.",
   },
   [ISSUE_CODES.TRANSFORM_CODE_SYSTEM_UNRESOLVED]: {
     severity: "warning",
