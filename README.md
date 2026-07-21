@@ -1,48 +1,66 @@
 # @cosyte/transform
 
-> Transform parser, serializer, and builder for Node.js and TypeScript — **lenient on parse,
-> spec-clean on emit**.
+> HL7 v2 → FHIR R4 transformation for Node.js and TypeScript — **IG-grounded, fail-safe, value-free
+> diagnostics; never a confident wrong FHIR value**.
 
-`@cosyte/transform` is a zero-dependency TypeScript toolkit that follows the cosyte parser archetype: a lenient
-parser that turns real-world, vendor-quirky input into **warnings** rather than failures, paired with
-a serializer that always emits spec-clean output (Postel's Law). It mirrors the API shape of the
-reference parser, [`@cosyte/hl7`](https://github.com/cosyte/hl7).
+`@cosyte/transform` is the healthcare **transformation** layer of the cosyte suite. Unlike the
+parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://github.com/cosyte/hl7)
+composites and produces validated [`@cosyte/fhir`](https://github.com/cosyte/fhir) model nodes,
+grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`).
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. The public API below is the scaffold;
-> the real parser lands in subsequent phases.
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phase 1** — the six
+> safety-critical datatype converters and the value-free diagnostic channel. Message-level assembly
+> (`toFhir(msg)`), terminology depth, and profiles land in later phases.
 
 ## Install
 
 ```bash
-npm install @cosyte/transform
+npm install @cosyte/transform @cosyte/hl7 @cosyte/fhir
 ```
 
-## Parse
+`@cosyte/hl7` and `@cosyte/fhir` are **peer dependencies** — the transform maps between the models
+they own. Its own third-party runtime dependencies are **zero**.
+
+## Convert a datatype
 
 ```ts
-import { parseTransform } from "@cosyte/transform";
+import { toFhirHumanName } from "@cosyte/transform";
 
-const result = parseTransform(raw);
-
-result.warnings; // stable, positional tolerance warnings (never throws on quirks)
+const { value, issues } = toFhirHumanName({
+  familyName: "Public",
+  givenName: "Jane",
+  nameTypeCode: "L", // HL7 Table 0200 "Legal name" → FHIR name-use "official"
+});
+// value: a FHIR HumanName node; issues: [] (clean, fully mapped)
 ```
 
-The parser is **lenient by default** — vendor quirks become warnings, not failures. A
-`{ strict: true }` mode (to be added) escalates every tolerated deviation to a thrown error.
+Each converter returns `{ value, issues }` — the FHIR datatype node it could faithfully produce, plus
+the value-free diagnostics it raised.
 
-## The cosyte parser archetype
+## The fail-safe rule
 
-- **Postel's Law** — liberal parser (lenient default + warnings), conservative serializer (always
-  spec-clean), so quirks don't propagate downstream on round-trip.
-- **Tiered tolerance** — Tier 0/1 silent, Tier 2 warning + recovery (escalates in strict mode),
-  Tier 3 fatal always.
-- **Stable warning codes** — warnings carry stable string codes + positional context; consumers
-  branch on `w.code`, so renaming a code is a breaking change.
-- **Zero runtime dependencies** — Node stdlib only (healthcare integrations vet every dependency).
-- **Dual ESM + CJS** — built with `tsup`, validated with `attw`.
-- **Immutability** — parsed models are immutable; mutation is via explicit methods.
-- **Profile system** — a `defineProfile()` API for vendor quirks (to be added), with built-in
-  profiles authored through the same public API.
+Every conversion is grounded on the IG and **refuses to guess**. On any ambiguity —
+
+- a v2 timestamp with a time-of-day but **no timezone** (FHIR forbids time without a zone),
+- an assigning authority that can't be **resolved to a system URI** (never synthesized from a bare
+  namespace — that would merge two patients),
+- a code with an **unrecognized or absent coding system**,
+- a unit that isn't valid **UCUM** (magnitudes are never converted),
+
+— the converter produces what it _can_ (often reduced in precision) and raises a **typed, value-free
+`TransformIssue`**: a stable code, the v2 location, and the FHIR path — never a value. Render a list
+of issues as a FHIR `OperationOutcome` with `toOperationOutcome(issues)`.
+
+## The six Phase-1 converters
+
+| Converter               | v2 → FHIR                  |
+| ----------------------- | -------------------------- |
+| `toFhirDateTime`        | DTM/TS → `dateTime`        |
+| `toFhirIdentifier`      | CX → `Identifier`          |
+| `toFhirCodeableConcept` | CWE/CE → `CodeableConcept` |
+| `toFhirHumanName`       | XPN → `HumanName`          |
+| `toFhirAddress`         | XAD → `Address`            |
+| `toFhirQuantity`        | NM + units → `Quantity`    |
 
 ## License
 

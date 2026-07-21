@@ -1,151 +1,45 @@
 /**
- * Public entry point for the `@cosyte/transform` package.
+ * Public entry point for `@cosyte/transform` — the HL7 v2 → FHIR R4 transformation library.
  *
- * This is the **archetype scaffold** for a cosyte standard parser (see the meta-repo's
- * `documentation/conventions.md` → "The standard parser archetype"). The real parser, model,
- * serializer, helpers, and profile system are populated in subsequent phases; these stubs keep the
- * module resolvable and typed so the build/typecheck/lint/test pipeline verifies end-to-end, and
- * they pin the public shape every sibling `@cosyte/*` parser shares.
+ * `@cosyte/transform` is **not** a parser; it is a **consumer** one tier above the parser suite. It
+ * takes already-parsed `@cosyte/hl7` composites and produces validated `@cosyte/fhir` model nodes,
+ * grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`,
+ * STU Edition 1). Its whole promise is narrow and honest: **IG-grounded, fail-safe transformation
+ * with typed, value-free diagnostics — never a confident wrong FHIR value.**
+ *
+ * This module ships **Phase 1**: the six safety-critical datatype converters, the immutable
+ * `OperationOutcome`-shaped diagnostic channel, and the NamingSystem resolver they consult. Message-
+ * level assembly (`toFhir(msg)`), terminology depth, profiles, and the reverse direction land in
+ * later phases (see `operations/roadmaps/transform.md` in the umbrella).
+ *
+ * @packageDocumentation
  */
 
-/**
- * Library version string, synced with `package.json#version` at build time by downstream phases.
- * Exported now so consumers (and the type-check pipeline) have at least one symbol to resolve
- * through the `exports` map.
- *
- * @example
- * ```ts
- * import { VERSION } from "@cosyte/transform";
- * console.log(VERSION);
- * ```
- */
+/** The library version string, synced with `package.json#version` by the release tooling. */
 export const VERSION = "0.0.0";
 
-/**
- * The result of parsing a Transform payload.
- *
- * Mirrors the cosyte parser archetype: a parsed value plus the **warnings** the lenient parser
- * recovered from (Tier-2 deviations). The real model — an immutable document with dot-path access,
- * named helpers, and a spec-clean serializer — lands in subsequent phases; for now this captures the
- * minimal lenient-parse contract.
- */
-export interface ParsedTransform {
-  /** The parsed in-memory representation. A structural stub until the real model lands. */
-  readonly value: Record<string, unknown>;
-  /** Tier-2 deviations recovered during a lenient parse — stable code + position, never thrown. */
-  readonly warnings: readonly TransformWarning[];
-}
+// ── The diagnostic channel (the fail-safe rule, materialized) ──────────────────────────────────
+export { ISSUE_CODES, FATAL_CODES } from "./diagnostics/codes.js";
+export type { IssueCode, FatalCode } from "./diagnostics/codes.js";
+export { issue, fhirIssueTypeFor, ISSUE_REGISTRY } from "./diagnostics/issue.js";
+export type { TransformIssue, TransformSeverity } from "./diagnostics/issue.js";
+export type { ConvertResult } from "./diagnostics/result.js";
+export { toOperationOutcome, TRANSFORM_ISSUE_SYSTEM } from "./diagnostics/operation-outcome.js";
 
-/**
- * A single Tier-2 tolerance warning.
- *
- * Warnings carry a **stable** {@link WarningCode} plus positional context so consumers can branch on
- * `w.code === WARNING_CODES.SOME_CODE` without the code churning — renaming a code is a breaking
- * change. The serializer never emits these; they describe what the lenient parser tolerated.
- */
-export interface TransformWarning {
-  /** The stable warning code. One of the values in {@link WARNING_CODES}. */
-  readonly code: WarningCode;
-  /** Human-readable detail for logs (never contains PHI). */
-  readonly message: string;
-  /** Positional context (offset/segment/element — refined as the parser grows). */
-  readonly position?: { readonly offset: number };
-}
+// ── The transform context + the NamingSystem resolver ──────────────────────────────────────────
+export type { TransformContext, TransformOptions } from "./terminology/context.js";
+export {
+  createNamingSystem,
+  DEFAULT_V2_CODE_SYSTEMS,
+  V2_0203_SYSTEM,
+} from "./terminology/naming-system.js";
+export type { NamingSystemRegistry, NamingSystemSeed } from "./terminology/naming-system.js";
 
-/**
- * Options for {@link parseTransform}.
- *
- * The parser is **lenient by default** (Postel's Law): vendor quirks become {@link TransformWarning}s
- * rather than failures. Set `strict` to escalate every Tier-2 deviation to a thrown error.
- */
-export interface ParseTransformOptions {
-  /** When `true`, escalate every Tier-2 deviation to a thrown error instead of a warning. */
-  readonly strict?: boolean;
-}
-
-/**
- * Parse a Transform payload into a {@link ParsedTransform}.
- *
- * **Lenient by default** — real-world, vendor-quirky input parses rather than throws, emitting
- * {@link TransformWarning}s instead (Postel's Law). The complementary serializer (added in a later
- * phase) always emits spec-clean output. Only unrecoverable structural corruption throws (a Tier-3
- * {@link FatalCode}).
- *
- * @param raw - The raw Transform payload (`string` for now; `Buffer`/`Uint8Array` support is added
- *   alongside the real parser).
- * @param options - Parse options; see {@link ParseTransformOptions}. Lenient unless `strict` is set.
- * @returns The parsed value plus any recovered Tier-2 warnings.
- * @throws Only on a Tier-3 {@link FatalCode} (unrecoverable structural corruption), or — once
- *   implemented — on any Tier-2 deviation when `options.strict` is `true`.
- * @example
- * ```ts
- * import { parseTransform } from "@cosyte/transform";
- *
- * const { value, warnings } = parseTransform(raw);
- * for (const w of warnings) console.warn(w.code, w.position);
- * ```
- */
-export function parseTransform(raw: string, options: ParseTransformOptions = {}): ParsedTransform {
-  // Archetype stub: the real lenient tokenizer/model lands in subsequent phases. The signature and
-  // return shape are the load-bearing contract here (mirrored across the sibling @cosyte/* parsers).
-  void raw;
-  void options;
-  return { value: {}, warnings: [] };
-}
-
-/**
- * Stable **Tier-2 warning code** registry — the lenient parser's recoverable deviations.
- *
- * Each code is its own value (`key === value`) so the set survives `Object.values(...)` into a
- * snapshot tripwire (see `@cosyte/test-utils`' `sortedCodeSet`). These codes are part of the public
- * contract: consumers branch on them, so renaming or removing one is a **breaking change**. Real
- * codes are added here as the parser grows; this placeholder keeps the shape resolvable.
- *
- * @example
- * ```ts
- * import { WARNING_CODES } from "@cosyte/transform";
- *
- * if (warning.code === WARNING_CODES.EXAMPLE_TOLERATED_DEVIATION) {
- *   // handle the tolerated deviation
- * }
- * ```
- */
-export const WARNING_CODES = {
-  /** Placeholder Tier-2 code — replace with the parser's real recoverable-deviation codes. */
-  EXAMPLE_TOLERATED_DEVIATION: "EXAMPLE_TOLERATED_DEVIATION",
-} as const;
-
-/**
- * A value from {@link WARNING_CODES} — the type consumers narrow `warning.code` against.
- */
-export type WarningCode = (typeof WARNING_CODES)[keyof typeof WARNING_CODES];
-
-/**
- * Stable **Tier-3 fatal code** registry — unrecoverable structural corruption.
- *
- * Tier-3 codes are **always thrown**, even in lenient mode: they mark input the parser cannot
- * recover into a structured result. Like {@link WARNING_CODES} these are `key === value` and part of
- * the public contract. Real codes are added as the parser grows; this placeholder keeps the shape
- * resolvable.
- *
- * @example
- * ```ts
- * import { FATAL_CODES } from "@cosyte/transform";
- *
- * try {
- *   parseTransform(raw);
- * } catch (err) {
- *   // err carries a code from FATAL_CODES
- *   void FATAL_CODES.EXAMPLE_UNRECOVERABLE;
- * }
- * ```
- */
-export const FATAL_CODES = {
-  /** Placeholder Tier-3 code — replace with the parser's real unrecoverable-corruption codes. */
-  EXAMPLE_UNRECOVERABLE: "EXAMPLE_UNRECOVERABLE",
-} as const;
-
-/**
- * A value from {@link FATAL_CODES} — the type carried by a thrown fatal error.
- */
-export type FatalCode = (typeof FATAL_CODES)[keyof typeof FATAL_CODES];
+// ── The six safety-critical datatype converters ────────────────────────────────────────────────
+export { toFhirDateTime } from "./datatypes/datetime.js";
+export { toFhirIdentifier } from "./datatypes/identifier.js";
+export { toFhirCodeableConcept } from "./datatypes/codeable-concept.js";
+export type { CodedElement } from "./datatypes/codeable-concept.js";
+export { toFhirHumanName, NAME_USE_MAP } from "./datatypes/human-name.js";
+export { toFhirAddress, ADDRESS_USE_MAP, ADDRESS_TYPE_MAP } from "./datatypes/address.js";
+export { toFhirQuantity } from "./datatypes/quantity.js";

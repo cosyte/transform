@@ -6,34 +6,34 @@ sidebar_position: 1
 
 # @cosyte/transform
 
-Parse real-world, vendor-quirky Transform and pull fields out in one line — without reading the spec.
-`@cosyte/transform` is a zero-dependency TypeScript toolkit following the cosyte parser archetype: a lenient
-parser, an immutable model, a spec-clean serializer, and a profile system for vendor quirks. It
-mirrors the API shape of the reference parser, `@cosyte/hl7`.
+Turn a parsed HL7 v2 message into **valid FHIR R4** — without reading the 900-page v2 spec, without
+hand-writing a ConceptMap, and **without ever being handed a confident wrong FHIR value**.
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This page describes the scaffold; the
-> real parser lands in subsequent phases.
+`@cosyte/transform` is the healthcare **transformation** layer of the cosyte suite. Unlike the
+parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://github.com/cosyte/hl7)
+composites and produces validated [`@cosyte/fhir`](https://github.com/cosyte/fhir) model nodes,
+grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`).
+
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phase 1** — the six
+> safety-critical datatype converters and the value-free diagnostic channel. Message-level assembly
+> (`toFhir(msg)`), terminology depth, and profiles land in later phases.
+
+## The fail-safe promise
+
+Every conversion is grounded on the IG and is **fail-safe**: an unmapped code, an ambiguous datatype,
+a v2 timestamp with no timezone, or an unresolvable assigning authority becomes a **typed, value-free
+diagnostic** — never a silent default, never a fabricated value, never a guessed UTC offset.
 
 ## Install
 
 ```bash
-npm install @cosyte/transform
+npm install @cosyte/transform @cosyte/hl7 @cosyte/fhir
 ```
 
-## Parse a message
-
-```ts
-import { parseTransform } from "@cosyte/transform";
-
-const result = parseTransform(raw);
-
-result.warnings; // stable, positional tolerance warnings
-```
-
-The parser is **lenient by default** — vendor quirks become warnings, not failures — while the
-serializer always emits spec-clean output (Postel's Law). A `{ strict: true }` mode (to be added)
-escalates every tolerated deviation to a thrown error.
+`@cosyte/hl7` and `@cosyte/fhir` are **peer dependencies** — the transform maps between the models
+they own, so you install them alongside it.
 
 ## Next
 
-- Read the **API reference** for every export, generated from source.
+- [Quickstart](./quickstart) — convert your first datatypes.
+- [Core concepts](./concepts-archetype) — the fail-safe rule and the diagnostic channel.

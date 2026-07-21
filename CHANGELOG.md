@@ -14,16 +14,38 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
-- Project scaffold from the shared `@cosyte/*` parser template: the canonical toolchain (TypeScript
-  ES2023 + strict rigor via `@cosyte/tsconfig`, ESLint 10 + type-checked `typescript-eslint` via
-  `@cosyte/eslint-config`, Prettier via `@cosyte/prettier-config`, Vitest 4 + v8 coverage via
-  `@cosyte/vitest-config`, dual ESM + CJS build via `tsup` + `@cosyte/tsup-config`, `attw` publish
-  gate), thin callers of the reusable `cosyte/.github` CI/release workflows, Changesets on the
-  `0.0.x` ladder, and the property-based conformance harness from `@cosyte/test-utils`.
-- `VERSION` export plus the archetype stubs (`parseTransform`, `WARNING_CODES`, `FATAL_CODES`) — to
-  be filled in by subsequent phases.
+- **Phase 1 — the datatype foundation + the value-free diagnostic channel** (roadmap §Phase 1).
+  `@cosyte/transform` is the HL7 v2 → FHIR R4 **transformation** tier (a consumer of `@cosyte/hl7` +
+  `@cosyte/fhir`), not a parser. Every mapping is grounded firsthand on the published HL7 v2-to-FHIR
+  Implementation Guide (`hl7.fhir.uv.v2mappings`, STU Edition 1) datatype/table ConceptMaps.
+  - The six safety-critical datatype converters, each fail-safe and IG-grounded:
+    `toFhirDateTime` (DTM/TS → `dateTime`; a timezone-less time is reduced to date precision, never a
+    guessed UTC), `toFhirIdentifier` (CX → `Identifier`; the assigning authority resolves via a
+    NamingSystem registry, **never** synthesized from HD.1 alone), `toFhirCodeableConcept` (CWE/CE →
+    `CodeableConcept`; an unmapped code is preserved + flagged, never coerced),
+    `toFhirHumanName` (XPN → `HumanName`; HL70200 → name-use), `toFhirAddress` (XAD → `Address`; the
+    value-conditional XAD.7 split over HL70190 → address-use/type), `toFhirQuantity` (NM + units →
+    `Quantity`; magnitude carried precision-exact, non-UCUM unit preserved verbatim, never converted).
+  - The `OperationOutcome`-shaped, **value-free** diagnostic channel: `TransformIssue`, the stable
+    `ISSUE_CODES` + `FATAL_CODES` registries (`key === value`; renaming/removing one is breaking),
+    the `issue` factory, and `toOperationOutcome(issues)`.
+  - The minimal NamingSystem resolver: `createNamingSystem`, `DEFAULT_V2_CODE_SYSTEMS`,
+    `V2_0203_SYSTEM` — HD → `Identifier.system` (safe OID/UUID auto-derivation only) and v2 Table 0396
+    mnemonic → canonical URI (FHIR-core-fixed systems only; full THO crosswalk deferred to Phase 6).
+  - Property + fuzz coverage over the datatype boundary (never-throw, registered value-free issues,
+    and an emit gate against `@cosyte/fhir.validateResource`).
+- **`@cosyte/hl7` + `@cosyte/fhir` as peer dependencies**, consumed as vendored `pnpm pack` tarballs
+  in `vendor/` for dev/test (ADR 0001 + umbrella ADR 0008), with `scripts/vendor-refresh.sh`. Pinned
+  sibling commits: `@cosyte/hl7` `46d50eb`, `@cosyte/fhir` `7a099b2`. **Third-party runtime deps: 0.**
+- Two architecture ADRs (`documentation/decisions/`): `0001` — the transformation tier may depend on
+  the parser tier; third-party runtime deps stay zero. `0002` — terminology is a separate
+  `@cosyte/terminology` sibling; value translation is BYO-ConceptMap.
 
 ### Changed
+
+- **Replaced the parser-template scaffold** with the transformation shape: removed the placeholder
+  `parseTransform` / `WARNING_CODES` / `FATAL_CODES` parser stubs and the round-trip property test;
+  rewrote `docs-content/`, `README`, and this repo's `CLAUDE.md` for the transformation library.
 
 ### Deprecated
 

@@ -3,12 +3,13 @@ import { cosyteVitest } from "@cosyte/vitest-config";
 /**
  * Vitest config for @cosyte/transform from the shared @cosyte/vitest-config standard.
  *
- * Per-directory >= 90 coverage gates on the core dir(s). Add directories to `coverageDirs` as the
- * parser grows (e.g. "model", "serialize", "helpers", "builder") — mirror @cosyte/hl7's layout once
- * the corresponding source lands.
+ * Per-directory >= 90 coverage gates on the core dirs. `@cosyte/transform` is a transformation
+ * library (a consumer of `@cosyte/hl7` + `@cosyte/fhir`), not a byte parser, so the covered dirs are
+ * the datatype converters, the diagnostic channel, and the terminology resolver — the Phase-1
+ * foundation. Add directories here (e.g. "messages", "profiles") as later phases land.
  */
 export default cosyteVitest({
-  coverageDirs: ["parser"],
+  coverageDirs: ["datatypes", "diagnostics", "terminology"],
   test: {
     globals: false,
     environment: "node",

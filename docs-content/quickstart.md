@@ -6,43 +6,49 @@ sidebar_position: 1
 
 # Quickstart
 
-Parse a Transform payload and read the result in a few lines. `@cosyte/transform` is **lenient by default**
-(Postel's Law): real-world, vendor-quirky input parses into a value plus a list of tolerance
-**warnings**, rather than throwing.
+Phase 1 ships the **datatype converters**: each takes a parsed `@cosyte/hl7` composite and returns a
+`{ value, issues }` pair — the FHIR datatype node it could faithfully produce, plus the value-free
+diagnostics it raised.
 
-## Parse a payload
+## Convert a name
 
 ```ts runnable
-import { parseTransform } from "@cosyte/transform";
+import { toFhirHumanName } from "@cosyte/transform";
 
-// Replace this with a real Transform message once the parser lands; on clean input the lenient
-// parser recovers nothing, so `warnings` is empty.
-const { value, warnings } = parseTransform("");
+const { value, issues } = toFhirHumanName({
+  familyName: "Public",
+  givenName: "Jane",
+  nameTypeCode: "L", // HL7 Table 0200 "Legal name" → FHIR name-use "official"
+});
 
-warnings; // => []
+// A clean, fully-mapped name raises no diagnostics.
+issues; // => []
 ```
 
-`parseTransform` always returns a `{ value, warnings }` pair. Each warning carries a **stable code**
-you can branch on without it churning between releases:
+`value` is a FHIR `HumanName` node you can drop straight into a resource; `issues` is empty here
+because every part mapped cleanly.
 
-```ts
-import { parseTransform, WARNING_CODES } from "@cosyte/transform";
+## The fail-safe rule in action
 
-const { warnings } = parseTransform(raw);
+When a mapping is ambiguous, the converter **refuses to guess** and tells you why. A patient
+identifier whose assigning authority can't be resolved is emitted with its value and **no system** —
+never a synthesized one that could merge two patients:
 
-for (const w of warnings) {
-  if (w.code === WARNING_CODES.EXAMPLE_TOLERATED_DEVIATION) {
-    // handle the tolerated deviation
-  }
-}
+```ts runnable
+import { toFhirIdentifier, createNamingSystem, ISSUE_CODES } from "@cosyte/transform";
+
+const { issues } = toFhirIdentifier(
+  { idNumber: "12345", assigningAuthority: { namespaceId: "HOSPMRN" } },
+  { namingSystem: createNamingSystem() }, // no registry entry for a bare "HOSPMRN"
+);
+
+issues[0].code; // => "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED"
 ```
 
-> **About runnable examples.** The first block above is tagged ```` ```ts runnable ````: the docs
-> build extracts it, runs it against the package, and asserts the `// =>` result — so a documented
-> example can never silently drift from the code. Tag a fence `runnable` only once its `// =>`
-> assertions match the shipped behavior; leave illustrative fragments as a plain ```` ```ts ```` block.
+Register the authority explicitly (`createNamingSystem({ authorities: { HOSPMRN: "urn:oid:…" } })`)
+and the same call resolves `Identifier.system` with no diagnostic.
 
 ## Next
 
-- [Core Concepts](./concepts-archetype) — the parser archetype and the tolerance model.
-- **API Reference** — every export, generated from source.
+- [Core concepts](./concepts-archetype) — the fail-safe rule, the diagnostic channel, the six converters.
+- **API reference** — every export, generated from source.
