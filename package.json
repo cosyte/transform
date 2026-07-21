@@ -81,6 +81,7 @@
     "clean": "rm -rf dist coverage",
     "pack:docs": "bash scripts/build-docs-artifacts.sh",
     "attw": "attw --pack .",
+    "version": "changeset version && prettier --write package.json CHANGELOG.md",
     "release": "changeset publish",
     "prepublishOnly": "pnpm clean && pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm attw",
     "prepare": "command -v simple-git-hooks >/dev/null 2>&1 && simple-git-hooks || true"
