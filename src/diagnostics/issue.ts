@@ -97,7 +97,7 @@ export const ISSUE_REGISTRY: Readonly<Record<IssueCode, IssueMeta>> = Object.fre
     severity: "information",
     fhirIssueType: "informational",
     message:
-      "populated source component has no defined FHIR target in the IG datatype map; dropped.",
+      "populated source element was not carried to its FHIR target (no target in this map, or its conversion is deferred to a later phase); dropped.",
   },
   [ISSUE_CODES.TRANSFORM_NAME_USE_UNMAPPED]: {
     severity: "information",
@@ -109,6 +109,24 @@ export const ISSUE_REGISTRY: Readonly<Record<IssueCode, IssueMeta>> = Object.fre
     fhirIssueType: "value",
     message:
       "address-type code has no equivalent in the HL70190 to address-use/type maps; use/type left absent.",
+  },
+  [ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED]: {
+    severity: "information",
+    fhirIssueType: "informational",
+    message:
+      "message trigger has no IG message map; resource graph assembled from IG segment maps, best-effort.",
+  },
+  [ISSUE_CODES.TRANSFORM_RESOURCE_INVALID]: {
+    severity: "error",
+    fhirIssueType: "structure",
+    message:
+      "produced resource failed FHIR R4 structural validation; withheld from the bundle rather than emitted invalid.",
+  },
+  [ISSUE_CODES.TRANSFORM_REQUIRED_ELEMENT_UNKNOWN]: {
+    severity: "information",
+    fhirIssueType: "informational",
+    message:
+      "required FHIR element could not be derived from the source; emitted with a data-absent-reason extension, never fabricated.",
   },
 });
 

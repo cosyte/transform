@@ -9,7 +9,7 @@ import { cosyteVitest } from "@cosyte/vitest-config";
  * foundation. Add directories here (e.g. "messages", "profiles") as later phases land.
  */
 export default cosyteVitest({
-  coverageDirs: ["datatypes", "diagnostics", "terminology"],
+  coverageDirs: ["datatypes", "diagnostics", "terminology", "messages"],
   test: {
     globals: false,
     environment: "node",

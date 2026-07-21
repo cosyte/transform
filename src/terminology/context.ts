@@ -22,6 +22,21 @@ import type { NamingSystemRegistry } from "./naming-system.js";
 export interface TransformOptions {
   /** The sender's UTC offset in minutes, asserted by the caller to resolve naked timestamps. */
   readonly assumeTimezoneOffsetMinutes?: number;
+  /**
+   * The {@link NamingSystemRegistry} the message-level transform threads into every datatype
+   * conversion (HD → `Identifier.system`, v2 mnemonic → canonical URI). When omitted, a default
+   * registry (`createNamingSystem()`) is used — it resolves only the FHIR-core-fixed systems and the
+   * two unambiguous HD auto-derivations, so an un-seeded assigning authority surfaces a typed issue
+   * rather than a guessed system.
+   */
+  readonly namingSystem?: NamingSystemRegistry;
+  /**
+   * Allocator for the `urn:uuid:` `Bundle.entry.fullUrl` / reference identities the assembler mints.
+   * Defaults to `crypto.randomUUID`. Inject a deterministic generator to make bundle output
+   * reproducible (e.g. for golden fixtures). It must return a fresh, unique value per call — the
+   * assembler relies on uniqueness for intra-bundle reference integrity.
+   */
+  readonly generateId?: () => string;
 }
 
 /**

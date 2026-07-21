@@ -53,8 +53,10 @@ export const ISSUE_CODES = {
    * a leading `+`, a leading zero, or a trailing dot, which FHIR's `decimal` lexical form forbids. No
    * `Quantity` value is emitted rather than a canonicalized (and therefore altered) magnitude. (§4.6) */
   TRANSFORM_QUANTITY_VALUE_INVALID: "TRANSFORM_QUANTITY_VALUE_INVALID",
-  /** A populated source component has no defined FHIR target in the IG datatype map and was dropped;
-   * surfaced here rather than silently discarded. (§4.5) */
+  /** A populated source element was not carried to its FHIR target and was dropped — either because
+   * the IG map defines no target, or because that target's conversion is **deferred to a later phase**
+   * (e.g. XTN→ContactPoint telecom, PV1 participants). Surfaced here rather than silently discarded,
+   * never a fabricated value. (§4.5, §Phase 2) */
   TRANSFORM_ELEMENT_DROPPED: "TRANSFORM_ELEMENT_DROPPED",
   /** An XPN.7 name-type code has no equivalent in the IG's HL70200 → name-use ConceptMap;
    * `HumanName.use` is left absent rather than guessed. (§4.4) */
@@ -62,6 +64,18 @@ export const ISSUE_CODES = {
   /** An XAD.7 address-type code has no equivalent in the IG's HL70190 → address-use/type
    * ConceptMaps; `Address.use`/`.type` are left absent rather than guessed. (§4.5) */
   TRANSFORM_ADDRESS_USE_UNMAPPED: "TRANSFORM_ADDRESS_USE_UNMAPPED",
+  /** The message's trigger event has no IG *message* map, so its resource graph was assembled from
+   * the reusable IG *segment* maps rather than a message map. The graph is best-effort and flagged
+   * as such — never a fabricated message map. (§2 non-goals, §Phase 2) */
+  TRANSFORM_SEGMENT_ASSEMBLED: "TRANSFORM_SEGMENT_ASSEMBLED",
+  /** A produced FHIR resource failed `@cosyte/fhir` R4 structural validation and was **withheld**
+   * from the bundle rather than emitted as a silently-invalid resource — the conservative-emit gate.
+   * (§6 output validation) */
+  TRANSFORM_RESOURCE_INVALID: "TRANSFORM_RESOURCE_INVALID",
+  /** A FHIR-required element's value could not be faithfully derived from the source, so it was
+   * emitted with a `data-absent-reason` extension (value `unknown`) rather than fabricated — e.g.
+   * `MessageHeader.source.endpoint` from an MSH-3 application namespace that is not a URL. */
+  TRANSFORM_REQUIRED_ELEMENT_UNKNOWN: "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
 } as const;
 
 /** A value from {@link ISSUE_CODES} — the type consumers narrow `issue.code` against. */
