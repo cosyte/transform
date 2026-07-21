@@ -8,14 +8,17 @@ parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://g
 composites and produces validated [`@cosyte/fhir`](https://github.com/cosyte/fhir) model nodes,
 grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`).
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phases 1–5** — the
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phases 1–6** — the
 > six safety-critical datatype converters and the value-free diagnostic channel (Phase 1), the first
 > message-level assembly, HL7 v2 **ADT → FHIR Patient + Encounter** (Phase 2), the **ORU^R01 → FHIR
 > DiagnosticReport + Observation** results graph (Phase 3), the order-entry graph — **ORM_O01 /
-> OML_O21 → ServiceRequest** and **RXO → MedicationRequest** (Phase 4) — and the thin IG singles —
+> OML_O21 → ServiceRequest** and **RXO → MedicationRequest** (Phase 4) — the thin IG singles —
 > **VXU_V04 → Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference** (Phase 5) — all
-> via `toFhir(msg)`. With Phase 5 the v2→FHIR direction is feature-complete for the IG-covered message
-> set; terminology depth, profiles, and the reverse direction land in later phases.
+> via `toFhir(msg)`, and **terminology value translation** of coded fields (Phase 6): route/site,
+> appointment type, order priority, and substitution are now value-translated through their IG
+> `mappedVia` ConceptMaps via `toFhirCodeableConceptVia`, fail-safe on any code the IG leaves unmapped.
+> With Phase 5 the v2→FHIR direction is feature-complete for the IG-covered message set; deeper
+> terminology, profiles, and the reverse direction land in later phases.
 
 ## Install
 
@@ -110,6 +113,16 @@ HL70278 → appointmentstatus ConceptMap, the Patient wired as the required part
 required status a `data-absent-reason` primitive), and **MDM_T02** TXA/OBX → `DocumentReference` (status
 grounded only for TXA-19 `AV` → `current`, the document body base64-encoded verbatim, carried and never
 interpreted). Timezone-naked instants are dropped and flagged, never assigned a fabricated UTC offset.
+
+Phase 6 adds **terminology value translation** for the coded fields earlier phases carried only
+structurally. `toFhirCodeableConceptVia(cwe, map)` applies a license-clean IG value ConceptMap
+(transcribed and verified firsthand against the raw published IG JSON) — **RXR** route/site
+(HL70162/HL70550), **SCH-8** appointment type (HL70277), **RXO-9** substitution (HL70161), and **OBR-5**
+priority (HL70485) — translating the source table code to its FHIR target coding, additively (the raw
+coding is preserved alongside the derived one). It is fail-safe by refusal: a code the IG map leaves in
+its `(unmapped)` group is flagged, never coerced to a neighbour. Fields whose IG target is **SNOMED CT**
+(RXR-4 method, SCH-7 reason) stay structural — SNOMED is not bundled (BYO ConceptMap) — and fields the
+IG ships no value map for (TXA-2 document type, RXA-5 vaccine code) are carried as-is, never invented.
 
 ## License
 

@@ -42,7 +42,8 @@ export type CodedElement = Pick<
   | "originalText"
 >;
 
-interface CodingParts {
+/** The four inputs to {@link buildCoding} — one CWE/CE coding triplet (code, display, system, version). */
+export interface CodingParts {
   readonly code: string | undefined;
   readonly display: string | undefined;
   readonly mnemonic: string | undefined;
@@ -51,9 +52,26 @@ interface CodingParts {
 
 /**
  * Build one `Coding` and accumulate any system/unmapped issue against it. Returns `undefined` when
- * the triplet carries no code and no display (nothing to emit).
+ * the triplet carries no code and no display (nothing to emit). Exported so the value-translation
+ * engine ({@link ../terminology/concept-map.js}) can reuse the exact same alternate-triplet
+ * (`CWE.4/5/6`) resolution + fail-safe flagging when it builds an additively-translated concept.
+ *
+ * @param parts - The one coding triplet's code/display/system-mnemonic/version.
+ * @param ctx - The transform context (its `namingSystem` resolves the mnemonic to a canonical URI).
+ * @param codeLocation - The v2 location of the code component (e.g. `"CWE.4"`), for a value-free issue.
+ * @param systemLocation - The v2 location of the coding-system component (e.g. `"CWE.6"`).
+ * @param issues - The issue sink this call appends any system/unmapped diagnostic to.
+ * @example
+ * ```ts
+ * // Internal helper (re-used by the terminology engine):
+ * //   const issues = [];
+ * //   const coding = buildCoding(
+ * //     { code: "789-8", display: "Hgb", mnemonic: "LN", version: undefined },
+ * //     { namingSystem: createNamingSystem() }, "CWE.1", "CWE.3", issues,
+ * //   );
+ * ```
  */
-function buildCoding(
+export function buildCoding(
   parts: CodingParts,
   ctx: TransformContext,
   codeLocation: string,

@@ -19,7 +19,7 @@ the parser tier; third-party runtime deps stay zero) and `0002` (terminology is 
 
 ## Status
 
-- **Phases 1–3 shipped** (roadmap `operations/roadmaps/transform.md` §Phase 1–3). Pre-alpha `0.0.x`,
+- **Phases 1–6 shipped** (roadmap `operations/roadmaps/transform.md` §Phase 1–6). Pre-alpha `0.0.x`,
   not yet published to npm. Phase 1: the **six safety-critical datatype converters** (`toFhirDateTime`,
   `toFhirIdentifier`, `toFhirCodeableConcept`, `toFhirHumanName`, `toFhirAddress`, `toFhirQuantity`),
   the **value-free diagnostic channel** (`ISSUE_CODES`/`FATAL_CODES`, `TransformIssue`,
@@ -35,13 +35,23 @@ the parser tier; third-party runtime deps stay zero) and `0002` (terminology is 
   `OBSERVATION_STATUS_MAP`), with the "never a confident wrong result" fail-safes (a corrected/cancelled
   result never emits as `final`; an unmapped status withholds the resource; a precision-exact magnitude
   read from the raw OBX-5). Every segment→resource and field→element map is grounded firsthand on the
-  IG's ConceptMaps and cited.
+  IG's ConceptMaps and cited. Phases 4–5 added the message-level graphs for **ORM_O01/OML_O21 →
+  ServiceRequest** and **RXO → MedicationRequest** (Phase 4) and the thin IG singles **VXU_V04 →
+  Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference** (Phase 5). Phase 6: the
+  **terminology value-translation** layer — a `$translate`-shaped, additive, fail-safe engine
+  (`toFhirCodeableConceptVia`) applying the license-clean IG value ConceptMaps (each transcribed +
+  verified **firsthand against the raw IG JSON**) to the previously structural-only coded fields: RXR
+  route/site (HL70162 / HL70550), SCH-8 appointment type (HL70277), RXO-9 substitution (HL70161), and
+  OBR-5 priority (HL70485, `SERVICE_REQUEST_PRIORITY_MAP`). A code in the IG's `(unmapped)` group is
+  flagged, never coerced; SNOMED-target maps (RXR-4 method, SCH-7 reason) stay structural/BYO — no
+  SNOMED bundled; and fields with no IG value map (TXA-2, RXA-5) are documented as structural, never
+  invented.
 - **Consumes two unpublished cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer
   dependencies**, vendored as `pnpm pack` tarballs in `vendor/` for dev/test (ADR 0001 + umbrella ADR 0008) — refresh with `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir `7a099b2`. **Third-party
   runtime deps: zero.**
-- **Deferred to later phases:** orders/medications → ServiceRequest/MedicationRequest (Phase 4),
-  VXU/SIU/MDM (Phase 5), full terminology + ConceptMap application (Phase 6), the reverse FHIR→v2
-  direction (Phase 7), and profiles (Phase 8).
+- **Deferred to later phases:** deeper terminology (the full HL7 THO NamingSystem crosswalk beyond the
+  shipped value maps, consumer-supplied ConceptMap application), the reverse FHIR→v2 direction (Phase 7),
+  and profiles (Phase 8).
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 

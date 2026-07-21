@@ -13,8 +13,8 @@
  * |---|---|---|
  * | SCH-25 Filler Status Code | `status` (required 1..1) | {@link APPOINTMENT_STATUS_MAP} (HL70278) |
  * | SCH-1 Placer / SCH-2 Filler Appointment ID | `identifier` | EI.1 → `Identifier.value` |
- * | SCH-7 Appointment Reason (CWE) | `reasonCode` | {@link toFhirCodeableConcept} |
- * | SCH-8 Appointment Type (CWE) | `appointmentType` | {@link toFhirCodeableConcept} |
+ * | SCH-7 Appointment Reason (CWE) | `reasonCode` | {@link toFhirCodeableConcept} (structural — SNOMED target, BYO) |
+ * | SCH-8 Appointment Type (CWE) | `appointmentType` | {@link APPOINTMENT_TYPE_VALUE_MAP} (HL70277, value-translated) |
  * | SCH-9 Duration + SCH-10 Units | `minutesDuration` | integer, only when SCH-10 is minutes |
  * | SCH-11 Appointment Timing Quantity (TQ) | `start` / `end` (instant) | TQ.4/TQ.5 → {@link toFhirDateTime} |
  * | AIS-3 Universal Service Identifier (CWE) | `serviceType` | {@link toFhirCodeableConcept} |
@@ -34,6 +34,15 @@
  * - **`start`/`end` (instant).** SCH-11's TQ.4/TQ.5 become `start`/`end` only when they are fully-zoned
  *   instants; a naked (unzoned) timing is dropped + flagged rather than assigned a fabricated UTC offset,
  *   mirroring `Bundle.timestamp`.
+ * - **`appointmentType` value translation (Phase 6).** SCH-8 → {@link APPOINTMENT_TYPE_VALUE_MAP}
+ *   (HL70277 `Normal`/`Tentative`/`Complete` identity into `v2-0277`); a code outside the table is
+ *   preserved + flagged, never coerced. **`reasonCode` is NOT value-translated:** SCH-7's IG map target
+ *   is SNOMED CT (`table-hl70276-to-sct`) — encumbered, **not bundled** (§5) — so the reason is carried
+ *   structurally (BYO ConceptMap), never SNOMED-translated here. (The IG's SCH→Appointment map *also*
+ *   carries a redundant SCH-7 → `appointmentType[1]` row via `table-hl70277-to-v2-0277`; it is not
+ *   applied — SCH-7 carries HL70276 *reason* codes, not HL70277 *type* codes, so translating them through
+ *   the type table would only ever produce spurious unmapped flags. `appointmentType` comes from SCH-8,
+ *   the appointment-*type* field, per that same map's SCH-8 → `appointmentType[1]` row.)
  *
  * Deferred and flagged elsewhere, not silently mapped: SCH-12/16/20 contact participants and AIP/AIL/AIG
  * actors (need Practitioner/Location resources), SCH-26/27 `basedOn` ServiceRequest, AIS participant periods.
@@ -49,6 +58,10 @@ import { toFhirDateTime } from "../datatypes/datetime.js";
 import { ISSUE_CODES } from "../diagnostics/codes.js";
 import { issue, type TransformIssue } from "../diagnostics/issue.js";
 import type { ConvertResult } from "../diagnostics/result.js";
+import {
+  toFhirCodeableConceptVia,
+  APPOINTMENT_TYPE_VALUE_MAP,
+} from "../terminology/concept-map.js";
 import type { TransformContext } from "../terminology/context.js";
 import { dataAbsent, reference } from "./reference.js";
 
@@ -171,9 +184,13 @@ export function buildAppointment(
     .map((v) => complex([{ name: "value", value: primitive(v) }]));
   if (identifiers.length > 0) props.push({ name: "identifier", value: list(identifiers) });
 
-  // SCH-8 → appointmentType (default table HL70277).
+  // SCH-8 → appointmentType (HL70277 → v2-0277; value-translated via the license-clean identity map).
   if (sch.field(8).value !== "") {
-    const appointmentType = toFhirCodeableConcept(sch.field(8).asCwe(), ctx);
+    const appointmentType = toFhirCodeableConceptVia(
+      sch.field(8).asCwe(),
+      APPOINTMENT_TYPE_VALUE_MAP,
+      ctx,
+    );
     issues.push(...appointmentType.issues);
     if (appointmentType.value !== undefined)
       props.push({ name: "appointmentType", value: appointmentType.value });
