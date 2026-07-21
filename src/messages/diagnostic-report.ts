@@ -39,8 +39,7 @@ import { ISSUE_CODES } from "../diagnostics/codes.js";
 import { issue, type TransformIssue } from "../diagnostics/issue.js";
 import type { ConvertResult } from "../diagnostics/result.js";
 import type { TransformContext } from "../terminology/context.js";
-import { V2_0203_SYSTEM } from "../terminology/naming-system.js";
-import { reference } from "./reference.js";
+import { orderIdentifier, reference } from "./reference.js";
 
 /** The HL7 v2 Table 0074 (Diagnostic Service Section ID) canonical system — `DiagnosticReport.category`. */
 const V2_0074_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0074";
@@ -65,28 +64,6 @@ export const DIAGNOSTIC_REPORT_STATUS_MAP: Readonly<Record<string, string>> = Ob
   F: "final",
   X: "cancelled",
 });
-
-/** Build one `DiagnosticReport.identifier` (EI.1 → value) with a v2-0203 type coding, when present. */
-function orderIdentifier(value: string, typeCode: string): FhirComplex | undefined {
-  if (value === "") return undefined;
-  return complex([
-    {
-      name: "type",
-      value: complex([
-        {
-          name: "coding",
-          value: list([
-            complex([
-              { name: "system", value: primitive(V2_0203_SYSTEM) },
-              { name: "code", value: primitive(typeCode) },
-            ]),
-          ]),
-        },
-      ]),
-    },
-    { name: "value", value: primitive(value) },
-  ]);
-}
 
 /**
  * Build a FHIR `DiagnosticReport` resource node from one parsed HL7 v2 OBR segment and the fullUrls of

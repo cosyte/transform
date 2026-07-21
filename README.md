@@ -8,11 +8,12 @@ parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://g
 composites and produces validated [`@cosyte/fhir`](https://github.com/cosyte/fhir) model nodes,
 grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`).
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phases 1–3** — the
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phases 1–4** — the
 > six safety-critical datatype converters and the value-free diagnostic channel (Phase 1), the first
-> message-level assembly, HL7 v2 **ADT → FHIR Patient + Encounter** (Phase 2), and the **ORU^R01 → FHIR
-> DiagnosticReport + Observation** results graph (Phase 3) — all via `toFhir(msg)`. Orders/medications,
-> immunization/appointment/document graphs, terminology depth, and profiles land in later phases.
+> message-level assembly, HL7 v2 **ADT → FHIR Patient + Encounter** (Phase 2), the **ORU^R01 → FHIR
+> DiagnosticReport + Observation** results graph (Phase 3), and the order-entry graph — **ORM_O01 /
+> OML_O21 → ServiceRequest** and **RXO → MedicationRequest** (Phase 4) — all via `toFhir(msg)`. The thin
+> IG singles (immunization/appointment/document), terminology depth, and profiles land in later phases.
 
 ## Install
 
@@ -91,6 +92,13 @@ The fail-safe rule holds at the message level: an unmapped patient class, a nake
 unresolvable authority becomes a typed issue — never a fabricated value. A trigger the IG has no
 **message** map for is assembled from the segment maps and flagged, never invented; every emitted
 resource is validated against `@cosyte/fhir` before it ships.
+
+The same `toFhir(msg)` handles the later message families: **ORU^R01** → `DiagnosticReport` (OBR) +
+`Observation` (OBX) — Phase 3 — and the order-entry graph — **ORM_O01 / OML_O21** ORC/OBR →
+`ServiceRequest`, **RXO** (+ RXR route) → `MedicationRequest` (Phase 4), with `ServiceRequest.status`
+grounded on the HL70119 → request-status ConceptMap and withheld when it cannot be grounded, and a
+`MedicationRequest` whose IG-ungrounded status is the honest `unknown` rather than a guess. `RXE` has no
+STU1 IG map and is flagged, never assembled.
 
 ## License
 

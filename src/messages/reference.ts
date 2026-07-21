@@ -13,9 +13,10 @@
 
 import { randomUUID } from "node:crypto";
 
-import { complex, primitive, type FhirComplex } from "@cosyte/fhir";
+import { complex, primitive, list, type FhirComplex } from "@cosyte/fhir";
 
 import type { TransformOptions } from "../terminology/context.js";
+import { V2_0203_SYSTEM } from "../terminology/naming-system.js";
 
 /** The FHIR `data-absent-reason` extension canonical URL. */
 const DATA_ABSENT_REASON_URL = "http://hl7.org/fhir/StructureDefinition/data-absent-reason";
@@ -85,6 +86,41 @@ export function coding(
     props.push({ name: "display", value: primitive(display) });
   }
   return complex(props);
+}
+
+/**
+ * Build one order `identifier` (an EI's EI.1 → `Identifier.value`) with a v2-0203 identifier-type
+ * coding, or `undefined` when the value is empty. Shared by the order/result-anchoring resources
+ * whose IG maps route the placer/filler order numbers (OBR-2/ORC-2 `PLAC`, OBR-3/ORC-3 `FILL`) to
+ * `Identifier` with a `type` from HL7 Table 0203 — `DiagnosticReport` (Phase 3) and `ServiceRequest`
+ * (Phase 4) both use it, so the shape lives here rather than being duplicated per builder.
+ *
+ * @param value - The order number (EI.1); an empty string yields `undefined`.
+ * @param typeCode - The v2-0203 identifier-type code (`PLAC` placer, `FILL` filler).
+ * @example
+ * ```ts
+ * // orderIdentifier("PLACER123", "PLAC") -> { type: { coding: [{ system: v2-0203, code: "PLAC" }] }, value: "PLACER123" }
+ * ```
+ */
+export function orderIdentifier(value: string, typeCode: string): FhirComplex | undefined {
+  if (value === "") return undefined;
+  return complex([
+    {
+      name: "type",
+      value: complex([
+        {
+          name: "coding",
+          value: list([
+            complex([
+              { name: "system", value: primitive(V2_0203_SYSTEM) },
+              { name: "code", value: primitive(typeCode) },
+            ]),
+          ]),
+        },
+      ]),
+    },
+    { name: "value", value: primitive(value) },
+  ]);
 }
 
 /**

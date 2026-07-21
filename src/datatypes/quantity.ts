@@ -79,6 +79,7 @@ export function toFhirQuantity(
  * @param ctx - The transform context; used to recognize the UCUM coding system.
  * @param comparator - An optional FHIR `Quantity.comparator` (`<` `<=` `>=` `>`), from an SN comparator.
  * @param valueLocation - The v2 location of the magnitude, for the invalid-value issue (default `OBX.5`).
+ * @param unitLocation - The v2 location of the units, for the not-UCUM issue (default `OBX.6`).
  * @example
  * ```ts
  * // internal shared core (used by toFhirQuantity for NM and the observation SN path):
@@ -92,6 +93,7 @@ export function quantityFromRawMagnitude(
   ctx: TransformContext = {},
   comparator?: string,
   valueLocation = "OBX.5",
+  unitLocation = "OBX.6",
 ): ConvertResult<FhirComplex> {
   const issues: TransformIssue[] = [];
 
@@ -140,7 +142,7 @@ export function quantityFromRawMagnitude(
       unitStr = unitDisplay ?? unitCode;
     } else {
       // Non-UCUM or unvalidatable → preserve verbatim, no code/system, magnitude untouched.
-      issues.push(issue(ISSUE_CODES.TRANSFORM_UNIT_NOT_UCUM, "OBX.6", "Quantity.code"));
+      issues.push(issue(ISSUE_CODES.TRANSFORM_UNIT_NOT_UCUM, unitLocation, "Quantity.code"));
     }
   }
 
