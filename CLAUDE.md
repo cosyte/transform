@@ -114,7 +114,8 @@ These are the names GitHub actually reports, **read off real check runs**, never
 the four build contexts were read off **two** independent `pull_request` heads, `66715e5b` (head of
 #11) and `460bfcf8` (head of #7). `no-internal-refs` could only be read off **one**, `66715e5b`,
 because `460bfcf8` predates the workflow that emits it and carries no such check run. All five were
-then confirmed together on a third head, `57a62b2` (head of #12, the change that required them).
+then confirmed together on the change that required them, #12, whose first head was `57a62b2`: it
+read `BLOCKED` until the five landed and `CLEAN` after, on that head and on every later one.
 That distinction is the whole trap: the workflow named `Public-surface gate`
 emits the context `no-internal-refs`, and requiring a context nothing emits does not fail a PR, it
 leaves it **pending and unmergeable forever**. None of the three workflows that emit these five

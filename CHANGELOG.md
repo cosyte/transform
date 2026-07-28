@@ -225,8 +225,9 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
     Provenance stated exactly, because "two heads" is not true of all five: the four build contexts
     were read off **two** independent `pull_request` heads (`66715e5b`, head of #11; `460bfcf8`,
     head of #7); `no-internal-refs` could only be read off `66715e5b`, since `460bfcf8` predates the
-    workflow that emits it. All five were then confirmed together on `57a62b2`, the head of this
-    change's own PR, which went `BLOCKED` until they landed and `CLEAN` after. The
+    workflow that emits it. All five were then confirmed together on this change's own PR (#12,
+    first head `57a62b2`), which read `BLOCKED` until they landed and `CLEAN` after, on that head
+    and on every later one. The
     workflow named `Public-surface gate` emits the context `no-internal-refs`, and requiring a name
     nothing emits leaves every PR **pending**, not failing, forever. `scorecard / analysis` and
     `release / release` are excluded because neither has a `pull_request` trigger; the Advanced
