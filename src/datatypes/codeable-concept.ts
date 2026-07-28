@@ -1,5 +1,5 @@
 /**
- * CWE / CE → FHIR `CodeableConcept` — the code-fidelity path (roadmap §4.3).
+ * CWE / CE → FHIR `CodeableConcept` — the code-fidelity path.
  *
  * Grounded on the IG datatype ConceptMap **CWE → CodeableConcept**: `CWE.1`→`coding[0].code`,
  * `CWE.2`→`coding[0].display`, `CWE.3`→`coding[0].system` **(indirect — the vocabulary table gives
@@ -13,8 +13,8 @@
  * - **A bare code with no coding system at all** (CWE.1 present, CWE.3 absent) → preserved verbatim,
  *   flagged {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}. Never coerced to a plausible neighbor.
  *
- * Phase 1 does **no ConceptMap value translation** (that is Phase 6); it recognizes systems and
- * preserves codes.
+ * This converter does **no ConceptMap value translation** (that is
+ * `toFhirCodeableConceptVia`); it recognizes systems and preserves codes.
  *
  * @packageDocumentation
  */

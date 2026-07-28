@@ -1,6 +1,6 @@
 /**
- * VXU_V04 → FHIR `Immunization` — the thin IG single for immunization administration (roadmap
- * §Phase 5), grounded firsthand on the IG **VXU_V04 message map** and the **RXA/RXR/ORC → Immunization**
+ * VXU_V04 → FHIR `Immunization` — the thin IG single for immunization administration,
+ * grounded firsthand on the IG **VXU_V04 message map** and the **RXA/RXR/ORC → Immunization**
  * segment maps (`hl7.fhir.uv.v2mappings`, STU1; `ConceptMap-message-vxu-v04-to-bundle.json`,
  * `ConceptMap-segment-rxa-to-immunization.json`, `ConceptMap-segment-rxr-to-immunization.json`,
  * `ConceptMap-segment-orc-to-immunization.json`). Per the VXU message map, **each `ORC` creates an
@@ -39,16 +39,17 @@
  *   withheld by the emit gate rather than emitted incomplete.
  * - **Dose.** RXA-6/RXA-7 → `doseQuantity` via {@link quantityFromRawMagnitude}: precision-exact magnitude,
  *   non-UCUM unit preserved verbatim with `.code`/`.system` absent + flagged — never a fabricated UCUM code.
- * - **Route/site value translation (Phase 6).** RXR-1 route → {@link ROUTE_VALUE_MAP} (HL70162) and
+ * - **Route/site value translation.** RXR-1 route → {@link ROUTE_VALUE_MAP} (HL70162) and
  *   RXR-2 site → {@link SITE_VALUE_MAP} (HL70550) are value-translated additively (derived target coding
  *   added, raw coding preserved); a code outside the table is preserved + flagged, never coerced.
  * - **`vaccineCode` is NOT value-translated — by grounding, not omission.** RXA-5 has **no** `mappedVia`
  *   value ConceptMap in the IG's RXA→Immunization segment map (verified firsthand), so the code (typically
  *   CVX) is carried **structurally** (system recognized, value preserved) — a translation is never
- *   invented for it (ADR 0018 applied to mappings).
+ *   invented for it.
  *
  * Deferred and flagged elsewhere, not silently mapped: RXA-10 performer, RXA-17 manufacturer, RXA-27/28
- * location, ORC-12 performer (all need Practitioner/Organization/Location resources this phase does not build).
+ * location, ORC-12 performer (all need Practitioner/Organization/Location resources this library does not
+ * build).
  *
  * @packageDocumentation
  */

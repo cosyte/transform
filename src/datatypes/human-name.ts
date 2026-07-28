@@ -1,5 +1,5 @@
 /**
- * XPN → FHIR `HumanName` (roadmap §4.4).
+ * XPN → FHIR `HumanName`.
  *
  * Grounded on the IG datatype ConceptMap **XPN → HumanName**: `XPN.1`→`family`, `XPN.2`→`given[0]`,
  * `XPN.3`→`given[1]`, `XPN.4`→`suffix`, `XPN.5`→`prefix`, `XPN.6` (degree)→`suffix`,
@@ -7,7 +7,7 @@
  *
  * `XPN.7`→`use` is a **lossy code translation**: only the codes the IG's HL70200→name-use map covers
  * are translated; any other name-type code leaves `use` **absent** and raises
- * {@link ISSUE_CODES.TRANSFORM_NAME_USE_UNMAPPED} — never guessed. Deferred in Phase 1 and flagged:
+ * {@link ISSUE_CODES.TRANSFORM_NAME_USE_UNMAPPED} — never guessed. Not converted, and flagged:
  * the name-validity period (`XPN.12`/`XPN.13`), whose FHIR `period` needs the timezone policy of the
  * dateTime path.
  *

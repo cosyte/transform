@@ -5,18 +5,18 @@
  *
  * | PID field | FHIR target | via |
  * |---|---|---|
- * | PID-3 Patient Identifier List (CX) | `Patient.identifier` | {@link toFhirIdentifier} (§4.2) |
- * | PID-5 Patient Name (XPN) | `Patient.name` | {@link toFhirHumanName} (§4.4) |
+ * | PID-3 Patient Identifier List (CX) | `Patient.identifier` | {@link toFhirIdentifier} |
+ * | PID-5 Patient Name (XPN) | `Patient.name` | {@link toFhirHumanName} |
  * | PID-7 Date/Time of Birth (DTM) | `Patient.birthDate` | {@link toFhirDateTime} reduced to a `date` |
  * | PID-8 Administrative Sex (CWE) | `Patient.gender` | {@link ADMINISTRATIVE_GENDER_MAP} (Table 0001) |
- * | PID-11 Patient Address (XAD) | `Patient.address` | {@link toFhirAddress} (§4.5) |
+ * | PID-11 Patient Address (XAD) | `Patient.address` | {@link toFhirAddress} |
  *
  * Fail-safe throughout: each datatype conversion carries its own value-free issues, an unmapped
  * administrative-sex code leaves `gender` absent (never guessed), and a birth *time* (PID-7 with a
  * time-of-day) is dropped to `date` precision with a flag — the US Core `patient-birthTime` extension
- * is a profile concern (Phase 8). Deferred and flagged, not silently mapped: PID-13/14 telecom (no
- * XTN→ContactPoint converter until a later phase), and PID-10/15/22/29/30 (US Core race/ethnicity
- * extensions, communication language, deceased) — see the "last verified" note in the repo doc.
+ * is a profile concern this library does not cover. Deferred and flagged, not silently mapped:
+ * PID-13/14 telecom (no XTN→ContactPoint converter), and PID-10/15/22/29/30 (US Core race/ethnicity
+ * extensions, communication language, deceased).
  *
  * @packageDocumentation
  */

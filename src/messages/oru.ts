@@ -1,6 +1,6 @@
 /**
  * ORU^R01 order/result grouping — the message-map structure the DiagnosticReport/Observation graph is
- * assembled over (roadmap §Phase 3), grounded on the IG **ORU_R01 message map**
+ * assembled over, grounded on the IG **ORU_R01 message map**
  * (`ConceptMap-message-oru-r01-to-bundle.html`).
  *
  * An ORU message is a sequence of order groups, each an **OBR** followed by its **OBX** results. This

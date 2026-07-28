@@ -1,11 +1,10 @@
 /**
  * `toFhir` — the message-level entry point: assemble a parsed HL7 v2 message into a FHIR R4
  * **message Bundle** (a `MessageHeader` first, then the focal resources), grounded on the IG message
- * and segment maps. Phase 2 covers the **ADT** family → **Patient + Encounter** (+ `RelatedPerson`
- * from NK1), establishing the message-map → resource-graph pattern the later phases reuse; Phase 3
- * adds the **ORU^R01** results graph (`DiagnosticReport` + `Observation`); Phase 4 adds the
+ * and segment maps. The **ADT** family becomes **Patient + Encounter** (+ `RelatedPerson`
+ * from NK1); the **ORU^R01** results graph becomes `DiagnosticReport` + `Observation`; the
  * order-entry graph — **ORM_O01 / OML_O21** ORC/OBR → `ServiceRequest` and **RXO** (+ RXR) →
- * `MedicationRequest`; Phase 5 adds the thin IG singles — **VXU_V04** RXA/RXR/ORC → `Immunization`,
+ * `MedicationRequest`; and the thin IG singles — **VXU_V04** RXA/RXR/ORC → `Immunization`,
  * **SIU_S12** SCH/AIS/PID → `Appointment`, and **MDM_T02** TXA/OBX → `DocumentReference`.
  *
  * The fail-safe rule holds at the message level. Two message-level fail-safes join the datatype ones:

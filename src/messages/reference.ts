@@ -92,8 +92,8 @@ export function coding(
  * Build one order `identifier` (an EI's EI.1 → `Identifier.value`) with a v2-0203 identifier-type
  * coding, or `undefined` when the value is empty. Shared by the order/result-anchoring resources
  * whose IG maps route the placer/filler order numbers (OBR-2/ORC-2 `PLAC`, OBR-3/ORC-3 `FILL`) to
- * `Identifier` with a `type` from HL7 Table 0203 — `DiagnosticReport` (Phase 3) and `ServiceRequest`
- * (Phase 4) both use it, so the shape lives here rather than being duplicated per builder.
+ * `Identifier` with a `type` from HL7 Table 0203 — `DiagnosticReport` and `ServiceRequest`
+ * both use it, so the shape lives here rather than being duplicated per builder.
  *
  * @param value - The order number (EI.1); an empty string yields `undefined`.
  * @param typeCode - The v2-0203 identifier-type code (`PLAC` placer, `FILL` filler).

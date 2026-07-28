@@ -1,6 +1,6 @@
 /**
  * Order-message grouping — the message-map structure the ServiceRequest / MedicationRequest graph is
- * assembled over (roadmap §Phase 4), grounded firsthand on the IG **ORM_O01** and **OML_O21** message
+ * assembled over, grounded firsthand on the IG **ORM_O01** and **OML_O21** message
  * maps (`ConceptMap-message-orm-o01-to-bundle.html`, `ConceptMap-message-oml-o21-to-bundle.html`).
  *
  * Both message maps model the ORDER group the same way: **`ORC` creates the request** and the

@@ -1,5 +1,5 @@
 /**
- * RXO (+ RXR route) → FHIR `MedicationRequest` — the pharmacy-order request (roadmap §Phase 4),
+ * RXO (+ RXR route) → FHIR `MedicationRequest` — the pharmacy-order request,
  * grounded firsthand on the IG **Segment RXO to MedicationRequest** and **Segment RXR to
  * MedicationRequest** ConceptMaps (`hl7.fhir.uv.v2mappings`, STU1;
  * `ConceptMap-segment-rxo-to-medicationrequest.html`, `ConceptMap-segment-rxr-to-medicationrequest.html`).
@@ -37,13 +37,13 @@
  * - **Dose/dispense units.** Carried through {@link quantityFromRawMagnitude}: a magnitude is
  *   precision-exact (string-backed `decimal`, never rescaled), and a non-UCUM unit is preserved
  *   verbatim in `.unit` with `.code`/`.system` absent + flagged — a UCUM code is never fabricated.
- * - **Route/site value translation (Phase 6).** RXR-1 route → {@link ROUTE_VALUE_MAP} (HL70162: a
+ * - **Route/site value translation.** RXR-1 route → {@link ROUTE_VALUE_MAP} (HL70162: a
  *   41-code identity group into `v2-0162` plus a 6-code remap into `v3-RouteOfAdministration` —
  *   `IM→IM`, `SC→SQ`, …) and RXR-2 site → {@link SITE_VALUE_MAP} (HL70550: 443-code identity into
  *   `v2-0550`). Both are additive: the derived target coding is added and the raw coding preserved; a
  *   code outside the table is preserved + flagged, never coerced. RXR-4 method's IG target is SNOMED CT
  *   (encumbered — **not bundled**), so method stays structurally carried (BYO), never SNOMED-translated.
- * - **Substitution (Phase 6).** RXO-9 → `substitution.allowedCodeableConcept` via
+ * - **Substitution.** RXO-9 → `substitution.allowedCodeableConcept` via
  *   {@link SUBSTITUTION_VALUE_MAP} (HL70161 `N`/`G`/`T` identity into `v2-0161`). A valued RXO-9 the map
  *   has no target for is flagged and the **substitution backbone is withheld** — a substitution
  *   permission (whether the pharmacist may swap the drug) is never emitted from an unrecognized code.
@@ -86,7 +86,7 @@ const UNSIGNED_INT = /^(0|[1-9][0-9]*)$/;
 /**
  * Build a `dosageInstruction.method` CodeableConcept from RXR-4 **structurally** (no value translation).
  * The IG maps RXR-4 → method via `table-hl70165-to-sct`, whose target is **SNOMED CT** — license-
- * encumbered and **not bundled** (§5). So the code is carried structurally (system recognized if the
+ * encumbered and **not bundled**. So the code is carried structurally (system recognized if the
  * CWE declares one, else flagged) and the SNOMED translation is left BYO — never fabricated here.
  */
 function codeableFrom(

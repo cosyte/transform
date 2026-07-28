@@ -111,3 +111,38 @@ Mirrors the three disciplines in the meta-repo's `documentation/conventions.md` 
 3. **Crew + knowledgebase loop** — if this library's public API or issue codes change, flag/update
    the matching `crew` healthcare skills (`terminology-mapping`, `fhir-resource-design`) + the KB
    product doc.
+4. **No internal project bookkeeping on a public surface** (founder directive, 2026-07-27). What a
+   consumer reads (`README.md`, `docs-content/`, the npm `description`, a release body, the JSDoc
+   their editor renders, the message text their log prints) says what the software does and what
+   changed. Item identifiers (`TRANSFORM-6`), phase and wave language, roadmap section numbers
+   (`roadmap §4.5`, `§Phase 6`), ADR numbers, meta-repo paths and "how this got built" commentary
+   belong in the changeset, `CHANGELOG.md`, the commit, the PR and the roadmap. It is a
+   **translation** at the boundary, not a deletion, and when you strip a label off the front of a
+   line, **repair the head**: a fragment reads worse than the text it replaced. Gated by
+   `pnpm check:no-internal-refs`. The gate keys on known project prefixes, so **a new programme
+   prefix has to be added to it by hand**; and it catches identifiers, not English sentences about
+   our process, so the reviewer still owns half the rule.
+
+   **This repo is dense with the colliding shape**, because a v2-to-FHIR mapper's whole vocabulary is
+   written `WORD-N`: `MSH-9`, `PID-3`, `PV1-44`, `OBX-5`, `OBR-25`, `RXA-20`, `SCH-8`, `TXA-19`.
+   None of those is caught, and the only reason is that their leading token is not on the prefix
+   list. **Never re-key the rule on the `WORD-N` shape**, and never "resync" the prefix list with a
+   sibling repo's copy without re-reading why this one keeps `SYNTH` and the `HL7-\d{3,4}`
+   exclusion. Case sensitivity is load-bearing too: `FHIR-core`, `FHIR-required` and
+   `FHIR-core-fixed` are live here and a case-insensitive rule calls every one of them a violation.
+
+   **Three source surfaces, three different answers.** `/** */` doc comments compile into
+   `dist/*.d.ts` and render in a consumer's editor, so they are **gated**. String literals reach a
+   consumer as diagnostic message text, so they are **gated too**. `//` and plain `/* */` comments
+   are **not gated** and identifiers are **welcome** in them, because **the convention says source
+   comments are a place identifiers belong**. That is the whole reason. **Do not justify this
+   boundary from what reaches `dist/`**: two attempts to do so in a sibling repo were both false.
+   Measured here: this repo's tsup config strips `//` comments from the bundles, but `dist` is
+   `files[0]`, there is no `.npmignore`, and `dist/*.map` carries every tracked source byte in
+   `sourcesContent`, so **everything in `src/` is in the tarball anyway**. The line is not what
+   reaches a consumer's disk (all of it does) but what a consumer is **shown**. Two consequences: a
+   doc comment is not the place for "which stage added this" framing, and **removing a doc comment
+   to satisfy the gate is a regression**, not a fix (JSDoc with `@example` on every public export is
+   a hard guardrail above, and neither lint nor coverage will catch its loss). What the gate cannot
+   do is read `dist/` itself: `dist/` is untracked build output, so this is a gate on the source of
+   the published text, not on the published text.

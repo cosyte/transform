@@ -7,17 +7,17 @@
  * STU Edition 1). Its whole promise is narrow and honest: **IG-grounded, fail-safe transformation
  * with typed, value-free diagnostics — never a confident wrong FHIR value.**
  *
- * This module ships **Phases 1–6**: the six safety-critical datatype converters, the immutable
- * `OperationOutcome`-shaped diagnostic channel and the NamingSystem resolver they consult (Phase 1),
- * the first message-level assembly — HL7 v2 **ADT → FHIR Patient + Encounter** (Phase 2) — the
- * **ORU^R01 → DiagnosticReport + Observation** results graph (Phase 3), the order-entry graph —
- * **ORM_O01 / OML_O21 → ServiceRequest** and **RXO → MedicationRequest** (Phase 4) — the thin IG
- * singles — **VXU_V04 → Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference**
- * (Phase 5) — all through `toFhir(msg)`, and the **terminology value-translation** layer (Phase 6): a
+ * This module ships the six safety-critical datatype converters, the immutable
+ * `OperationOutcome`-shaped diagnostic channel and the NamingSystem resolver they consult,
+ * the message-level assembly — HL7 v2 **ADT → FHIR Patient + Encounter**, the
+ * **ORU^R01 → DiagnosticReport + Observation** results graph, the order-entry graph
+ * (**ORM_O01 / OML_O21 → ServiceRequest** and **RXO → MedicationRequest**), and the thin IG
+ * singles (**VXU_V04 → Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference**),
+ * all through `toFhir(msg)` — and the **terminology value-translation** layer: a
  * `$translate`-shaped {@link toFhirCodeableConceptVia} engine applying the license-clean IG value
  * ConceptMaps to the previously structural-only coded fields (route/site, appointment type, order
- * priority, substitution). Terminology **depth beyond these maps**, profiles, and the reverse direction
- * land in later phases (see `operations/roadmaps/transform.md`).
+ * priority, substitution). Terminology **depth beyond these maps**, profiles, and the reverse
+ * FHIR → v2 direction are not implemented.
  *
  * @packageDocumentation
  */

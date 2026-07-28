@@ -8,17 +8,17 @@ parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://g
 composites and produces validated [`@cosyte/fhir`](https://github.com/cosyte/fhir) model nodes,
 grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`).
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships **Phases 1–6** — the
-> six safety-critical datatype converters and the value-free diagnostic channel (Phase 1), the first
-> message-level assembly, HL7 v2 **ADT → FHIR Patient + Encounter** (Phase 2), the **ORU^R01 → FHIR
-> DiagnosticReport + Observation** results graph (Phase 3), the order-entry graph — **ORM_O01 /
-> OML_O21 → ServiceRequest** and **RXO → MedicationRequest** (Phase 4) — the thin IG singles —
-> **VXU_V04 → Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference** (Phase 5) — all
-> via `toFhir(msg)`, and **terminology value translation** of coded fields (Phase 6): route/site,
+> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships the
+> six safety-critical datatype converters and the value-free diagnostic channel, the
+> message-level assembly, HL7 v2 **ADT → FHIR Patient + Encounter**, the **ORU^R01 → FHIR
+> DiagnosticReport + Observation** results graph, the order-entry graph — **ORM_O01 /
+> OML_O21 → ServiceRequest** and **RXO → MedicationRequest** — the thin IG singles —
+> **VXU_V04 → Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference** — all
+> via `toFhir(msg)`, and **terminology value translation** of coded fields: route/site,
 > appointment type, order priority, and substitution are now value-translated through their IG
 > `mappedVia` ConceptMaps via `toFhirCodeableConceptVia`, fail-safe on any code the IG leaves unmapped.
-> With Phase 5 the v2→FHIR direction is feature-complete for the IG-covered message set; deeper
-> terminology, profiles, and the reverse direction land in later phases.
+> The v2→FHIR direction is feature-complete for the IG-covered message set; deeper
+> terminology, profiles, and the reverse FHIR → v2 direction are not implemented.
 
 ## Install
 
@@ -59,7 +59,7 @@ Every conversion is grounded on the IG and **refuses to guess**. On any ambiguit
 `TransformIssue`**: a stable code, the v2 location, and the FHIR path — never a value. Render a list
 of issues as a FHIR `OperationOutcome` with `toOperationOutcome(issues)`.
 
-## The six Phase-1 converters
+## The six datatype converters
 
 | Converter               | v2 → FHIR                  |
 | ----------------------- | -------------------------- |
@@ -70,7 +70,7 @@ of issues as a FHIR `OperationOutcome` with `toOperationOutcome(issues)`.
 | `toFhirAddress`         | XAD → `Address`            |
 | `toFhirQuantity`        | NM + units → `Quantity`    |
 
-## Assemble a message (Phase 2)
+## Assemble a message
 
 `toFhir(msg)` takes a parsed `@cosyte/hl7` **ADT** message and returns a FHIR R4 **message `Bundle`** —
 a `MessageHeader`, then the `Patient` and `Encounter` (and `RelatedPerson`) it describes — plus the
@@ -98,14 +98,14 @@ unresolvable authority becomes a typed issue — never a fabricated value. A tri
 **message** map for is assembled from the segment maps and flagged, never invented; every emitted
 resource is validated against `@cosyte/fhir` before it ships.
 
-The same `toFhir(msg)` handles the later message families: **ORU^R01** → `DiagnosticReport` (OBR) +
-`Observation` (OBX) — Phase 3 — and the order-entry graph — **ORM_O01 / OML_O21** ORC/OBR →
-`ServiceRequest`, **RXO** (+ RXR route) → `MedicationRequest` (Phase 4), with `ServiceRequest.status`
+The same `toFhir(msg)` handles the other message families: **ORU^R01** → `DiagnosticReport` (OBR) +
+`Observation` (OBX), and the order-entry graph — **ORM_O01 / OML_O21** ORC/OBR →
+`ServiceRequest`, **RXO** (+ RXR route) → `MedicationRequest`, with `ServiceRequest.status`
 grounded on the HL70119 → request-status ConceptMap and withheld when it cannot be grounded, and a
 `MedicationRequest` whose IG-ungrounded status is the honest `unknown` rather than a guess. `RXE` has no
 STU1 IG map and is flagged, never assembled.
 
-Phase 5 completes the IG-covered message set with the thin single-trigger families: **VXU_V04** RXA (+
+The thin single-trigger families complete the IG-covered message set: **VXU_V04** RXA (+
 RXR route, ORC) → `Immunization` (status via the IG's three conditioned rows — a delete action →
 `entered-in-error`, an unvalued RXA-20 → `completed`, else the HL70322 → event-status ConceptMap, with a
 valued-but-unmapped code withheld), **SIU_S12** SCH/AIS/PID → `Appointment` (status via the
@@ -114,8 +114,7 @@ required status a `data-absent-reason` primitive), and **MDM_T02** TXA/OBX → `
 grounded only for TXA-19 `AV` → `current`, the document body base64-encoded verbatim, carried and never
 interpreted). Timezone-naked instants are dropped and flagged, never assigned a fabricated UTC offset.
 
-Phase 6 adds **terminology value translation** for the coded fields earlier phases carried only
-structurally. `toFhirCodeableConceptVia(cwe, map)` applies a license-clean IG value ConceptMap
+`toFhirCodeableConceptVia(cwe, map)` applies a license-clean IG value ConceptMap
 (transcribed and verified firsthand against the raw published IG JSON) — **RXR** route/site
 (HL70162/HL70550), **SCH-8** appointment type (HL70277), **RXO-9** substitution (HL70161), and **OBR-5**
 priority (HL70485) — translating the source table code to its FHIR target coding, additively (the raw

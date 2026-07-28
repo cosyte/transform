@@ -1,5 +1,5 @@
 /**
- * Minimal R4 **required-cardinality** schemas for the resource types this phase emits, so the
+ * Minimal R4 **required-cardinality** schemas for the resource types this library emits, so the
  * conservative-emit gate ({@link ../messages/to-fhir.js}) actually catches a structurally-invalid
  * resource rather than waving it through.
  *

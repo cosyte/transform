@@ -8,15 +8,15 @@
  * | PV1-2 Patient Class | `Encounter.class` (Coding) | Table 0004 → V3 ActCode ({@link ENCOUNTER_CLASS_V3_MAP}); the self-mapped classes stay in v2-0004 |
  * | PV1-2 Patient Class | `Encounter.status` (code) | Table 0004 → Encounter Status ({@link ENCOUNTER_STATUS_MAP}), *only IF PV1-45 not valued* |
  * | PV1-19 Visit Number | `Encounter.identifier` (type `VN`) | v2-0203 identifier-type system |
- * | PV1-44 Admit Date/Time | `Encounter.period.start` | {@link toFhirDateTime} (§4.1) |
+ * | PV1-44 Admit Date/Time | `Encounter.period.start` | {@link toFhirDateTime} |
  * | PV1-45 Discharge Date/Time | `Encounter.period.end` + `status = finished` | {@link toFhirDateTime} |
  *
  * Fail-safe: an unmapped patient class leaves `Encounter.class` absent and flags
  * {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED} (never coerced); `Encounter.subject` is wired to the
  * bundle's Patient (the identity anchor) and omitted only when no valid Patient was produced.
  * Deferred and flagged, not silently mapped: PV1-3 location (Reference(Location), no Location resource
- * in Phase 2), PV1-7/8 attending/referring doctor (Reference(Practitioner), no Practitioner resource
- * in Phase 2).
+ * is built), PV1-7/8 attending/referring doctor (Reference(Practitioner), no Practitioner resource
+ * is built).
  *
  * @packageDocumentation
  */

@@ -1,5 +1,5 @@
 /**
- * MDM_T02 → FHIR `DocumentReference` — the thin IG single for clinical documents (roadmap §Phase 5),
+ * MDM_T02 → FHIR `DocumentReference` — the thin IG single for clinical documents,
  * grounded firsthand on the IG **MDM_T02 message map** and the **TXA/OBX → DocumentReference** segment
  * maps (`hl7.fhir.uv.v2mappings`, STU1; `ConceptMap-message-mdm-t02-to-bundle.json`,
  * `ConceptMap-segment-txa-to-documentreference.json`, `ConceptMap-segment-obx-to-documentreference.json`).

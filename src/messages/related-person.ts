@@ -4,9 +4,9 @@
  *
  * | NK1 field | FHIR target | via |
  * |---|---|---|
- * | NK1-2 Name (XPN) | `RelatedPerson.name` | {@link toFhirHumanName} (§4.4) |
- * | NK1-3 Relationship (CWE) | `RelatedPerson.relationship` | {@link toFhirCodeableConcept} (§4.3) |
- * | NK1-4 Address (XAD) | `RelatedPerson.address` | {@link toFhirAddress} (§4.5) |
+ * | NK1-2 Name (XPN) | `RelatedPerson.name` | {@link toFhirHumanName} |
+ * | NK1-3 Relationship (CWE) | `RelatedPerson.relationship` | {@link toFhirCodeableConcept} |
+ * | NK1-4 Address (XAD) | `RelatedPerson.address` | {@link toFhirAddress} |
  *
  * `RelatedPerson.patient` is FHIR-required (1..1); the message structure supplies it — it is wired to
  * the bundle's Patient, so a RelatedPerson is produced only when a Patient was. Deferred and flagged,

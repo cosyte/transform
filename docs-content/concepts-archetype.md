@@ -44,7 +44,7 @@ datatype and table ConceptMaps (LOINC/SNOMED URIs from the FHIR core terminology
 IG has no target for a code — an unmapped Table 0200 name-type, an unmapped Table 0190 address-type —
 the value is surfaced, **never guessed**.
 
-## The six Phase-1 converters
+## The six datatype converters
 
 | Converter | v2 → FHIR | Key fail-safe |
 |---|---|---|

@@ -1,5 +1,5 @@
 /**
- * OBX → FHIR `Observation` — the highest-clinical-stakes segment map (roadmap §4.7, §Phase 3),
+ * OBX → FHIR `Observation` — the highest-clinical-stakes segment map,
  * grounded firsthand on the IG **Segment OBX to Observation** ConceptMap plus its two governing table
  * ConceptMaps (`hl7.fhir.uv.v2mappings`, STU1). The rows used here, verified against the published maps
  * (`ConceptMap-segment-obx-to-observation.html`, `-table-hl70078-to-v3-observationinterpretation.html`,
@@ -8,15 +8,15 @@
  * | OBX field | FHIR target | via |
  * |---|---|---|
  * | OBX-2 Value Type | discriminates OBX-5 → `value[x]` | {@link buildValue} — never assume `Quantity` |
- * | OBX-3 Observation Identifier (CWE) | `Observation.code` | {@link toFhirCodeableConcept} (§4.3) |
- * | OBX-5 Observation Value | `Observation.value[x]` | per OBX-2 (§4.6/§4.7) |
- * | OBX-6 Units (CWE) | `valueQuantity.unit`/`.code`/`.system` | {@link quantityFromRawMagnitude} (§4.6) |
+ * | OBX-3 Observation Identifier (CWE) | `Observation.code` | {@link toFhirCodeableConcept} |
+ * | OBX-5 Observation Value | `Observation.value[x]` | per OBX-2 |
+ * | OBX-6 Units (CWE) | `valueQuantity.unit`/`.code`/`.system` | {@link quantityFromRawMagnitude} |
  * | OBX-7 Reference Range | `Observation.referenceRange.text` | mapped to `.text` (never decomposed) |
  * | OBX-8 Abnormal Flags | `Observation.interpretation` | {@link HL70078_INTERPRETATION_CODES} |
  * | OBX-11 Result Status | `Observation.status` | {@link OBSERVATION_STATUS_MAP} (HL70085) |
- * | OBX-14 Date/Time of Observation | `Observation.effectiveDateTime` | {@link toFhirDateTime} (§4.1) |
+ * | OBX-14 Date/Time of Observation | `Observation.effectiveDateTime` | {@link toFhirDateTime} |
  *
- * **The "never a confident wrong result" fail-safes (§4.7):**
+ * **The "never a confident wrong result" fail-safes:**
  * - **OBX-2 drives `value[x]`.** `NM`→`valueQuantity`, `CWE`/`CE`/`CF`/`CNE`/`IS`→`valueCodeableConcept`,
  *   `SN`→structured (`valueQuantity` with a comparator / `valueRange` / `valueRatio`), `ST`/`TX`/`FT`→
  *   `valueString`. A value type with no first-class target here (`NA`, `ED`, `DR`, `TM`, `NR`, unknown)
@@ -32,7 +32,7 @@
  *
  * Numeric magnitudes (NM, SN) are read from the **raw OBX-5 field** — not the `@cosyte/hl7`
  * `Observation` view's JS `number` — so a reported lab value's exact lexical precision (`120.50`) is
- * carried through the string-backed FHIR `decimal`, never routed through a lossy `number` (§4.6).
+ * carried through the string-backed FHIR `decimal`, never routed through a lossy `number`.
  *
  * @packageDocumentation
  */

@@ -9,8 +9,8 @@ sidebar_position: 1
 The **datatype converters** each take a parsed `@cosyte/hl7` composite and return a `{ value, issues }`
 pair — the FHIR datatype node it could faithfully produce, plus the value-free diagnostics it raised.
 The **message-level** entry `toFhir(msg)` assembles a whole HL7 v2 message into a FHIR `Bundle` over
-those same converters: an **ADT** admit becomes a **Patient + Encounter** graph (Phase 2), and an
-**ORU^R01** lab result becomes a **DiagnosticReport + Observation** graph (Phase 3).
+those same converters: an **ADT** admit becomes a **Patient + Encounter** graph, and an
+**ORU^R01** lab result becomes a **DiagnosticReport + Observation** graph.
 
 ## Convert a name
 

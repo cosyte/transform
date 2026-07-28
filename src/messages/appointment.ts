@@ -1,5 +1,5 @@
 /**
- * SIU_S12 → FHIR `Appointment` — the thin IG single for scheduling (roadmap §Phase 5), grounded
+ * SIU_S12 → FHIR `Appointment` — the thin IG single for scheduling, grounded
  * firsthand on the IG **SIU_S12 message map**, the **SCH/AIS/PID → Appointment** segment maps, the
  * **Table HL70278 → AppointmentStatus** ConceptMap, and the **TQ → Appointment** datatype map
  * (`hl7.fhir.uv.v2mappings`, STU1; `ConceptMap-message-siu-s12-to-bundle.json`,
@@ -29,15 +29,15 @@
  *   `participant.status` (a required-bound `code` the IG supplies no source for) is emitted as a
  *   `data-absent-reason` primitive (value `unknown`) + flagged {@link ISSUE_CODES.TRANSFORM_REQUIRED_ELEMENT_UNKNOWN}
  *   — the spec-clean way to satisfy a required code whose value is genuinely unknown, never fabricated. An
- *   Appointment with no resolvable Patient (and no other groundable actor this phase builds) has no
+ *   Appointment with no resolvable Patient (and no other groundable actor this library builds) has no
  *   participant and is withheld.
  * - **`start`/`end` (instant).** SCH-11's TQ.4/TQ.5 become `start`/`end` only when they are fully-zoned
  *   instants; a naked (unzoned) timing is dropped + flagged rather than assigned a fabricated UTC offset,
  *   mirroring `Bundle.timestamp`.
- * - **`appointmentType` value translation (Phase 6).** SCH-8 → {@link APPOINTMENT_TYPE_VALUE_MAP}
+ * - **`appointmentType` value translation.** SCH-8 → {@link APPOINTMENT_TYPE_VALUE_MAP}
  *   (HL70277 `Normal`/`Tentative`/`Complete` identity into `v2-0277`); a code outside the table is
  *   preserved + flagged, never coerced. **`reasonCode` is NOT value-translated:** SCH-7's IG map target
- *   is SNOMED CT (`table-hl70276-to-sct`) — encumbered, **not bundled** (§5) — so the reason is carried
+ *   is SNOMED CT (`table-hl70276-to-sct`) — encumbered, **not bundled** — so the reason is carried
  *   structurally (BYO ConceptMap), never SNOMED-translated here. (The IG's SCH→Appointment map *also*
  *   carries a redundant SCH-7 → `appointmentType[1]` row via `table-hl70277-to-v2-0277`; it is not
  *   applied — SCH-7 carries HL70276 *reason* codes, not HL70277 *type* codes, so translating them through

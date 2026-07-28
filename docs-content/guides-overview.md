@@ -43,5 +43,5 @@ toFhirDateTime(parseDtm("20260721143000"), { assumeTimezoneOffsetMinutes: -300 }
 
 ## Planned guides
 
-As later phases ship: assembling a full `Patient`/`Encounter`/`Observation` graph from a message,
+Not yet written: assembling a full `Patient`/`Encounter`/`Observation` graph from a message,
 applying a BYO `ConceptMap` for local codes, and targeting US Core profiles.
