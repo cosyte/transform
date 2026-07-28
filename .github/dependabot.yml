@@ -1,0 +1,80 @@
+version: 2
+
+# Nothing watched this repo's dependencies until CI-REQUIRED-CHECKS / DEPENDABOT-PR-QUEUE.
+# `@cosyte/transform` showed ZERO open Dependabot pull requests, which meant nothing was
+# looking, not that nothing was stale. Five repos in the org were in that state; the count of
+# zero is the symptom, not the all-clear.
+#
+# Two ecosystems, because the repo has exactly two dependency surfaces. Swept, not assumed
+# (`git ls-files` over every manifest shape, 2026-07-28):
+#   npm             package.json + pnpm-lock.yaml at the root -- the ONLY package.json tracked
+#   github-actions  .github/workflows/*.yml (five files)
+# There is no third. No Dockerfile, no Terraform, no pnpm workspace, no second package.json,
+# no submodules of its own, no Python/Go/Rust manifest. The other tracked non-source trees are
+# `vendor/` (see the honest note below), `docs-content/` (prose), `documentation/decisions/`
+# (prose) and `scripts/` (repo-local bash + TypeScript, no manifest of their own).
+#
+# ▶ TWO THINGS THIS FILE DOES NOT BUY, BECAUSE IT IS EASY TO OVER-READ.
+# (1) It configures VERSION updates only. Automatic SECURITY update PRs are a repo setting, not
+#     a config key, and this repo's setting reads `dependabot_security_updates: disabled` (
+#     measured 2026-07-28 via `gh api repos/cosyte/transform --jq .security_and_analysis`). So
+#     an advisory raises an alert here and opens no fix PR on its own. Re-check that setting
+#     rather than assuming this file changed it -- it cannot.
+# (2) It is UNOBSERVED whether Dependabot's pnpm updater tolerates the two `file:` tarball
+#     devDependencies below. No real weekly run has been watched against that shape in this
+#     repo, so it is not known whether the updater skips those entries cleanly or errors the
+#     whole `npm` job. Until one run has been watched, "no open Dependabot PR" STILL does not
+#     mean "current" here. That is the same sentence this file exists to stop being true, and
+#     it stays until a run proves otherwise.
+
+updates:
+  # npm. This package ships ZERO third-party runtime dependencies by design: `dependencies` is
+  # `{}` and stays that way. Its two real runtime requirements, `@cosyte/hl7` and `@cosyte/fhir`,
+  # are declared as PEER dependencies. So everything Dependabot can see here is a devDependency,
+  # and one group is the whole visible tree. The `npm` ecosystem covers pnpm: Dependabot infers
+  # the package manager from the lockfile, which is `pnpm-lock.yaml`.
+  #
+  # ▶ WHAT THIS DELIBERATELY CANNOT SEE, STATED PLAINLY RATHER THAN IMPLIED AWAY. The two
+  # sibling packages this library transforms between are installed for dev/test from `pnpm pack`
+  # tarballs committed under `vendor/`:
+  #
+  #     "@cosyte/hl7":  "file:vendor/cosyte-hl7-0.0.0.tgz"
+  #     "@cosyte/fhir": "file:vendor/cosyte-fhir-0.0.0.tgz"
+  #
+  # Dependabot does not bump a `file:` specifier, and it does not open a PR when a peer
+  # dependency's registry version moves. Both routes to those two packages are therefore
+  # unwatched, and BOTH are load-bearing here in a way a generic devDependency is not: this
+  # package's whole job is reading a parsed `@cosyte/hl7` message and emitting a model that
+  # `@cosyte/fhir` validates, and the conservative-emit gate calls `validateResource` from the
+  # VENDORED `@cosyte/fhir` tarball. The tarball is the version the tests actually exercise. A
+  # correctness fix landing upstream does NOT arrive here on its own -- somebody re-packs it by
+  # hand with `pnpm vendor:refresh`, and the pinned shas are recorded in CLAUDE.md. Do not read
+  # "no open Dependabot PR" as "the vendored siblings are current"; they become real `@cosyte/*`
+  # registry ranges at the publish flip, because a published package cannot ship a `file:` dep,
+  # and only then does this entry start covering them.
+  #
+  # NOTE: package.json carries `pnpm.overrides` pinning esbuild and js-yaml above advisory
+  # ranges. Dependabot does not manage those overrides. If it proposes a bump that makes one
+  # redundant, the override is removed by hand, never silently left to pin a version backwards.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      dev-dependencies:
+        dependency-type: development
+
+  # Keep GitHub Actions references current. Four of the five workflows here (`ci`, `codeql`,
+  # `release`, `scorecard`) are THIN CALLERS of `cosyte/.github/.github/workflows/*.yml@main`,
+  # and `@main` is a branch ref, so Dependabot has nothing to bump in those: their pinned action
+  # SHAs live upstream in `cosyte/.github`, which has its own config. `no-internal-refs.yml` is
+  # the exception and the reason this entry is not decorative -- it is this repo's only
+  # repo-LOCAL job, it pins `actions/checkout` by SHA itself, and that single pin is what this
+  # ecosystem actually watches today. A public-surface gate running on a deprecated checkout is
+  # the gate itself going stale.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

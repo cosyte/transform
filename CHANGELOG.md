@@ -209,6 +209,70 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Changed
 
+- **CI-REQUIRED-CHECKS: the build checks now BIND on `main`, and DEPENDABOT-PR-QUEUE: dependencies
+  are watched.** Until `PUBLIC-SURFACE-HYGIENE` (#11) this repo had **no ruleset at all**; that
+  change created `19914044` requiring exactly one context, `no-internal-refs`. The result is the
+  shape worth naming: **a repo can have a ruleset and still not bind its build.** `ci / verify` on
+  both matrix legs, `ci / actionlint` and `codeql / analyze` all stayed advisory, so any of them
+  could be red and the merge would still land on the branch that publishes. The four contexts are
+  now **folded into `19914044`** (renamed `ci-required-checks`) rather than added as a second
+  ruleset, deliberately: `ncpdp` is the cautionary case, where a correctly pinned base ruleset sat
+  beside two later rulesets that pinned nothing and the repo read as "pinned" because one of its
+  rulesets was. One ruleset per repo is one place to audit. Final state, read back live: five
+  contexts, each pinned to `integration_id: 15368`; `bypass_actors: []`; `~DEFAULT_BRANCH`; plus
+  `deletion` and `non_fast_forward`.
+  - **The context names were read off real check runs**, never off a workflow `name:` field.
+    Provenance stated exactly, because "two heads" is not true of all five: the four build contexts
+    were read off **two** independent `pull_request` heads (`66715e5b`, head of #11; `460bfcf8`,
+    head of #7); `no-internal-refs` could only be read off `66715e5b`, since `460bfcf8` predates the
+    workflow that emits it. All five were then confirmed together on this change's own PR (#12,
+    first head `57a62b2`), which read `BLOCKED` until they landed and `CLEAN` after, on that head
+    and on every later one. The
+    workflow named `Public-surface gate` emits the context `no-internal-refs`, and requiring a name
+    nothing emits leaves every PR **pending**, not failing, forever. `scorecard / analysis` and
+    `release / release` are excluded because neither has a `pull_request` trigger; the Advanced
+    Security `CodeQL` check (app `57789`) is excluded because it reports **alert state**, not
+    whether the analysis ran. No workflow here carries a `paths:` filter.
+  - **What the ruleset still does not protect, measured rather than asserted.** A required _job_
+    gates its _steps_, but the suites that job runs are chosen by the `include` glob in
+    `vitest.config.ts`, and the shared `@cosyte/vitest-config` sets no `test.include` of its own, so
+    that line decides today. It is not the only lever: the `test`/`test:coverage` script bodies in
+    `package.json` are plain `vitest run` invocations, and a path argument or `--exclude` added
+    there drops suites without touching the glob. Narrow either and
+    `test/messages/property.test.ts` stops running with the job green. Coverage is a thin,
+    incidental backstop: excluding that one file takes
+    `src/messages/**` branch coverage from **90.11% to 88.82%**, breaching the `>= 90` gate, so the
+    deletion is caught today, by 1.29 points, over the incidental fact that the property run is the
+    only thing reaching some branches, and never for the loss of the properties themselves. Banners
+    on `ci.yml` and `vitest.config.ts` say so.
+  - **The cost, expected and measured.** Requiring a context blocks any open PR that cannot emit it.
+    **PR #10 ("Version Packages", head `2996df7`) has zero check runs and reports `BLOCKED`**, and it is
+    the structural case, since Changesets opens it as `github-actions[bot]` on the default
+    `GITHUB_TOKEN` and GitHub starts no workflow runs for that token's events. The escape (one empty
+    commit onto `changeset-release/main`) is written on `release.yml`; a bypass actor is refused.
+  - **`.github/dependabot.yml` added** (weekly `npm` + `github-actions`, limit 5, dev-dependency
+    group). Zero open Dependabot PRs here meant nothing was looking. Two limits are stated in the
+    file rather than left to be discovered: `dependabot_security_updates` reads `disabled` on this
+    repo, so an advisory opens no fix PR; and Dependabot resolves neither the `file:vendor/*.tgz`
+    specifiers nor a peer dependency's registry move, so **both routes to `@cosyte/hl7` and
+    `@cosyte/fhir` are unwatched** and stay a `pnpm vendor:refresh` job by hand. Whether the pnpm
+    updater tolerates that `file:` shape at all is recorded as unobserved.
+  - **Nothing inside this repo can observe its own ruleset.** Delete it and the suite stays green,
+    `verify.sh` stays green, and the docs keep asserting protection. `CLAUDE.md` gained a "Branch
+    protection (and the limits of this claim)" section that says so and gives the `gh api` calls,
+    including `?includes_parents=true`, because checking one ruleset is how `ncpdp` was missed.
+  - **The changeset for this entry is deliberately not consumer-facing.** None of the above is
+    observable by someone installing the package, so its headline names `CodeQL`, `actionlint` and
+    `Dependabot`, which the shared `cosyte/.github` release-note renderer classifies as internal-only
+    and **drops from the published release body** rather than rewording into it. Verified by running
+    that renderer's `collectHeadlines` over this repo's eight pending changesets: seven kept, this
+    one dropped. Recorded because the earlier wording said the same thing in words the classifier
+    does not know, and would have published it.
+  - **Also noted, not fixed here:** three of the five required names
+    (`ci / verify (22|24, ubuntu-latest)`, `ci / actionlint`) are produced by the DEFAULT inputs of
+    `cosyte/.github/.github/workflows/ci.yml@main`, a different repo on a floating ref. Changing a
+    default there strands every PR in every repo pinning this set. Fails closed, ecosystem-wide,
+    and written into `CLAUDE.md`.
 - **PUBLIC-SURFACE-HYGIENE: internal project bookkeeping removed from every surface a consumer
   reads, and a gate added under it.** Founder directive, 2026-07-27: a README, a docs page, an npm
   description, a JSDoc block a consumer's editor renders, and a message their log prints say what
