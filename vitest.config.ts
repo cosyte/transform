@@ -17,7 +17,10 @@ export default cosyteVitest({
     // `main` is protected by ruleset `ci-required-checks` (19914044), which requires the
     // `ci / verify (22|24, ubuntu-latest)` contexts. That pins the fact that `pnpm test` and
     // `pnpm test:coverage` RUN. It does not pin what they run: the shared @cosyte/vitest-config
-    // sets no `test.include` of its own, so this line alone decides. Narrow it and the property
+    // sets no `test.include` of its own, so this line decides today. It is NOT the only lever --
+    // the `test`/`test:coverage` script bodies in package.json are plain `vitest run` invocations
+    // and a path argument or `--exclude` added there drops suites without touching this glob,
+    // equally unobserved by the ruleset. Narrow either and the property
     // + fuzz suites that carry this package's real correctness claims
     // (`test/messages/property.test.ts` -- never-throw, only registered value-free issue codes,
     // no dangling `urn:uuid:` reference, only structurally-valid focal resources; and

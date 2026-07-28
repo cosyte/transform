@@ -74,7 +74,9 @@ a summary.
   (`test/messages/property.test.ts`): never-throw, only registered value-free issues, no dangling
   `urn:uuid:` reference, and an emit gate (what is produced validates under
   `@cosyte/fhir.validateResource`). **Which suites run is decided by the `include` glob in
-  `vitest.config.ts` and by nothing else.** See "Branch protection" below for why that matters.
+  `vitest.config.ts`, and by the `test`/`test:coverage` script bodies in `package.json` that could
+  add a path filter of their own.** Both levers are invisible to a branch ruleset. See "Branch
+  protection" below for why that matters.
 - **CI/CD:** thin callers of the reusable `cosyte/.github` workflows, plus one repo-local job
   (`no-internal-refs`). **The checks BIND**; see "Branch protection" below.
 - **Runtime deps:** **Zero third-party.** `@cosyte/hl7` + `@cosyte/fhir` are peer deps (ADR 0001).
@@ -107,9 +109,13 @@ commit status of the same name posted by any other actor with write access canno
 | `codeql / analyze (javascript-typescript)` | `codeql.yml`           |
 | `no-internal-refs`                         | `no-internal-refs.yml` |
 
-These are the names GitHub actually reports, **read off real check runs on two independent
-`pull_request` heads** (`66715e5b`, the head of #11, and `460bfcf8`, the head of #7), never off a
-workflow's `name:` field. That distinction is the whole trap: the workflow named `Public-surface gate`
+These are the names GitHub actually reports, **read off real check runs**, never off a workflow's
+`name:` field. Provenance stated exactly, because "two independent heads" is not true of all five:
+the four build contexts were read off **two** independent `pull_request` heads, `66715e5b` (head of
+#11) and `460bfcf8` (head of #7). `no-internal-refs` could only be read off **one**, `66715e5b`,
+because `460bfcf8` predates the workflow that emits it and carries no such check run. All five were
+then confirmed together on a third head, `57a62b2` (head of #12, the change that required them).
+That distinction is the whole trap: the workflow named `Public-surface gate`
 emits the context `no-internal-refs`, and requiring a context nothing emits does not fail a PR, it
 leaves it **pending and unmergeable forever**. None of the three workflows that emit these five
 contexts (`ci.yml`, `codeql.yml`, `no-internal-refs.yml`) carries a `paths:` filter, so no PR can
@@ -127,10 +133,21 @@ skip one.
 silently un-requires it, with no error and no warning. There is a banner on `ci.yml` where someone
 would trip it.
 
+**Three of the five names are set upstream, in another repo, on a floating ref.**
+`ci / verify (22, ubuntu-latest)`, `ci / verify (24, ubuntu-latest)` and `ci / actionlint` come from
+the DEFAULT inputs of `cosyte/.github/.github/workflows/ci.yml@main` (`node-versions`, `os`,
+`run-actionlint`). This repo's caller passes none of them. Change a default there and every PR here
+strands pending, with nothing in this repo to warn you. It fails closed rather than open, and every
+repo pinning this reference set shares it, so it is an ecosystem concern rather than a local one --
+but it is the reason the context list is not stable just because this repo is.
+
 **And the gate can leave the job entirely, which is the sharper edge in this repo.** Requiring
 `ci / verify` pins that `pnpm test` runs; it does not pin _what_ it runs. The suites are chosen by the
 `include` glob in `vitest.config.ts`, and the shared `@cosyte/vitest-config` sets no `test.include` of
-its own, so that one line decides. It is what selects `test/messages/property.test.ts` and
+its own, so that line decides today. **It is not the only lever:** the `test` and `test:coverage`
+script bodies in `package.json` are plain `vitest run` invocations, and adding a path argument or
+`--exclude` there drops suites without touching the glob, equally unobserved by the ruleset. The glob
+is what currently selects `test/messages/property.test.ts` and
 `test/datatypes/boundary.property.test.ts` -- the property and fuzz suites carrying the never-throw,
 value-free-diagnostic, reference-resolution and emit-validity claims that are the point of the
 fail-safe rule. **Narrow that glob and they stop running with the job still green and the ruleset

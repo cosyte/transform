@@ -2,7 +2,8 @@
 "@cosyte/transform": patch
 ---
 
-The CI checks that run on a pull request now block the merge, and dependency updates are watched.
+CodeQL, actionlint and the rest of this repository's pull-request checks now block the merge, and
+Dependabot watches its dependencies weekly.
 
 The branch this package publishes from carried one binding rule, on a documentation check. Everything
 that decides whether the code is correct was advisory: the typecheck, lint, format, PHI-scan, test,
@@ -21,4 +22,7 @@ implying cover it does not have.
 Stated narrowly: this makes a red check binding. It does not make a check correct, and it is not
 observable from inside the package.
 
-No library code, public export, issue code, mapping or emitted FHIR value changed.
+No library code, public export, issue code, mapping or emitted FHIR value changed. Nothing here is
+observable by someone installing this package, which is why the opening sentence names the internal
+gates by the words the shared release-note renderer classifies as internal-only: the entry records
+the patch bump and is dropped from the published release body rather than reworded into it.

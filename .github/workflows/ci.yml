@@ -15,22 +15,25 @@ permissions:
 
 jobs:
   # ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-  # │ A REQUIRED JOB GATES ALL OF ITS STEPS. The `ci-required-checks` ruleset on this repo     │
-  # │ (id 19914044) requires the CONTEXTS `ci / verify (22, ubuntu-latest)`,                   │
-  # │ `ci / verify (24, ubuntu-latest)` and `ci / actionlint`. Every gate the shared pipeline  │
-  # │ runs (typecheck, lint, format:check, PHI scan, test, gating coverage, build, attw, dual  │
-  # │ ESM/CJS smoke) is a STEP inside `verify`, and is required only because that job is.      │
-  # │ Promote any one of them to its own job and it is silently NO LONGER REQUIRED: the        │
-  # │ ruleset names contexts, the new context is not in it, and nothing anywhere errors or     │
-  # │ warns. If you split a step out, add its context to the ruleset in the same change.       │
+  # │ A REQUIRED JOB GATES ALL OF ITS STEPS. The `ci-required-checks` ruleset on this repo (id │
+  # │ 19914044) requires the CONTEXTS `ci / verify (22, ubuntu-latest)`, `ci / verify (24,     │
+  # │ ubuntu-latest)` and `ci / actionlint`. Every gate the shared pipeline runs (typecheck,   │
+  # │ lint, format:check, PHI scan, test, gating coverage, build, attw, dual ESM/CJS smoke) is │
+  # │ a STEP inside `verify`, and is required only because that job is. Promote any one of     │
+  # │ them to its own job and it is silently NO LONGER REQUIRED: the ruleset names contexts,   │
+  # │ the new context is not in it, and nothing anywhere errors or warns. If you split a step  │
+  # │ out, add its context to the ruleset in the same change.                                  │
   # │                                                                                          │
   # │ AND THE GATE CAN LEAVE THE JOB ENTIRELY, WHICH IS THE SHARPER EDGE HERE. Requiring       │
   # │ `verify` pins that `pnpm test` RUNS. It does not pin WHAT IT RUNS. The suites are        │
-  # │ selected by the `include` glob in this repo's `vitest.config.ts`, and that includes the  │
-  # │ property + fuzz suites (`test/messages/property.test.ts`,                                │
-  # │ `test/datatypes/boundary.property.test.ts`) that carry the never-throw, value-free-issue │
-  # │ and emit-validity claims. Narrow that glob and those suites vanish with this job still   │
-  # │ green and the ruleset still satisfied. There is a banner on `vitest.config.ts` too.      │
+  # │ selected by the `include` glob in this repo's `vitest.config.ts`, which today picks up   │
+  # │ the property + fuzz suites (`test/messages/property.test.ts`,                            │
+  # │ `test/datatypes/boundary.property.test.ts`) carrying the never-throw, value-free-issue   │
+  # │ and emit-validity claims. THAT GLOB IS NOT THE ONLY LEVER: the `test`/`test:coverage`    │
+  # │ script bodies in `package.json` are plain `vitest run` invocations, and a path argument  │
+  # │ or `--exclude` added there drops suites without touching the glob. Narrow either and     │
+  # │ those suites vanish with this job still green and the ruleset still satisfied. There is  │
+  # │ a banner on `vitest.config.ts` too.                                                      │
   # └──────────────────────────────────────────────────────────────────────────────────────────┘
   #
   # Universal gates from the shared pipeline (typecheck, lint, format, test, coverage, build, attw,

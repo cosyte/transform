@@ -221,8 +221,12 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
   rulesets was. One ruleset per repo is one place to audit. Final state, read back live: five
   contexts, each pinned to `integration_id: 15368`; `bypass_actors: []`; `~DEFAULT_BRANCH`; plus
   `deletion` and `non_fast_forward`.
-  - **The context names were read off real check runs, on two independent `pull_request` heads**
-    (`66715e5b`, head of #11; `460bfcf8`, head of #7), never off a workflow `name:` field. The
+  - **The context names were read off real check runs**, never off a workflow `name:` field.
+    Provenance stated exactly, because "two heads" is not true of all five: the four build contexts
+    were read off **two** independent `pull_request` heads (`66715e5b`, head of #11; `460bfcf8`,
+    head of #7); `no-internal-refs` could only be read off `66715e5b`, since `460bfcf8` predates the
+    workflow that emits it. All five were then confirmed together on `57a62b2`, the head of this
+    change's own PR, which went `BLOCKED` until they landed and `CLEAN` after. The
     workflow named `Public-surface gate` emits the context `no-internal-refs`, and requiring a name
     nothing emits leaves every PR **pending**, not failing, forever. `scorecard / analysis` and
     `release / release` are excluded because neither has a `pull_request` trigger; the Advanced
@@ -231,8 +235,11 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
   - **What the ruleset still does not protect, measured rather than asserted.** A required _job_
     gates its _steps_, but the suites that job runs are chosen by the `include` glob in
     `vitest.config.ts`, and the shared `@cosyte/vitest-config` sets no `test.include` of its own, so
-    that single line decides. Narrow it and `test/messages/property.test.ts` stops running with the
-    job green. Coverage is a thin, incidental backstop: excluding that one file takes
+    that line decides today. It is not the only lever: the `test`/`test:coverage` script bodies in
+    `package.json` are plain `vitest run` invocations, and a path argument or `--exclude` added
+    there drops suites without touching the glob. Narrow either and
+    `test/messages/property.test.ts` stops running with the job green. Coverage is a thin,
+    incidental backstop: excluding that one file takes
     `src/messages/**` branch coverage from **90.11% to 88.82%**, breaching the `>= 90` gate, so the
     deletion is caught today, by 1.29 points, over the incidental fact that the property run is the
     only thing reaching some branches, and never for the loss of the properties themselves. Banners
@@ -253,6 +260,18 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
     `verify.sh` stays green, and the docs keep asserting protection. `CLAUDE.md` gained a "Branch
     protection (and the limits of this claim)" section that says so and gives the `gh api` calls,
     including `?includes_parents=true`, because checking one ruleset is how `ncpdp` was missed.
+  - **The changeset for this entry is deliberately not consumer-facing.** None of the above is
+    observable by someone installing the package, so its headline names `CodeQL`, `actionlint` and
+    `Dependabot`, which the shared `cosyte/.github` release-note renderer classifies as internal-only
+    and **drops from the published release body** rather than rewording into it. Verified by running
+    that renderer's `collectHeadlines` over this repo's eight pending changesets: seven kept, this
+    one dropped. Recorded because the earlier wording said the same thing in words the classifier
+    does not know, and would have published it.
+  - **Also noted, not fixed here:** three of the five required names
+    (`ci / verify (22|24, ubuntu-latest)`, `ci / actionlint`) are produced by the DEFAULT inputs of
+    `cosyte/.github/.github/workflows/ci.yml@main`, a different repo on a floating ref. Changing a
+    default there strands every PR in every repo pinning this set. Fails closed, ecosystem-wide,
+    and written into `CLAUDE.md`.
 - **PUBLIC-SURFACE-HYGIENE: internal project bookkeeping removed from every surface a consumer
   reads, and a gate added under it.** Founder directive, 2026-07-27: a README, a docs page, an npm
   description, a JSDoc block a consumer's editor renders, and a message their log prints say what
