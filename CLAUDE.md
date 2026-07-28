@@ -68,12 +68,115 @@ a summary.
 - **Lint/format:** **ESLint 10** + unified `typescript-eslint` (type-checked) via
   `@cosyte/eslint-config`; Prettier via `@cosyte/prettier-config`. Lint at `--max-warnings=0`.
 - **Testing:** **Vitest 4** + v8 coverage (`@cosyte/vitest-config`), per-directory >= 90 gates on
-  `src/datatypes`, `src/diagnostics`, `src/terminology`. Property + fuzz over the datatype boundary
-  (`fast-check`): never-throw, registered value-free issues, and an emit gate (produced datatypes
-  validate under `@cosyte/fhir.validateResource` when embedded in a host resource).
-- **CI/CD:** thin callers of the reusable `cosyte/.github` workflows.
+  `src/datatypes`, `src/diagnostics`, `src/terminology` and `src/messages`. Property + fuzz
+  (`fast-check`) over **two** boundaries: the datatype boundary
+  (`test/datatypes/boundary.property.test.ts`) and the message boundary
+  (`test/messages/property.test.ts`): never-throw, only registered value-free issues, no dangling
+  `urn:uuid:` reference, and an emit gate (what is produced validates under
+  `@cosyte/fhir.validateResource`). **Which suites run is decided by the `include` glob in
+  `vitest.config.ts` and by nothing else.** See "Branch protection" below for why that matters.
+- **CI/CD:** thin callers of the reusable `cosyte/.github` workflows, plus one repo-local job
+  (`no-internal-refs`). **The checks BIND**; see "Branch protection" below.
 - **Runtime deps:** **Zero third-party.** `@cosyte/hl7` + `@cosyte/fhir` are peer deps (ADR 0001).
 - **License:** MIT.
+
+## Branch protection (and the limits of this claim)
+
+`main` is protected by the repository ruleset **`ci-required-checks`** (id `19914044`,
+`source_type: Repository`, `enforcement: active`, conditions `~DEFAULT_BRANCH`, `bypass_actors: []`).
+Rules: `deletion`, `non_fast_forward`, `required_status_checks`.
+
+**It did not always bind, and the half-done state is the thing to recognise.** This repo had no
+ruleset at all until `PUBLIC-SURFACE-HYGIENE` (#11) created `19914044` requiring exactly one context,
+`no-internal-refs`. From that point the repo _had a ruleset_ and still did not gate its build:
+`ci / verify`, `ci / actionlint` and `codeql` were all advisory, so any of them could be red and the
+merge still landed on `main`, and `main` is the branch that publishes. **Having a ruleset is not the
+same as being protected.** `CI-REQUIRED-CHECKS` folded the four build contexts into that same ruleset
+rather than adding a second one, deliberately: `ncpdp` is the cautionary case, where a correctly
+pinned base ruleset sat beside two later rulesets that pinned nothing, and the repo read as "pinned"
+because one of its rulesets was. **One ruleset per repo means one place to audit.**
+
+Required contexts, each pinned to **`integration_id: 15368`** (the `github-actions` app) so that a
+commit status of the same name posted by any other actor with write access cannot satisfy it:
+
+| context                                    | emitted by             |
+| ------------------------------------------ | ---------------------- |
+| `ci / verify (22, ubuntu-latest)`          | `ci.yml`               |
+| `ci / verify (24, ubuntu-latest)`          | `ci.yml`               |
+| `ci / actionlint`                          | `ci.yml`               |
+| `codeql / analyze (javascript-typescript)` | `codeql.yml`           |
+| `no-internal-refs`                         | `no-internal-refs.yml` |
+
+These are the names GitHub actually reports, **read off real check runs on two independent
+`pull_request` heads** (`66715e5b`, the head of #11, and `460bfcf8`, the head of #7), never off a
+workflow's `name:` field. That distinction is the whole trap: the workflow named `Public-surface gate`
+emits the context `no-internal-refs`, and requiring a context nothing emits does not fail a PR, it
+leaves it **pending and unmergeable forever**. None of the three workflows that emit these five
+contexts (`ci.yml`, `codeql.yml`, `no-internal-refs.yml`) carries a `paths:` filter, so no PR can
+skip one.
+
+**What is deliberately NOT required, and why each would be a defect:**
+
+- **`scorecard / analysis`** runs on `push` to `main` and on a schedule, never on `pull_request`.
+  Requiring it would strand every PR pending forever.
+- **`release / release`** runs on `push` to `main`. It is not a PR gate.
+- The **`CodeQL`** check posted by the Advanced Security app (id `57789`) reports **alert state**, not
+  whether the analysis ran. `codeql / analyze (javascript-typescript)` already gates that.
+
+**A required job gates all of its steps.** Splitting a step out of `ci / verify` into its own job
+silently un-requires it, with no error and no warning. There is a banner on `ci.yml` where someone
+would trip it.
+
+**And the gate can leave the job entirely, which is the sharper edge in this repo.** Requiring
+`ci / verify` pins that `pnpm test` runs; it does not pin _what_ it runs. The suites are chosen by the
+`include` glob in `vitest.config.ts`, and the shared `@cosyte/vitest-config` sets no `test.include` of
+its own, so that one line decides. It is what selects `test/messages/property.test.ts` and
+`test/datatypes/boundary.property.test.ts` -- the property and fuzz suites carrying the never-throw,
+value-free-diagnostic, reference-resolution and emit-validity claims that are the point of the
+fail-safe rule. **Narrow that glob and they stop running with the job still green and the ruleset
+still satisfied.** The ruleset does not protect them; it protects the job that happens to run them.
+There is a banner on `vitest.config.ts` saying so.
+
+The per-directory coverage gate is a **thin, incidental** backstop and should not be mistaken for a
+real one. Measured on `dfc7739`: excluding `test/messages/property.test.ts` alone takes
+`src/messages/**` branch coverage from **90.11% to 88.82%**, which breaches the `>= 90` gate, so that
+particular deletion is caught today. It is caught by a 1.29-point margin, because the property run
+happens to be the only thing reaching some branches -- any example test covering them restores the
+margin and the backstop goes quiet. And coverage can never see the loss of the **properties**
+themselves, since a trivial test touching the same lines satisfies it identically.
+
+**▶ The cost of requiring a new context, which is real and was measured here.** A PR whose branch
+predates a required workflow cannot emit that workflow's context, so it goes `BLOCKED` until it is
+rebased or re-run. **PR #10 ("Version Packages", head `2996df7`) has zero check runs and reports
+`BLOCKED`** -- and it is the structural case, not a stale branch: Changesets opens that PR as
+`github-actions[bot]` with the default `GITHUB_TOKEN`, and GitHub does not start workflow runs for
+that token's events. With `bypass_actors: []` nobody can merge past it. The escape is one empty
+commit onto `changeset-release/main`; it is written out on `release.yml`.
+
+**▶ Scope of the claim, stated plainly: a ruleset makes a red check BLOCK a merge. It does not make
+the check correct, and nothing inside this repository can observe its own ruleset.** Delete the
+ruleset and this test suite stays green, `verify.sh` stays green, and this section keeps asserting
+protection. It is not verifiable from inside the repo, by `verify.sh`, or by any gate here. Verify it
+the only way that works, and check **every** ruleset the call returns:
+
+```bash
+gh api 'repos/cosyte/transform/rulesets?includes_parents=true'
+gh api repos/cosyte/transform/rulesets/19914044
+```
+
+Recorded as **unproven** rather than fine: no fork PR has ever run here, so neither the
+first-time-contributor approval gate nor whether `codeql / analyze` can report on a fork token (which
+cannot hold `security-events: write`) has been observed.
+
+## Dependency watching
+
+`.github/dependabot.yml` configures weekly `npm` and `github-actions` updates. Before it existed this
+repo showed **zero** open Dependabot PRs, which meant nothing was looking, not that nothing was stale.
+Two limits are written into that file rather than left to be discovered: automatic **security** update
+PRs are a repo setting that currently reads `disabled`, and **Dependabot never resolves a
+`file:vendor/*.tgz` specifier**, so the vendored `@cosyte/hl7` and `@cosyte/fhir` tarballs -- the
+versions the tests actually exercise -- are unwatched by both the `file:` route and the peer-dep route
+and stay a `pnpm vendor:refresh` job by hand.
 
 ## Engineering Guardrails
 
