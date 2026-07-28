@@ -1,6 +1,6 @@
 /**
  * The `$translate`-shaped ConceptMap-application engine + the **license-clean** v2-table → FHIR
- * value maps it applies (roadmap §Phase 6). This is the layer that value-**translates** a coded v2
+ * value maps it applies. This is the layer that value-**translates** a coded v2
  * field — not merely carrying its code structurally, but mapping the source table code to the FHIR
  * target coding the IG's segment-map `mappedVia` ConceptMap prescribes.
  *
@@ -11,14 +11,14 @@
  * target** for (its `(unmapped)` group) is never coerced to a plausible neighbor — the caller flags it
  * and preserves the raw coding, or withholds the value, but a target is **never fabricated**.
  *
- * **License posture (§5).** Only maps whose target CodeSystem is **freely redistributable** are
+ * **License posture.** Only maps whose target CodeSystem is **freely redistributable** are
  * shipped here: the HL7 THO v2 tables (`v2-0162`, `v2-0550`, `v2-0277`, `v2-0161`) and HL7 v3
  * (`v3-RouteOfAdministration`) are HL7's own, license-clean. The IG's `*-to-sct` value maps —
  * **RXR-4 method** (`table-hl70165-to-sct`) and **SCH-7 reason** (`table-hl70276-to-sct`) — translate
  * **into SNOMED CT**, which is **license-encumbered and is NOT bundled**; those fields stay
  * structurally carried (BYO ConceptMap), never value-translated here (see their message modules).
  *
- * **Additive, never mutating (§Phase 6).** A successful translation preserves the raw source coding
+ * **Additive, never mutating.** A successful translation preserves the raw source coding
  * (its code, display, version, and any `CWE.4/5/6` alternate triplet) and *adds* the derived target
  * coding — recognition never overwrites or discards what the message said; it augments it with the
  * IG-mapped equivalent. And it only fires when the field's primary coding is genuinely from the map's
@@ -80,7 +80,7 @@ export interface CodedValueMap {
    * coding is from the bound table: CWE.3 absent/empty (a positionally-bound bare code) **or** CWE.3 ∈
    * this set. A CWE that declares a **different** coding system (a local `99…`, or SNOMED) is not a
    * source-table code, so the map is not applied to it — the raw coding is carried structurally + its
-   * system flagged, never asserted as the standard concept. (roadmap §4.3, §Phase 6)
+   * system flagged, never asserted as the standard concept.
    */
   readonly sourceMnemonics: ReadonlySet<string>;
   /** Translate a source table code to its FHIR target, or `undefined` when the IG map has no target. */
@@ -746,7 +746,7 @@ export function codeableConceptFromTarget(target: CodedTarget, text?: string): F
 /**
  * Value-translate a coded v2 element to a FHIR `CodeableConcept` **via** a license-clean
  * {@link CodedValueMap}, **additively** and fail-safe — never mutating or discarding what the message
- * said (roadmap §Phase 6):
+ * said:
  *
  * - **Primary code recognized as a bound-table code** ({@link translateBound} — CWE.3 absent or names
  *   the bound table, and the code is in the IG map's mapped group) → the **primary** coding is emitted

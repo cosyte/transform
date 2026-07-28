@@ -209,6 +209,44 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Changed
 
+- **PUBLIC-SURFACE-HYGIENE: internal project bookkeeping removed from every surface a consumer
+  reads, and a gate added under it.** Founder directive, 2026-07-27: a README, a docs page, an npm
+  description, a JSDoc block a consumer's editor renders, and a message their log prints say what
+  the software does and what changed, never which internal item, phase or roadmap section produced
+  it. Measured on `e6c4531` with the rule set that ships in this change, because a count taken
+  against different rules is a different count: **32** violating lines across the public markdown
+  surface (`README.md`, `docs-content/intro.md`, `concepts-archetype.md`, `quickstart.md`,
+  `guides-overview.md`, `troubleshooting.md`, all of them "Phase N" framing; **zero** item
+  identifiers, and zero on the npm metadata) and **54** `src/` doc-comment lines plus **29** blocks
+  that matched only once reflowed across their line wraps. The built `dist/index.d.ts` went from
+  **45** violating lines to **0**, and `dist/index.d.cts` and the ESM/CJS bundles with it.
+  Separately, and **not** found by any rule: one runtime message string, where
+  `TRANSFORM_ELEMENT_DROPPED` told a reader an element's conversion was "deferred to a later phase".
+  It ends its clause at `phase`, which is the shape the rules deliberately do not cover, so it was a
+  reviewer catch. **51** `src/` doc-comment lines carried a roadmap-section citation
+  (`(roadmap §4.5)`, `(roadmap §Phase 5)`, or the bare `(§4.7)`) and were cleared by hand; 23 of
+  those overlap the 54 counted above, so the union of the two sweeps is 82 lines, not 105. Of the
+  51 citations, 20 name the roadmap explicitly and a rule now catches them, 4 read `§Phase N` and
+  are caught by the ordinary phase rule, and the remaining **28** are bare section numbers that
+  nothing guards; that non-catch is deliberate and its reasoning is recorded in the script. Two `§`
+  citations remain in `//` comments, which this convention keeps out of scope.
+- **`pnpm check:no-internal-refs` + its own CI workflow now gate that rule.** Four passes over the
+  README, `LICENSE`, `docs-content/`, the npm `description`/`keywords`, `src/` doc comments and
+  `src/` string literals, each scanned line by line and again paragraph-joined so a violation that
+  straddles a line wrap cannot hide. It is `hl7`'s gate ported shape-first, with `ncpdp`'s
+  string-literal fourth pass; the prefix list is `hl7`'s character for character, and the three rule
+  widenings on top of it (`phases?`, `/` in the ADR separator, `roadmap §N`) are each named in the
+  script and pinned by their own self-test. **The gate raises the floor; it does not seal the
+  category,** and the script writes down thirteen numbered residuals plus the boundaries stated at
+  each pass, rather than implying otherwise. The four worth knowing here: `phase` ending a clause
+  ("deferred to a later phase);") is not covered; a bare `(§4.7)` is a deliberate non-catch; a doc
+  comment that does not open its own line is invisible to the doc-comment extractor (residual (xi),
+  inherited from `hl7`) and a violation split across a template literal's line breaks is invisible
+  to the string-literal extractor (stated at that pass, which comes from `ncpdp` rather than `hl7`),
+  neither of them reachable on this tree today; and prose about our process stays a reviewer's
+  catch. `CHANGELOG.md` is excluded on purpose even though it ships inside the npm
+  tarball: this convention names it as one of the places identifiers belong. That contradiction is
+  ecosystem-wide and is recorded rather than settled here.
 - **Replaced the parser-template scaffold** with the transformation shape: removed the placeholder
   `parseTransform` / `WARNING_CODES` / `FATAL_CODES` parser stubs and the round-trip property test;
   rewrote `docs-content/`, `README`, and this repo's `CLAUDE.md` for the transformation library.

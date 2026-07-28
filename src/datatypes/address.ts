@@ -1,5 +1,5 @@
 /**
- * XAD → FHIR `Address` (roadmap §4.5).
+ * XAD → FHIR `Address`.
  *
  * Grounded on the IG datatype ConceptMap **XAD → Address**: `XAD.1`/`XAD.2`→`line`, `XAD.3`→`city`,
  * `XAD.4`→`state`, `XAD.5`→`postalCode`, `XAD.6`→`country`, `XAD.9` (county/parish)→`district`, and
@@ -7,7 +7,7 @@
  * - `XAD.7 IN {BA, BI, C, B, H, O}` → `Address.use` (via the IG **HL70190 → address-use** map);
  * - `XAD.7 IN {M, SH}` → `Address.type` (via the IG **HL70190 → address-type** map);
  * - a vacation address (`V` in Table 0190; the datatype map references `HV`) → an ISO-21090 extension
- *   the IG defines — **deferred** in Phase 1 and flagged rather than invented;
+ *   the IG defines — **not emitted**, and flagged rather than invented;
  * - any other code → `use`/`type` left absent, flagged {@link ISSUE_CODES.TRANSFORM_ADDRESS_USE_UNMAPPED}.
  *
  * FHIR deliberately separates `use` (home/work/temp) from `type` (postal/physical), so one v2 code

@@ -1,5 +1,5 @@
 /**
- * ORC + OBR → FHIR `ServiceRequest` — the order-entry request (roadmap §Phase 4), grounded firsthand
+ * ORC + OBR → FHIR `ServiceRequest` — the order-entry request, grounded firsthand
  * on the IG **Segment ORC to ServiceRequest** and **Segment OBR to ServiceRequest** ConceptMaps and
  * the **Table HL70119 to Request Status** ConceptMap (`hl7.fhir.uv.v2mappings`, STU1;
  * `ConceptMap-segment-orc-to-servicerequest.html`, `ConceptMap-segment-obr-to-servicerequest.html`,
@@ -38,7 +38,7 @@
  * - **`subject` (required 1..1).** Wired to the bundle's Patient; a request with no resolvable Patient
  *   is withheld rather than emitted with a dangling/absent subject.
  *
- * - **`priority` (0..1) — value-translated (Phase 6).** OBR-5 → `ServiceRequest.priority` via the IG
+ * - **`priority` (0..1) — value-translated.** OBR-5 → `ServiceRequest.priority` via the IG
  *   **Table HL70485 to Request Priority** ConceptMap ({@link SERVICE_REQUEST_PRIORITY_MAP}): only
  *   `S→stat`, `A→asap`, `R→routine` carry a target (each `equivalent`, and all three are valid
  *   `request-priority` members). Every other v2-0485 code — `P`, `C`, `T`, the `T{S,M,H,D,W,L}<integer>`

@@ -98,7 +98,7 @@ export const ISSUE_REGISTRY: Readonly<Record<IssueCode, IssueMeta>> = Object.fre
     severity: "information",
     fhirIssueType: "informational",
     message:
-      "populated source element was not carried to its FHIR target (no target in this map, or its conversion is deferred to a later phase); dropped.",
+      "populated source element was not carried to its FHIR target (no target in this map, or its conversion is not implemented); dropped.",
   },
   [ISSUE_CODES.TRANSFORM_NAME_USE_UNMAPPED]: {
     severity: "information",

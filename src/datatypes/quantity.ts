@@ -1,5 +1,5 @@
 /**
- * NM + units (CWE) → FHIR `Quantity` (roadmap §4.6).
+ * NM + units (CWE) → FHIR `Quantity`.
  *
  * Grounded on the IG datatype maps for OBX-5 (NM)→`Quantity.value` and OBX-6 (CWE units)→
  * `Quantity.unit`/`.code`/`.system`. Two hard fail-safes:
@@ -66,8 +66,8 @@ export function toFhirQuantity(
 /**
  * Build a FHIR `Quantity` from a **raw lexical magnitude string** plus its units, fail-safe on both
  * the magnitude and the unit, with an optional `Quantity.comparator`. This is the shared core behind
- * {@link toFhirQuantity} (NM) and the SN → `valueQuantity`/`valueRange`/`valueRatio` observation path
- * (§4.7): both must carry the magnitude through **precision-exact** as a string-backed `decimal` and
+ * {@link toFhirQuantity} (NM) and the SN → `valueQuantity`/`valueRange`/`valueRatio` observation path.
+ * Both must carry the magnitude through **precision-exact** as a string-backed `decimal` and
  * apply the identical no-fabricated-UCUM unit gate — so they share one implementation rather than two
  * that could drift.
  *

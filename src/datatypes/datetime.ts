@@ -1,5 +1,5 @@
 /**
- * DTM / TS → FHIR `dateTime` — the single most dangerous conversion (roadmap §4.1).
+ * DTM / TS → FHIR `dateTime` — the single most dangerous conversion.
  *
  * Grounded on the IG datatype ConceptMap **DTM → dateTime** (`DTM.1` *is equivalent to* the FHIR
  * `dateTime.$value`, with the instruction to "convert v2 date time format to FHIR date time format")

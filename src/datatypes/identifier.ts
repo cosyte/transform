@@ -1,10 +1,10 @@
 /**
- * CX → FHIR `Identifier` — the patient-identity-integrity path (roadmap §4.2).
+ * CX → FHIR `Identifier` — the patient-identity-integrity path.
  *
  * Grounded on the IG datatype ConceptMap **CX → Identifier**: `CX.1` → `Identifier.value`, `CX.4`
  * (assigning authority HD) → `Identifier.system` *when the authority resolves in a registry* (else
- * the IG maps it to `Identifier.assigner` — a message-level Organization reference, deferred to a
- * later phase), and `CX.5` (Table 0203) → `Identifier.type`.
+ * the IG maps it to `Identifier.assigner` — a message-level Organization reference this library does
+ * not build), and `CX.5` (Table 0203) → `Identifier.type`.
  *
  * The load-bearing fail-safe: the assigning authority is resolved through the
  * {@link NamingSystemRegistry}, which **never synthesizes a system URI from HD.1 (the bare namespace)

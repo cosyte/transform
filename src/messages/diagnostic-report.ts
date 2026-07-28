@@ -1,5 +1,5 @@
 /**
- * OBR → FHIR `DiagnosticReport` — the ORU results-report anchor (roadmap §Phase 3), grounded firsthand
+ * OBR → FHIR `DiagnosticReport` — the ORU results-report anchor, grounded firsthand
  * on the IG **Segment OBR to DiagnosticReport** ConceptMap and its **Table HL70123 to Diagnostic Report
  * Status** ConceptMap (`hl7.fhir.uv.v2mappings`, STU1;
  * `ConceptMap-segment-obr-to-diagnosticreport.html`,
@@ -24,8 +24,7 @@
  * `final`. `OBR-25 = C`→`corrected` / `X`→`cancelled` are modelled exactly. OBR-22 becomes `issued`
  * only when it is a fully-zoned instant; a date-only/naked OBR-22 is dropped + flagged (never a
  * fabricated UTC), mirroring `Bundle.timestamp`. Deferred and flagged elsewhere, not silently mapped:
- * OBR-32/34/35 performers (need PractitionerRole resources), specimen, and `basedOn` ServiceRequest
- * (Phase 4).
+ * OBR-32/34/35 performers (need PractitionerRole resources), specimen, and `basedOn` ServiceRequest.
  *
  * @packageDocumentation
  */
