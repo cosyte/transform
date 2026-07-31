@@ -328,6 +328,13 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Fixed
 
+- **The README no longer says this package is unpublished.** It is on npm, and the sentence sat a
+  few lines above the page's own `npm install` instructions, so the page contradicted itself and a
+  reader had no way to tell which half was current. On the npm page it was worse: the same sentence
+  rendered directly beneath npm's own header, which shows the version being served. The replacement
+  names no version deliberately. A version written into prose is the part that goes stale, and the
+  registry is the only thing that knows which one is current.
+
 ### Security
 
 [Unreleased]: https://github.com/cosyte/transform/commits/main
