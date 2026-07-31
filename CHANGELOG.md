@@ -14,6 +14,13 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Added
 
+- **A brand image at the top of `README.md`.** The page opens with the Cosyte lockup, served as a
+  `<picture>` with a light and a dark source so it follows the reader's theme, and carrying alt text
+  that describes the mark for anyone reading with images off or a screen reader on. The block is
+  copied byte for byte from the `hl7` README, which is the reference the suite mirrors, so the eight
+  repos that carry it stay identical rather than drifting into eight hand-typed variants. Nothing
+  else on the page moved: the title, the summary blockquote and every code sample are unchanged, and
+  no API, issue code, mapping or transformed value differs.
 - **Phase 6 — terminology value translation of coded fields** (roadmap §Phase 6). Coded fields that
   earlier phases carried **structurally** (code preserved, system recognized) are now
   **value-translated** through their IG segment-map `mappedVia` ConceptMaps. Adds a `$translate`-shaped,
