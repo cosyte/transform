@@ -1,6 +1,6 @@
 {
   "name": "@cosyte/transform",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "HL7 v2 → FHIR R4 transformation library for Node.js and TypeScript — IG-grounded, fail-safe, value-free diagnostics; never a confident wrong FHIR value.",
   "keywords": [
     "hl7",
