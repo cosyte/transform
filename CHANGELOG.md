@@ -14,6 +14,71 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Fixed
 
+- **The PHI scanner read a symbolic link as clean on BOTH of its enumerating routes, so a link
+  under a scan root pointing at a file full of PHI passed the commit gate**
+  (`PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES`; port of the graded fix in `terminology#37`, `5f81640`).
+  Measured on this repo's own scanner before the fix, over a link under `src/` pointing at a
+  name-bearing synthetic payload: all-mode printed `OK — no hits` and exited **0**, and `--staged`
+  did too. The walk enumerates `Dirent.isFile()`, which is an lstat answer, so a link is neither a
+  file nor a directory and fell out of the loop whatever it pointed at — and a linked _directory_
+  took its whole subtree with it. `--staged` reads content with `git show :<path>`, and git stores a
+  link as its **target path** under mode `120000` (`git ls-files --stage` read `120000` on it), so
+  that route was handed the path text and never the target's bytes.
+
+  **The remedy is to narrow the enumeration and follow nothing it enumerates.** Every entry the scan
+  enumerates, and every path named directly, is now **refused** if it is not a regular file (exit 2,
+  the existing "could not complete" code) rather than being silently skipped. Following such an entry was rejected on purpose: it would read bytes the
+  enumeration does not control (outside the repo, a loop, a device, a FIFO that blocks the gate
+  forever), and git does not carry those bytes anyway, so a hit on them would be a claim about
+  something no commit contains.
+
+  **The third mode — a named `<path>` — was not blind, and it is fixed in the same pass because the
+  invariant has to hold for the whole scanner.** It classified with `statSync`, which
+  **dereferences**, so `pnpm phi-scan src/link.ts` read the target's bytes and reported the hits it
+  found there, including for a target **outside the repository**. That is never a false clean, which
+  is why reading the code does not catch it; it made the scanner's stated rule weaker than one of its
+  own routes. It lstats now and refuses through the same closed set. A dangling link is reported as
+  the link it is rather than as a missing file, because `existsSync` follows.
+
+  **Stated precisely, because a looser wording of it was measured false twice: `lstat` answers for
+  the final path component only.** A named path whose **ancestor** component is a symlink is still
+  followed and still read, and so is a plain absolute or `../` argument. Both predate this change and
+  neither is narrowed by it; they are listed with the other residuals below rather than closed,
+  because closing them means realpath or containment logic, which is a guard growing past the defect
+  it fixes. Neither of the two routes that gate a commit — the pre-commit hook and the walk CI runs —
+  reaches either.
+
+  **`--diff-filter` now admits `T`, and leaving it out is what made the mode check unreachable on a
+  tracked file.** Replacing a tracked regular file with a link is neither an add nor a modify:
+  measured here, `git diff --cached --raw --diff-filter=AM` printed **nothing** for that change
+  while the unfiltered `--raw` printed `:100644 120000 <sha> <sha> T`. Under an `AM` filter the
+  record died before any mode could be read and the hook passed a mode-`120000` blob green.
+  Admitting `T` also covers the reverse typechange — a tracked link replaced by a real file bearing
+  PHI, which is a scan that must happen rather than a refusal. The route reads
+  `git diff --cached --raw -z` so the destination mode is visible at all, and a record it cannot
+  parse refuses rather than shortening the list silently.
+
+  **A refusal names every offender by its own repo-relative path plus an engine-owned kind token,
+  and never the link target.** A target path is working-tree text that can itself carry PHI — a
+  target of the shape `<surname>-<given>-<dob>.txt` is the whole reason, written out as a shape
+  rather than an example because a diagnostic about a PHI leak is itself a PHI surface. The scope of
+  each route is unchanged: the walk still excludes a gitignored entry (so links get no second,
+  stricter boundary of their own) and `--staged` still only looks at `test/fixtures/**` and
+  `src/**.ts`. This narrows what those scopes admit; it does not widen them. The walk itself has no
+  extension scope — it skips regular `*.md` as documentation and takes everything else — so a link at
+  `src/leak.json`, and a linked directory, are refused there too.
+
+  **Three residuals are disclosed rather than closed** — the ancestor-component and absolute/`../`
+  reads above, plus two inherited from the graded reference and
+  re-measured here. `R`/`C` rename and copy records are still not enumerated by `--staged` at all —
+  admitting them needs the two-path record shape handled, which is a scope decision of its own; the
+  stride desync a stray one would cause refuses rather than mis-parses. That residual is reachable by
+  an ordinary action rather than only in principle: `git mv` into a scanned prefix raises `R100`,
+  which the filter drops, so the pre-commit hook reports clean over a staged PHI-bearing file — on
+  the old scanner and on this one alike. The all-mode walk that CI runs does catch it, so the
+  exposure is a local commit or a pushed branch, not a merge. And this scanner has no
+  refuse-a-scan-that-observed-nothing rule, so an empty enumeration still reports clean.
+
 - **The `attw` publish gate passed an untyped pack, so a tarball with no type declarations in it
   would have merged and published as green** (`ATTW-FALSE-GREEN-PORT`; port of the graded fix in
   `terminology#28`, `bf153cb`). `@arethetypeswrong/cli@0.18.4` opens `getExitCode()` with

@@ -264,6 +264,66 @@ return 0` — an untyped package is a legitimate npm package, so "no types at al
   left rather than writing a count down:
   `rg -l --glob '**/package.json' '"attw":' /workspace`.
 
+- **▶ THE PHI SCANNER REFUSES (exit 2) EVERY ENTRY IT ENUMERATES, AND EVERY PATH NAMED DIRECTLY, THAT
+  IS NOT A REGULAR FILE. THAT IS THE WHOLE CLAIM — "it follows nothing" IS THE LOOSER WORDING, AND
+  TWO SEPARATE REFUTER PASSES MEASURED IT FALSE.** See the ancestor-component residual below before
+  you tighten this sentence back up.
+  Before `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (ported from `terminology#37`, `5f81640`) a symbolic
+  link was clean on **both** enumerating routes, measured on this repo's own scanner over a link under
+  `src/` pointing at a name-bearing synthetic payload: all-mode printed `OK — no hits` / exit **0**,
+  and so did `--staged`. The walk enumerates `Dirent.isFile()`, an **lstat** answer, so a link is
+  neither a file nor a directory — and a linked _directory_ takes its whole subtree with it.
+  `--staged` reads `git show :<path>`, and **git stores a link as its TARGET PATH under mode
+  `120000`**, so that route gets the path text, never the target's bytes.
+  **Do not "fix" this by following the link.** Following reads bytes the enumeration does not control
+  (outside the repo, a loop, a device, a FIFO that blocks the gate forever), and git does not carry
+  them anyway, so a hit on them would be a claim about something no commit contains.
+  **▶ AND THE THIRD MODE IS THE ONE A DRAFT OF THIS GUARDRAIL GOT WRONG — IT SAID "FOLLOWS NOTHING"
+  WHILE ONE ROUTE STILL FOLLOWED.** A refuter measured it: the named-`<path>` mode classified with
+  `statSync`, which **dereferences**, so `pnpm phi-scan src/link.ts` read the TARGET's bytes and
+  reported hits from them — including a target **outside the repository**, the first hazard the
+  sentence above says the scanner does not incur. It was never a false clean, which is exactly why
+  reading the code did not catch it. It lstats now; **if you touch `buildTargetsForPaths`, re-measure
+  the sentence, do not re-assert it.** A dangling link is reported as the link it is, because
+  `existsSync` follows and would call it a missing file.
+  **▶ AND `lstat` ANSWERS FOR THE FINAL COMPONENT ONLY — a second refuter pass measured that too,
+  after the first fix.** A named path whose **ancestor** is a symlink (`src/linkdir/payload.txt`) is
+  still followed and still read from wherever that ancestor lands, as is a plain absolute or `../`
+  argument. The all-mode walk over the same tree **does** refuse that ancestor, so the two routes
+  disagree about one link. **Pre-existing, disclosed, and deliberately NOT closed:** closing it means
+  realpath or containment logic, which is a guard growing past the defect it fixes, and neither
+  commit-gating route (the `--staged` pre-commit hook, the all-mode walk CI runs) reaches it.
+  **▶ THE ONE-LETTER TRAP: `--diff-filter` MUST KEEP `T`.** Replacing a **tracked** file with a link
+  is neither an add nor a modify. Measured here, `git diff --cached --raw --diff-filter=AM` printed
+  **nothing** for that change while the unfiltered `--raw` printed `:100644 120000 <sha> <sha> T` —
+  so under `AM` the record dies before any mode is read and the hook passes a mode-`120000` blob
+  **green** while the changelog claims it refuses one. `T` also buys the reverse typechange (link →
+  real file bearing PHI), which must be _scanned_, not refused. The route reads `--raw -z` purely so
+  the destination mode is visible; `--name-only` cannot see it.
+  **A refusal never echoes the link target** — that is working-tree text and can itself carry PHI.
+  Name the entry's own repo-relative path plus a token from the closed `entryKind`/`gitModeKind`
+  sets, nothing else. **This applies to the prose too**: a diagnostic about a PHI leak is itself a PHI
+  surface, which is why the docblock writes the dangerous target as a _shape_ and not an example.
+  **The walk has NO extension scope of its own** — it skips regular `*.md` as documentation and takes
+  everything else, so a link at `src/leak.json` and a linked directory are refused there too.
+  `src/**.ts` is the **`--staged`** route's boundary; do not describe the two as one rule.
+  **Three residuals are disclosed, not closed** — do not silently re-close any and do not let a
+  future edit read as though they were. (1) `R`/`C` rename/copy records are **not enumerated by
+  `--staged` at all** (admitting them needs the two-path record shape, a scope decision). This is
+  **reachable by an ordinary action**, measured: `git mv notes/payload.txt src/payload.ts` raises
+  `R100`, which `--diff-filter=AMT` drops, so the pre-commit hook prints `OK — no hits` / exit 0 over
+  a staged PHI-bearing `src/payload.ts` — on base and on the fix alike. Containment, also measured:
+  the CI all-mode walk **does** catch it, so the exposure is "PHI enters a local commit or a pushed
+  branch", not "PHI merges". (2) This scanner has **no refuse-a-scan-that-observed-nothing rule**, so
+  an empty enumeration reports clean. (3) The ancestor-component and absolute/`../` reads above, on
+  the named-path mode only.
+  Pinned in `test/scripts/phi-scan.test.ts` against **throwaway git repos under `os.tmpdir()`** — the
+  scanner roots everything at `process.cwd()`, so never write a link or a violator into this corpus
+  to test it. **The enumerate-then-read race is deliberately still open here** and is a separate
+  item: measured on this tree, a real `pnpm build` puts **no** transient under either walk root, and
+  both temp-using suites `mkdtemp` into `os.tmpdir()`, so it is unreachable by scope — _until a walk
+  root widens_, which reintroduces it verbatim.
+
 ## Standing disciplines (every change)
 
 Mirrors the three disciplines in the meta-repo's `documentation/conventions.md` — they bind here too:
