@@ -22,8 +22,22 @@
  * @packageDocumentation
  */
 
-/** The library version string, synced with `package.json#version` by the release tooling. */
-export const VERSION = "0.0.0";
+/**
+ * Package version marker exported from the `@cosyte/transform` root.
+ *
+ * Kept in lockstep with `package.json` by `scripts/sync-version.mjs`, which the `version` script
+ * runs immediately after `changeset version`. The `: string` annotation is deliberate: without it
+ * TypeScript infers the *literal* type (`declare const VERSION = "0.0.0"`), which leaks the current
+ * release into consumers' types and makes an equality check against any other version a compile
+ * error.
+ *
+ * @example
+ * ```typescript
+ * import { VERSION } from "@cosyte/transform";
+ * console.log(VERSION);
+ * ```
+ */
+export const VERSION: string = "0.0.4";
 
 // ── The diagnostic channel (the fail-safe rule, materialized) ──────────────────────────────────
 export { ISSUE_CODES, FATAL_CODES } from "./diagnostics/codes.js";

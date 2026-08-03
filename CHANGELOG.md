@@ -14,6 +14,34 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Fixed
 
+- **The exported `VERSION` constant said `"0.0.0"` on a package published as `0.0.4`, and the
+  documented install smoke test told an installer to print exactly that constant**
+  (`VERSION-CONSTANT-DRIFT`). Measured on the released tarball, not inferred from source:
+  `npm pack @cosyte/transform@0.0.4` yields a `dist/index.mjs`, `dist/index.cjs`, `dist/index.d.ts`
+  and `dist/index.d.cts` that all carry `"0.0.0"`. It is not one bad release: **every** version ever
+  published (`0.0.2`, `0.0.3`, `0.0.4`) ships `"0.0.0"`, so the wrong constant is live on the registry today
+  and stays wrong there until the next publish. The constant's own doc comment already claimed it
+  was "synced with `package.json#version` by the release tooling" while no such step existed: the
+  `version` script ran `changeset version` alone, which rewrites `package.json` and nothing else.
+  The fix is structural rather than a hand-bump, because a hand-bumped constant goes stale at the
+  very next release. `scripts/sync-version.mjs` (ported from `terminology#12`, `67f73db`, the commit
+  that added it there) rewrites the declaration from `package.json` and is wired into the `version` script
+  immediately after `changeset version`, so the bump and the constant land in the same
+  "Version Packages" commit. The drift guard is `test/sanity.test.ts`, which now compares the export
+  against `package.json` instead of asserting shape only; it fails on the unfixed tree
+  (`expected '0.0.0' to be '0.0.4'`), which is how it was checked for bite. The declaration also
+  gains the `: string` annotation the sync script keys on, which stops the published declaration
+  files leaking the literal type `"0.0.0"` into consumers' types (they did — both `dist/index.d.ts`,
+  which `exports["."].import.types` points at, and `dist/index.d.cts`).
+  This is a known repeat class in the suite: `@cosyte/astm@0.0.1` and `@cosyte/terminology@0.0.1`
+  shipped the same defect, the latter with the same install-smoke-test amplifier.
+- **`docs-content/installation.md` claimed the package was "not yet published to npm"** and that
+  both peers were unpublished. The package is on the registry; `@cosyte/hl7` is too. The page now
+  says what is actually true and keeps the two halves together, because either half alone misleads:
+  the package **is** published **and** it **cannot be installed from npm**, because the
+  `@cosyte/fhir` peer is not on the registry. Measured today:
+  `npm install @cosyte/transform @cosyte/hl7 @cosyte/fhir` fails with `ERESOLVE`, `Could not resolve
+dependency: peer @cosyte/fhir@">=0.0.0" from @cosyte/transform@0.0.4`.
 - **The PHI scanner read a symbolic link as clean on BOTH of its enumerating routes, so a link
   under a scan root pointing at a file full of PHI passed the commit gate**
   (`PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES`; port of the graded fix in `terminology#37`, `5f81640`).

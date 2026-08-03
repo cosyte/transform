@@ -20,7 +20,12 @@ the parser tier; third-party runtime deps stay zero) and `0002` (terminology is 
 ## Status
 
 - **Phases 1–6 shipped** (roadmap `operations/roadmaps/transform.md` §Phase 1–6). Pre-alpha `0.0.x`,
-  not yet published to npm. Phase 1: the **six safety-critical datatype converters** (`toFhirDateTime`,
+  **published on npm** — this line read "not yet published to npm" for several releases after first
+  publish, which is part of why a `VERSION` constant stuck at `"0.0.0"` went unnoticed on a shipped
+  package. **Never quote a version here**; `npm view @cosyte/transform version` is the only source of
+  truth. **Published is not installable here:** the `@cosyte/fhir` peer is not on the registry, so
+  `npm install @cosyte/transform` fails to resolve. Both halves travel together or neither is
+  useful. Phase 1: the **six safety-critical datatype converters** (`toFhirDateTime`,
   `toFhirIdentifier`, `toFhirCodeableConcept`, `toFhirHumanName`, `toFhirAddress`, `toFhirQuantity`),
   the **value-free diagnostic channel** (`ISSUE_CODES`/`FATAL_CODES`, `TransformIssue`,
   `toOperationOutcome`), and the minimal **NamingSystem resolver** (`createNamingSystem`). Phase 2: the
@@ -46,9 +51,13 @@ the parser tier; third-party runtime deps stay zero) and `0002` (terminology is 
   flagged, never coerced; SNOMED-target maps (RXR-4 method, SCH-7 reason) stay structural/BYO — no
   SNOMED bundled; and fields with no IG value map (TXA-2, RXA-5) are documented as structural, never
   invented.
-- **Consumes two unpublished cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer
-  dependencies**, vendored as `pnpm pack` tarballs in `vendor/` for dev/test (ADR 0001 + umbrella ADR 0008) — refresh with `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir `7a099b2`. **Third-party
-  runtime deps: zero.**
+- **Consumes two cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer dependencies**, vendored
+  as `pnpm pack` tarballs in `vendor/` for dev/test (ADR 0001 + umbrella ADR 0008) — refresh with
+  `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir `7a099b2`. **They are not both unpublished
+  — that wording was stale.** `@cosyte/hl7` is on the registry; **`@cosyte/fhir` is not** (npm 404,
+  a human-gated publish), and it is the fhir peer alone that makes this package uninstallable from
+  npm. Derive it, do not recall it: `npm view @cosyte/hl7 version`, `npm view @cosyte/fhir version`.
+  **Third-party runtime deps: zero.**
 - **Deferred to later phases:** deeper terminology (the full HL7 THO NamingSystem crosswalk beyond the
   shipped value maps, consumer-supplied ConceptMap application), the reverse FHIR→v2 direction (Phase 7),
   and profiles (Phase 8).
