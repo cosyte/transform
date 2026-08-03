@@ -12,6 +12,56 @@ this file is maintained by hand (Changesets handles the version bump and publish
 The first pre-alpha release (`0.0.1`) will ship the initial public API surface. The package begins
 its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until first alpha).
 
+### Fixed
+
+- **The `attw` publish gate passed an untyped pack, so a tarball with no type declarations in it
+  would have merged and published as green** (`ATTW-FALSE-GREEN-PORT`; port of the graded fix in
+  `terminology#28`, `bf153cb`). `@arethetypeswrong/cli@0.18.4` opens `getExitCode()` with
+  `if (!analysis.types) return 0`, returning **before the problem list is read at all** — an untyped
+  package is a legitimate npm package, so the CLI treats "no types" as a description rather than a
+  problem. No `--profile`, `--ignore-rules` or config setting reaches that early return, which is
+  why the remedy is a wrapper (`scripts/attw.mjs`, now what the `attw` script runs) and not a
+  stricter invocation. The old invocation here was the bare `attw --pack .`, on the default strict
+  profile; it was never lenient.
+
+  **Reproduced on this package, on a quiet box, with zero concurrency** — both `rm -rf dist && attw
+--pack .` and `pnpm build && rm -f dist/index.d.ts dist/index.d.cts && attw --pack .` print
+  "This package does not contain types." and exit **0**. The second is the realistic trigger: `tsup`
+  emits the ESM/CJS bundles in one pass and the declarations in a later pass, so **every** build of
+  this package has a window where `dist/` holds JS and no `.d.ts`. Polling `dist/` every 5 ms from
+  the start of `pnpm build`, that window measured **1,600 ms, 1,646 ms and 2,018 ms** across three
+  consecutive builds. Concurrency only widens the window; it is not the defect, and the remedy is
+  therefore **not** a lock, a lease or a build queue (umbrella ADR 0015) — the gate is made able to
+  report that its own inputs were missing, whatever removed them.
+
+  Two nets, catching different things. A **preflight** that every relative path `package.json`
+  promises (`main`, `module`, `types`, `typings`, every string leaf of `exports` — here
+  `./dist/index.{cjs,mjs,d.ts,d.cts}`) exists and is non-empty, which is what catches the build
+  window and names the missing file. A **post-check** that promotes `attw`'s untyped sentence to a
+  failure, which catches what the preflight structurally cannot: declarations present on disk but
+  excluded from the tarball by `files`/`.npmignore`. **No instance of that second case is on record
+  in this repo.** Because the post-check reads a printed string it is blindable, so `--quiet`,
+  `-f/--format` and `--config-path` are refused **by option name, wholesale, not by value**, along
+  with a `.attw.json` setting `quiet` or `format` (`readConfig()` applies those after argv). Three
+  of those four routes were measured here to restore the exact exit-0; `--config-path` is refused by
+  inference, and says so.
+
+  `test/scripts/attw-gate.test.ts` pins both nets against the real binary — including the upstream
+  exit-0 itself, so an `attw` upgrade that fixes the exit code or rewords the sentence reds the
+  suite instead of letting the net go quietly slack — plus a **negative control** on a well-formed
+  package and a check that a real `attw` failure still exits with `attw`'s own status. Reducing the
+  wrapper back to the bare CLI reds 10 of its 13 tests.
+
+  **Two limits, stated rather than left to be discovered.** A **complete but stale `dist/`** passes
+  both nets; that is not live today only because the verify ladder runs `build` before `attw`. And
+  this package's unpublished `@cosyte/fhir` peer (`FHIR-NPM-NAME`, a separate human gate) does not
+  change what `--pack .` can see: a good pack reports "No problems found" and exits 0, and does so
+  identically with `node_modules/@cosyte/fhir` moved out of the way, so `attw` is not resolving that
+  peer either way. Nothing in this entry says a green `attw` speaks to whether a consumer can
+  install the peer; it does not.
+
+  No library code, public API, issue code, mapping or transformed value changes.
+
 ### Added
 
 - **A brand image at the top of `README.md`.** The page opens with the Cosyte lockup, served as a

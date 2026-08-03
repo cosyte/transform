@@ -62,7 +62,9 @@ a summary.
 - **Language:** TypeScript (strict, full rigor set incl. `noUncheckedIndexedAccess`) via
   `@cosyte/tsconfig`. **Target ES2023**, `NodeNext`. TypeScript 5.9.x, exact-pinned.
 - **Build:** dual ESM + CJS + `.d.ts` via `tsup` (`@cosyte/tsup-config`); `attw` is a publish gate
-  (per-condition types: `.d.ts` for `import`, `.d.cts` for `require`).
+  (per-condition types: `.d.ts` for `import`, `.d.cts` for `require`). The `attw` script is
+  **`scripts/attw.mjs`, not the bare CLI** — see the guardrail below; the CLI reports a tarball with
+  no types and exits **0**.
 - **Node:** **>= 22** (CI matrix 22 + 24).
 - **Package manager:** `pnpm@10`.
 - **Lint/format:** **ESLint 10** + unified `typescript-eslint` (type-checked) via
@@ -218,6 +220,49 @@ and stay a `pnpm vendor:refresh` job by hand.
   one is a **breaking change**; new codes are additions only.
 - Coverage: per-directory >= 90% (lines/branches/functions/statements), enforced by
   `pnpm test:coverage`.
+- **▶ `attw` SAYS "does not contain types" AND EXITS 0, SO THE `attw` SCRIPT IS A WRAPPER, NOT THE
+  BARE CLI.** `getExitCode.js` in `@arethetypeswrong/cli@0.18.4` opens with `if (!analysis.types)
+return 0` — an untyped package is a legitimate npm package, so "no types at all" is a description,
+  not a problem, and the problem list is never consulted. No `--profile`, `--ignore-rules` or config
+  setting reaches that early return. For a package that ships types it means the declarations were
+  **not in the tarball**, which is a broken publish reported as a pass. The invocation here was
+  never lenient — it was the bare `attw --pack .` on the default strict profile.
+  **The race only supplies the condition.** Reproduced here on a quiet box with zero concurrency:
+  `rm -rf dist && attw --pack .`, and `pnpm build && rm -f dist/index.d.*ts && attw --pack .`, both
+  print the sentence and exit 0. The second is the realistic window — `tsup` emits the bundles in
+  one pass and the declarations in a later one, so **every** build has an interval where `dist/`
+  holds `.mjs`/`.cjs` and no `.d.ts`; measured at **1,600 / 1,646 / 2,018 ms** over three
+  consecutive quiet-box builds, polling every 5 ms. A concurrent build or `clean` in the same
+  working tree lands `attw` in it. So the answer is **not** a lock, a lease or a build queue: the
+  gate must be able to say its own inputs were missing, whatever removed them.
+  `scripts/attw.mjs` carries **two nets, and they catch different things** — a preflight that every
+  relative path `package.json` promises (`main`, `module`, `types`, `typings`, every string leaf of
+  `exports`) exists and is non-empty, which catches the build window and _names the missing file_;
+  and a post-check on `attw`'s untyped sentence, which catches what the preflight structurally
+  cannot — declarations present on disk but excluded from the tarball by `files`/`.npmignore`.
+  **No instance of that second case is on record in this repo.** `test/scripts/attw-gate.test.ts`
+  pins both nets against the real binary, including the upstream exit-0 itself, so an `attw` upgrade
+  that reworks the wording or fixes the exit code reds the suite instead of letting the net go
+  quietly slack. It also pins a **negative control** on a well-formed package, and that a real
+  `attw` failure still fails with `attw`'s own status — a gate that only ever fails is not a gate,
+  and one that swallows the status is not one either. Reducing the wrapper to the bare CLI reds 10
+  of its 13 tests; that is how the suite was checked for bite rather than assumed to have it.
+  **The post-check reads a string, so what would hide that string is refused**, not tolerated.
+  **Three routes were measured here** to hand back exit 0 over an untyped pack: `--quiet`,
+  `--format json`, and a `.attw.json` setting either (`readConfig()` applies it after argv).
+  `--config-path` is refused too, but **by inference, not measurement**. The refusal is **by option
+  name, wholesale, not by value** — a harmless `--format` value blinds nothing and is refused
+  anyway, which is the deliberate trade against value-parsing them.
+  **Two limits of a green here.** A **complete but stale `dist/`** passes both nets (not live today
+  only because the ladder runs `build` before `attw`); and this package's unpublished
+  `@cosyte/fhir` peer is **not** something `attw` speaks to — measured, a good pack reports "No
+  problems found" and exits 0, identically with `node_modules/@cosyte/fhir` moved aside, so `attw`
+  never resolves that peer. A green `attw` has never meant a consumer can install the peer.
+  **This is a per-repo script.** It was ported here from `terminology`'s graded fix (terminology#28,
+  `bf153cb`); siblings that still invoke the CLI directly still carry the defect, and the prose does
+  **not** port with the code — every number above was re-measured on this package. Derive who is
+  left rather than writing a count down:
+  `rg -l --glob '**/package.json' '"attw":' /workspace`.
 
 ## Standing disciplines (every change)
 
