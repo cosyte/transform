@@ -34,6 +34,10 @@ npm install @cosyte/transform @cosyte/hl7 @cosyte/fhir
 `@cosyte/hl7` and `@cosyte/fhir` are **peer dependencies** — the transform maps between the models
 they own. Its own third-party runtime dependencies are **zero**.
 
+**That command does not work yet.** This package is published, but `@cosyte/fhir` is not on the
+registry, so npm fails with `ERESOLVE` and refuses to resolve that peer. Until it publishes, consume
+this package from source or a workspace link.
+
 ## Convert a datatype
 
 ```ts

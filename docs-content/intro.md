@@ -14,7 +14,8 @@ parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://g
 composites and produces validated [`@cosyte/fhir`](https://github.com/cosyte/fhir) model nodes,
 grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`).
 
-> **Status:** pre-alpha (`0.0.x`), not yet published to npm. This release ships the
+> **Status:** pre-alpha (`0.0.x`). The package **is published on npm**, but it **cannot be installed
+> from npm yet** — see [Installation](./installation). This release ships the
 > six safety-critical datatype converters and the value-free diagnostic channel, and
 > message-level assembly via `toFhir(msg)` for HL7 v2 **ADT → Patient + Encounter**,
 > **ORU^R01 → DiagnosticReport + Observation**, the order-entry graph **ORM_O01 / OML_O21 →
@@ -38,7 +39,9 @@ npm install @cosyte/transform @cosyte/hl7 @cosyte/fhir
 ```
 
 `@cosyte/hl7` and `@cosyte/fhir` are **peer dependencies** — the transform maps between the models
-they own, so you install them alongside it.
+they own, so you install them alongside it. **That command does not work yet:** `@cosyte/fhir` is not
+on the registry, so npm fails with `ERESOLVE` and refuses to resolve that peer. Until it publishes,
+consume this package from source or a workspace link. [Installation](./installation) has the detail.
 
 ## Next
 
