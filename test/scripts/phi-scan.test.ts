@@ -26,6 +26,7 @@ import {
   copyFileSync,
   symlinkSync,
   realpathSync,
+  chmodSync,
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -501,6 +502,53 @@ describe("phi-scan: the --staged route refuses a staged non-regular entry", () =
     expect(r.stdout).toMatch(/OK — no hits/);
   });
 
+  it("refuses an UNMERGED path instead of reporting clean over it (exit 2)", () => {
+    // A conflicted path has no stage-0 entry, so `git show :<path>` answers
+    // `fatal: path ... is in the index, but not at stage 0` and never content.
+    // Its status is `U`, which is returned by neither `AM` nor `AMT`, so the
+    // record did not exist and the route reported a clean scan over a path whose
+    // conflicted side carries PHI. The status is the uniform part: the source
+    // mode and the set of stages present both vary by conflict flavour, which is
+    // why the scanner keys the refusal on the status rather than the mode.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "conflict.ts"), "export const a = 1;\n");
+    git(root, ["add", "src/conflict.ts"]);
+    git(root, ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm", "base"]);
+    git(root, ["checkout", "-q", "-b", "other"]);
+    writeFileSync(join(root, "src", "conflict.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/conflict.ts"]);
+    git(root, ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm", "other"]);
+    git(root, ["checkout", "-q", "-"]);
+    writeFileSync(join(root, "src", "conflict.ts"), "export const a = 3;\n");
+    git(root, ["add", "src/conflict.ts"]);
+    git(root, ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm", "second"]);
+    // Conflicts, deliberately: `git merge` exits non-zero here, so it is run
+    // through the tolerant helper rather than the throwing one. The identity is
+    // passed INLINE and that is not decoration: a merge refuses outright with
+    // "Committer identity unknown" when it can neither read nor auto-detect one,
+    // leaving the index untouched, and `gitOut` discards the status. A developer
+    // box hides that (a global identity, or one auto-detected from the passwd
+    // entry and hostname); a CI runner has neither. Measured: this case failed on
+    // `ci / verify` for both Node 22 and 24 with `expected '' to contain ' U\t'`,
+    // green on the same commit locally, because the merge never ran at all.
+    gitOut(root, ["-c", "user.email=t@example.com", "-c", "user.name=t", "merge", "other"]);
+
+    // Non-vacuity FIRST: prove the merge really did leave a conflict, since
+    // every assertion below is about a state that a silently-failed merge would
+    // not have produced. `gitOut` discards git's exit status, so the state is
+    // what gets checked, never the command's success.
+    expect(gitOut(root, ["ls-files", "-u"])).toContain("src/conflict.ts");
+    // The premise: an unmerged record really is dropped by the old filter.
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"]).trim()).toBe("");
+    expect(gitOut(root, ["diff", "--cached", "--raw"])).toContain(" U\t");
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("src/conflict.ts");
+    expect(r.stderr).toContain("an unmerged path");
+    expectNoPhi(r.stderr);
+  });
+
   it("a staged link OUTSIDE the route's scope is left alone (the scope is unchanged)", () => {
     // `--staged` only ever covered `test/fixtures/**` and `src/**.ts`. The mode
     // check narrows what that scope admits; it does not widen the scope, and
@@ -512,5 +560,175 @@ describe("phi-scan: the --staged route refuses a staged non-regular entry", () =
 
     const r = runIn(root, ["--staged"]);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A staged RENAME into a scan root
+// ---------------------------------------------------------------------------
+//
+// `R` (rename) and `C` (copy) are returned by neither `AM` nor `AMT`, so an
+// ordinary `git mv` into a scan root staged a two-path record the filter deleted
+// outright and `--staged` exited 0 over it. Measured on this repo's scanner
+// before the fix, on both shapes below. The gap is at PRE-COMMIT. The hook is
+// `phi-scan --staged`; the all-mode sweep CI runs is the backstop, so the
+// exposure was "PHI enters a local commit or a pushed branch", not "PHI merges".
+//
+// The remedy is `--no-renames`, which makes every staged change a single-path
+// record: the destination arrives as an ordinary `A` and the source as a `D` the
+// filter drops. It needs no two-path record shape and no stride work.
+
+/** Stage a rename of `from` to `to` on top of a commit, in a fresh repo. */
+function repoWithRenameInto(from: string, to: string, seed: (root: string) => void): string {
+  const root = makeRepo();
+  seed(root);
+  git(root, ["add", "-A", "."]);
+  git(root, ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm", "base"]);
+  git(root, ["mv", from, to]);
+  return root;
+}
+
+describe("phi-scan: the --staged route enumerates a staged rename", () => {
+  it("git really does stage `git mv <link>` as a two-path R100 record at mode 120000", () => {
+    // The measurement the fix rests on, and the premise of every case below: the
+    // record the old filter deleted really did carry a mode-120000 destination.
+    const root = repoWithRenameInto("notes/leak.txt", "src/leak.ts", (r) => {
+      mkdirSync(join(r, "notes"));
+      writeFileSync(join(r, TARGET_NAME), SYNTHETIC_PHI);
+      symlinkSync(join("..", TARGET_NAME), join(r, "notes", "leak.txt"));
+    });
+
+    const raw = gitOut(root, ["diff", "--cached", "--raw"]);
+    expect(raw).toMatch(/:120000 120000 [0-9a-f]+ [0-9a-f]+ R100\t/);
+    expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"]).trim()).toBe("");
+    expect(gitOut(root, ["ls-files", "--stage", "src/leak.ts"])).toMatch(/^120000 /);
+    // And `--no-renames` turns exactly that into a single-path add.
+    expect(
+      gitOut(root, ["diff", "--cached", "--raw", "--no-renames", "--diff-filter=AMT"]),
+    ).toMatch(/:000000 120000 [0-9a-f]+ [0-9a-f]+ A\tsrc\/leak\.ts/);
+  });
+
+  it("refuses a link renamed INTO a scan root (exit 2), and reports no PHI", () => {
+    const root = repoWithRenameInto("notes/leak.txt", "src/leak.ts", (r) => {
+      mkdirSync(join(r, "notes"));
+      writeFileSync(join(r, TARGET_NAME), SYNTHETIC_PHI);
+      symlinkSync(join("..", TARGET_NAME), join(r, "notes", "leak.txt"));
+    });
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("src/leak.ts");
+    expect(r.stderr).toContain("a symbolic link");
+    expectNoPhi(r.stderr);
+    expect(r.stdout).not.toMatch(/OK/);
+  });
+
+  it("SCANS an ordinary PHI-bearing file renamed into a scan root (exit 1)", () => {
+    // The second shape, and the one that needs no link at all: a rename that
+    // substitutes a real name into the corpus passed the same way, because the
+    // record was dropped before its content was ever reached.
+    const root = repoWithRenameInto("notes/payload.txt", "src/payload.ts", (r) => {
+      mkdirSync(join(r, "notes"));
+      writeFileSync(join(r, "notes", "payload.txt"), SYNTHETIC_PHI);
+    });
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("src/payload.ts");
+    expect(r.stderr).toContain("123-45-6789");
+  });
+
+  it("holds whatever the caller's rename/copy detection is configured to", () => {
+    // `--no-renames` is passed on the command line, which beats `diff.renames`
+    // in config, including `copies`, which turns `C` records on as well. Without
+    // that, a repo-local setting would decide whether the gate saw the record.
+    const root = repoWithRenameInto("notes/leak.txt", "src/leak.ts", (r) => {
+      mkdirSync(join(r, "notes"));
+      writeFileSync(join(r, TARGET_NAME), SYNTHETIC_PHI);
+      symlinkSync(join("..", TARGET_NAME), join(r, "notes", "leak.txt"));
+    });
+    git(root, ["config", "diff.renames", "copies"]);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("src/leak.ts");
+    expectNoPhi(r.stderr);
+  });
+
+  it("does not widen the scope: a rename landing OUTSIDE a scan root still passes", () => {
+    // The negative control on the claim. `--no-renames` narrows what the route's
+    // existing scope ADMITS; it does not give the route new ground. A link
+    // renamed to `lib/` is still nothing this gate speaks about, and a case that
+    // could not distinguish the two would not be evidence for either.
+    const root = repoWithRenameInto("notes/leak.txt", "lib/leak.ts", (r) => {
+      mkdirSync(join(r, "notes"));
+      mkdirSync(join(r, "lib"));
+      writeFileSync(join(r, TARGET_NAME), SYNTHETIC_PHI);
+      symlinkSync(join("..", TARGET_NAME), join(r, "notes", "leak.txt"));
+    });
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(0);
+  });
+
+  it("still enumerates everything it enumerated before (the superset control)", () => {
+    // `--no-renames` must only ever ADD records. A stage mixing an add, a modify
+    // and a rename pins that the first two are still read, and read completely:
+    // the violator sits BEHIND the rename in path order.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "tracked.ts"), "export const t = 1;\n");
+    mkdirSync(join(root, "notes"));
+    writeFileSync(join(root, "notes", "moved.txt"), "nothing identifying here\n");
+    git(root, ["add", "-A", "."]);
+    git(root, ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm", "base"]);
+
+    git(root, ["mv", "notes/moved.txt", "src/moved.ts"]); // R
+    writeFileSync(join(root, "src", "tracked.ts"), "export const t = 2;\n"); // M
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI); // A
+    git(root, ["add", "-A", "."]);
+
+    const r = runIn(root, ["--staged"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("src/violator.ts");
+    expect(r.stderr).toContain("123-45-6789");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// "Could not complete" is exit 2, never exit 1
+// ---------------------------------------------------------------------------
+//
+// 1 is this scanner's code for HITS FOUND, and an uncaught throw exits 1 too, so
+// a scan that never ran was indistinguishable from a scan that ran and fired,
+// on the wrong side, since a caller keying on the code reads a broken gate as a
+// working one.
+
+describe("phi-scan: a scan that cannot run exits 2, not 1", () => {
+  it("a missing allow-list exits 2 (it threw out of main and exited 1)", () => {
+    // `loadAllowList()` runs outside every `try` in `main`.
+    const root = makeRepo();
+    rmSync(join(root, "scripts", "phi-allow-list.txt"));
+
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("allow-list not found");
+  });
+
+  // chmod cannot take read permission away from root, so this case can only be
+  // run as an unprivileged user. Skipped rather than weakened.
+  const asRoot = typeof process.getuid === "function" && process.getuid() === 0;
+  it.skipIf(asRoot)("an unreadable directory under a walk root exits 2 and names it", () => {
+    const root = makeRepo();
+    const locked = join(root, "src", "locked");
+    mkdirSync(locked);
+    chmodSync(locked, 0o000);
+    try {
+      const r = runIn(root, []);
+      expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+      expect(r.stderr).toContain("src/locked");
+      expect(r.stderr).toContain("EACCES");
+    } finally {
+      chmodSync(locked, 0o755);
+    }
   });
 });

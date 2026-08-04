@@ -316,16 +316,51 @@ return 0` — an untyped package is a legitimate npm package, so "no types at al
   **The walk has NO extension scope of its own** — it skips regular `*.md` as documentation and takes
   everything else, so a link at `src/leak.json` and a linked directory are refused there too.
   `src/**.ts` is the **`--staged`** route's boundary; do not describe the two as one rule.
-  **Three residuals are disclosed, not closed** — do not silently re-close any and do not let a
-  future edit read as though they were. (1) `R`/`C` rename/copy records are **not enumerated by
-  `--staged` at all** (admitting them needs the two-path record shape, a scope decision). This is
-  **reachable by an ordinary action**, measured: `git mv notes/payload.txt src/payload.ts` raises
-  `R100`, which `--diff-filter=AMT` drops, so the pre-commit hook prints `OK — no hits` / exit 0 over
-  a staged PHI-bearing `src/payload.ts` — on base and on the fix alike. Containment, also measured:
-  the CI all-mode walk **does** catch it, so the exposure is "PHI enters a local commit or a pushed
-  branch", not "PHI merges". (2) This scanner has **no refuse-a-scan-that-observed-nothing rule**, so
-  an empty enumeration reports clean. (3) The ancestor-component and absolute/`../` reads above, on
-  the named-path mode only.
+  **▶ THE RENAME RESIDUAL IS CLOSED, AND THE FRAMING IT WAS FILED UNDER WAS FALSE.** It was
+  disclosed here as "admitting `R`/`C` needs the two-path record shape, a scope decision". **There is
+  no scope decision and no record shape work**: the remedy is `--no-renames` on the `git diff
+--cached` invocation, which makes git unable to emit `R` or `C` at all, so the destination arrives
+  as an ordinary single-path `A` and the source as a `D` the filter drops. That sentence was ported
+  in from a sibling and repeated rather than measured: the ecosystem's own porting trap, and the
+  reason to re-measure a disclosure before carrying it forward.
+  Measured on this repo's scanner before the fix, on **both** shapes: `git mv notes/leak.txt
+src/leak.ts` over a link staged `:120000 120000 <sha> <sha> R100`, `--diff-filter=AMT` returned
+  nothing, and `--staged` reported a clean scan and exited **0** over a mode-`120000` entry at
+  `src/leak.ts`; `git mv notes/payload.txt src/payload.ts` over an ordinary PHI-bearing file passed
+  identically. **The gap was at PRE-COMMIT** (the hook is `phi-scan --staged`) with the CI all-mode
+  walk as the backstop, so the exposure was "PHI enters a local commit or a pushed branch", not "PHI
+  merges". The enumeration is a strict **superset** of the previous one, re-measured here under
+  `diff.renames=true|copies|false|1` and `renameLimit=1`: every setting yields the same single-path
+  `A`, which also makes the two-field stride **structural** rather than conditional on a caller's
+  config. **The stride claim is about this ARGV, not about `--no-renames` alone**: measured,
+  `--find-copies-harder` re-enables two-path records even placed BEFORE it, and a later `-M`/`-C`
+  overrides it in the ordinary way. Neither is passed and no config key sets either, but adding an
+  argument to that list means re-measuring the stride rather than assuming it.
+  Ported from `dicom#60`. **Unmerged (`U`) records went the same way**: returned by neither
+  `AM` nor `AMT`, so a conflicted in-scope path reported clean; `U` is now admitted and **refused**,
+  because it has no stage-0 entry and `git show :<path>` answers `fatal: path ... is in the index,
+  but not at stage 0`. **Key it on the STATUS, not the mode, and do not write one flavour's record
+  down as canonical**: across both-modified, add/add, modify/delete, delete/modify, rename/rename and
+  symlink/symlink the status is always `U` and the dst mode always `000000`, while the SRC mode
+  (`100644`/`120000`/`000000`) and the set of stages present (1/2/3, 1/2, 2/3, 1/3) both vary.
+  **Three residuals remain disclosed, not closed.** Do not silently re-close any, and do not let a
+  future edit read as though they were. (1) This scanner has **no refuse-a-scan-that-observed-nothing
+  rule**, so an empty enumeration reports clean. (2) The ancestor-component and absolute/`../` reads
+  above, on the named-path mode only. (3) **A scan ROOT'S OWN PATH staged as a non-regular entry is
+  outside the `--staged` route's scope**, because that scope tests `test/fixtures/` and `src/` as
+  path PREFIXES and an index entry at exactly `src` matches neither. Measured identically on both
+  trees: `ln -s elsewhere src && git add -A` stages `:000000 120000 0000000 <sha> A src` and
+  `--staged` reports clean / exit **0**, while the all-mode walk over the same tree exits 1 on the
+  payload behind it. `dicom`'s copy of this function carries exactly that guard
+  (`s.path === "test/fixtures" || s.path.startsWith("test/fixtures/")`) and **it did not come across
+  in the port**. Found by this slice's refuter, pre-existing, and its own item.
+  **Exit **2** now means every failure to complete, not just a bad invocation.** A throw raised
+  before or outside `main`'s inner `try` blocks (`loadAllowList()` on a missing
+  `scripts/phi-allow-list.txt`, `readdirSync` on an unreadable directory under a walk root) left the
+  process on node's uncaught-exception code, **1**, which is this scanner's code for HITS FOUND. A
+  caller keying on the code read a gate that never ran as one that ran and fired. `run()` at the foot
+  of the file is the outermost net and `walk` names an unreadable directory itself; an unexpected
+  throw still prints its stack, because a gate that swallows its own bugs is harder to fix.
   Pinned in `test/scripts/phi-scan.test.ts` against **throwaway git repos under `os.tmpdir()`** — the
   scanner roots everything at `process.cwd()`, so never write a link or a violator into this corpus
   to test it. **The enumerate-then-read race is deliberately still open here** and is a separate

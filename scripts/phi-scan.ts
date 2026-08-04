@@ -53,7 +53,11 @@
  *   <path> [<path>...]       - scan specific paths
  *   (no args)                - scan all in-scope working-tree files
  *
- * Exit codes: 0 (clean), 1 (hits found), 2 (invocation error).
+ * Exit codes: 0 (clean), 1 (hits found), 2 (could not complete: a bad
+ * invocation, or an in-scope entry the scan cannot account for). EVERY failure
+ * to complete is 2, including one thrown before the scan starts: an uncaught
+ * throw exits 1, which is this scanner's code for HITS FOUND, so the two used to
+ * be indistinguishable on the wrong side. See `run()` at the foot of the file.
  *
  * ---------------------------------------------------------------------------
  * AN IN-SCOPE ENTRY THAT IS NOT A REGULAR FILE REFUSES THE SCAN (exit 2), ON ALL
@@ -116,6 +120,35 @@
  * passes a mode-120000 blob green. Admitting `T` also covers the reverse
  * typechange — a tracked link replaced by a real file bearing PHI, which is a
  * scan that must now happen rather than a refusal.
+ *
+ * ▶ AND THE FILTER ALONE WAS NOT ENOUGH: `R`/`C` ARE RETURNED BY NEITHER `AM`
+ * NOR `AMT`, SO AN ORDINARY `git mv` INTO A SCAN ROOT WENT STRAIGHT PAST IT.
+ * Measured on this repo's scanner before this change: `git mv notes/leak.txt
+ * src/leak.ts` over a link to a name-bearing payload staged as
+ * `:120000 120000 <sha> <sha> R100`, the filter deleted the two-path record
+ * outright, and `--staged` reported a clean scan and exited **0** over a
+ * mode-120000 entry at `src/leak.ts`; renaming an ordinary PHI-bearing file into
+ * the same scope passed identically. THE GAP IS AT PRE-COMMIT. The hook is
+ * `phi-scan --staged`, and the all-mode sweep CI runs is the backstop, so the
+ * exposure was "PHI enters a local commit or a pushed branch", not "PHI merges".
+ * `--no-renames` closes it with no stride work: every staged change arrives as a
+ * single-path record, so the destination is an ordinary `A` and the source a `D`
+ * the filter drops. Re-measured here under `diff.renames=true|copies|false|1`
+ * and `renameLimit=1`: every setting yields the same single-path `A`, so the
+ * enumeration is a strict SUPERSET of the previous one.
+ *
+ * `U` (UNMERGED) IS ADMITTED TOO, AND IS REFUSED RATHER THAN SCANNED. A
+ * conflicted path has no stage-0 entry, so `git show :<path>` answers
+ * `fatal: path ... is in the index, but not at stage 0` rather than any content.
+ * Under `AMT` that record did not exist and the route reported clean over it.
+ * WHAT IS UNIFORM ACROSS CONFLICT FLAVOURS IS THE STATUS AND THE DESTINATION
+ * MODE, AND NOTHING ELSE. Measured over both-modified, add/add, modify/delete,
+ * delete/modify, rename/rename and symlink/symlink: the status is always `U` and
+ * the destination mode always `000000`, while the SOURCE mode varies (`100644`,
+ * `120000`, `000000`) and so does the set of stages present (1/2/3, 1/2, 2/3,
+ * 1/3). The refusal therefore keys on the STATUS, which is why `gitEntryKind`
+ * consults it before the mode. Do not write `:100644 000000 <sha> 0000000 U`
+ * down as the canonical shape; it is one flavour of six.
  *
  * A refusal names the entry's own repo-relative path and an engine-owned token
  * for its kind. IT NEVER REPORTS THE LINK TARGET, which is text off the working
@@ -368,7 +401,22 @@ function entryKind(e: KindProbe): string {
  */
 function walk(dir: string, out: string[], unscannable: Unscannable[]): void {
   if (!existsSync(dir)) return;
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch (err) {
+    // A directory the walk cannot read is a scan that cannot account for what is
+    // under it, which is the same thing a link is and gets the same answer: an
+    // InvocationError, so the run exits 2 rather than falling out of `main` as an
+    // uncaught throw (which node reports as exit 1, the code that means HITS
+    // FOUND). Only the errno code joins the path; the message is engine-owned.
+    const code = err instanceof Error && "code" in err ? String(err.code) : "unknown";
+    throw new InvocationError(
+      `refusing the scan: could not read the directory ${normalizePath(dir)} (${code}). ` +
+        `The walk cannot vouch for entries it was never able to enumerate.`,
+    );
+  }
+  for (const e of entries) {
     const full = join(dir, e.name);
     if (e.isDirectory()) {
       walk(full, out, unscannable);
@@ -394,8 +442,10 @@ function walk(dir: string, out: string[], unscannable: Unscannable[]): void {
 function refuseUnscannable(entries: Unscannable[], why: string, remedy: string): void {
   if (entries.length === 0) return;
   const lines = entries.map((u) => `  - ${u.path} (${u.kind})`).join("\n");
-  const noun =
-    entries.length === 1 ? "entry is not a regular file" : "entries are not regular files";
+  // Deliberately NOT "is not a regular file": an unmerged path's three index
+  // entries are all regular blobs, and what is wrong with it is that there is no
+  // single one to read. Each line carries its own precise kind.
+  const noun = entries.length === 1 ? "entry cannot be scanned" : "entries cannot be scanned";
   throw new InvocationError(
     `refusing the scan: ${String(entries.length)} ${noun}:\n${lines}\n${why} ${remedy}`,
   );
@@ -500,15 +550,21 @@ function buildTargetsForPaths(paths: string[]): Target[] {
 /** git's file modes for a regular blob. Every other mode is not a file to read. */
 const REGULAR_BLOB_MODES = new Set(["100644", "100755"]);
 
-/** Closed-set, engine-owned description of a git file mode. */
-function gitModeKind(mode: string): string {
+/**
+ * Closed-set, engine-owned description of a staged record the route cannot read.
+ * The STATUS is consulted first: an unmerged path's destination mode is `000000`
+ * (there is no stage-0 entry at all), which the mode branch below would describe
+ * as a bare number and which is not what is wrong with it.
+ */
+function gitEntryKind(status: string, mode: string): string {
+  if (status === "U") return "an unmerged path, from a conflicted merge";
   if (mode === "120000") return "a symbolic link";
   if (mode === "160000") return "a gitlink (a nested repository)";
   return `a git mode-${mode} entry`;
 }
 
 /** `:<srcmode> <dstmode> <srcsha> <dstsha> <status>` — the info half of a `--raw -z` record. */
-const RAW_RECORD = /^:(?:\d{6}) (\d{6}) [0-9a-f]+ [0-9a-f]+ [A-Z]\d*$/;
+const RAW_RECORD = /^:(?:\d{6}) (\d{6}) [0-9a-f]+ [0-9a-f]+ ([A-Z]\d*)$/;
 
 function buildTargetsForStaged(): Target[] {
   let listBuf: Buffer;
@@ -526,10 +582,48 @@ function buildTargetsForStaged(): Target[] {
     // be read and the hook passed the link green. Typechange carries a single
     // path, exactly like `A` and `M`, so admitting it costs the two-field
     // stride below nothing.
-    listBuf = execFileSync("git", ["diff", "--cached", "--raw", "-z", "--diff-filter=AMT"], {
-      encoding: "buffer",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    //
+    // `--no-renames` FOR THE SAME REASON, AND THE FILTER ALONE WAS NOT ENOUGH.
+    // Rename detection is ON by default and `diff.renames` can turn copy
+    // detection on too, so `git mv <link> src/<name>.ts` staged as
+    // `:120000 120000 <sha> <sha> R100` with TWO paths, which `--diff-filter`
+    // then deleted outright. Measured on this repo's scanner before this change:
+    // `git mv notes/leak.txt src/leak.ts` over a link to a name-bearing payload
+    // reported a clean scan and exited 0, with `git ls-files --stage` reading
+    // `120000` on the destination; a rename of an ordinary PHI-bearing file into
+    // the same scope passed identically. Turning detection off makes the
+    // destination arrive as an ordinary single-path `A`
+    // (`:000000 120000 0000000 <sha> A`) and the source a `D` the filter drops.
+    // Re-measured here under `diff.renames=true|copies|false|1` and
+    // `renameLimit=1`: every setting yields that same single-path `A`, so the
+    // enumeration is a strict SUPERSET of the previous one and the two-field
+    // stride below becomes STRUCTURAL rather than conditional on a caller's
+    // config.
+    //
+    // `U` (UNMERGED) IS IN THE FILTER SO IT CAN BE REFUSED RATHER THAN DROPPED.
+    // A conflicted path has no stage-0 entry, so `git show :<path>` answers
+    // `fatal: path ... is in the index, but not at stage 0` and never content.
+    // Under `--diff-filter=AMT` that record did not exist and the route reported
+    // clean over a path whose conflicted side may carry PHI. It carries a single
+    // path, exactly like `A`/`M`/`T`, so it costs the stride nothing. The status
+    // is the only uniform thing about it: across six conflict flavours the
+    // destination mode is always `000000` but the SOURCE mode and the set of
+    // index stages both vary, which is why the kind is decided by status first.
+    //
+    // ▶ THE STRIDE CLAIM IS ABOUT THIS ARGV, NOT ABOUT `--no-renames` ALONE.
+    // Measured: `--find-copies-harder` re-enables two-path `R`/`C` records even
+    // when it appears BEFORE `--no-renames`, and a `-M`/`-C` appended after it
+    // overrides it in the ordinary way. Neither is passed here and no config key
+    // sets either. If you ever add an argument to this list, re-measure that no
+    // record can carry a second path before assuming the stride still holds.
+    listBuf = execFileSync(
+      "git",
+      ["diff", "--cached", "--raw", "-z", "--no-renames", "--diff-filter=AMTU"],
+      {
+        encoding: "buffer",
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
   } catch (err) {
     throw new InvocationError(
       `git diff --cached failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -537,18 +631,15 @@ function buildTargetsForStaged(): Target[] {
   }
 
   // `--raw -z` emits `<info>\0<path>\0` per record. `R` (rename) and `C` (copy)
-  // are the only statuses carrying a SECOND path, and the filter excludes both,
-  // so the stride is two fields. If one ever reached here the stride would
-  // desync and the next record would fail to parse, which REFUSES — the same
-  // outcome as any other unparseable record, and the safe one.
-  //
-  // Excluding `R`/`C` also means this route does not enumerate a staged rename
-  // at all. That is PRE-EXISTING and is not narrowed here: admitting them needs
-  // the two-path record shape handled, which is a scope decision, not this one.
-  // A record that does not parse REFUSES rather than being skipped: a silently
-  // shortened list is exactly the shape this scan must never report clean over.
+  // are the only statuses carrying a SECOND path, and `--no-renames` above means
+  // git cannot emit either, so the stride is two fields. The regex still admits
+  // a score-suffixed status: if one ever reached here the stride would desync
+  // and the next record would fail to parse, which REFUSES: the same outcome as
+  // any other unparseable record, and the safe one. A record that does not parse
+  // REFUSES rather than being skipped: a silently shortened list is exactly the
+  // shape this scan must never report clean over.
   const fields = listBuf.toString("utf8").split("\0");
-  const staged: { path: string; mode: string }[] = [];
+  const staged: { path: string; mode: string; status: string }[] = [];
   let i = 0;
   while (i < fields.length) {
     const info = fields[i];
@@ -558,14 +649,15 @@ function buildTargetsForStaged(): Target[] {
     }
     const m = RAW_RECORD.exec(info);
     const mode = m?.[1];
+    const status = m?.[2];
     const path = fields[i + 1];
-    if (mode === undefined || path === undefined || path.length === 0) {
+    if (mode === undefined || status === undefined || path === undefined || path.length === 0) {
       throw new InvocationError(
         "could not read the output of `git diff --cached --raw -z`: unrecognized record. " +
           "Refusing rather than scanning a list that may be short.",
       );
     }
-    staged.push({ path, mode });
+    staged.push({ path, mode, status });
     i += 2;
   }
 
@@ -576,11 +668,11 @@ function buildTargetsForStaged(): Target[] {
 
   refuseUnscannable(
     inScope
-      .filter((s) => !REGULAR_BLOB_MODES.has(s.mode))
-      .map((s) => ({ path: s.path, kind: gitModeKind(s.mode) })),
-    "For such an entry `git show :<path>` hands back its target path rather than any content, " +
-      "so scanning it would prove nothing about what it points at.",
-    "Unstage it, or replace it with a regular file.",
+      .filter((s) => s.status === "U" || !REGULAR_BLOB_MODES.has(s.mode))
+      .map((s) => ({ path: s.path, kind: gitEntryKind(s.status, s.mode) })),
+    "The index either holds such an entry by reference rather than as content, or holds no single " +
+      "version of it at all, so nothing readable through it would be evidence about what it carries.",
+    "Unstage it, resolve it, or replace it with a regular file.",
   );
 
   return inScope.map(({ path: relPath }) => ({
@@ -740,4 +832,33 @@ function main(): number {
   return hits.length === 0 ? 0 : 1;
 }
 
-process.exit(main());
+/**
+ * The outermost net, and the reason it exists is an EXIT CODE, not a stack.
+ * `loadAllowList()` runs outside every `try` in `main` and throws an
+ * `InvocationError` when `scripts/phi-allow-list.txt` is missing; so did the
+ * `readdirSync` in `walk` before the guard above. An uncaught throw exits **1**,
+ * and 1 is this scanner's code for HITS FOUND, so "the scan could not run" was
+ * indistinguishable from "the scan ran and found PHI", on the wrong side: a
+ * caller that keys on the code would have read a broken gate as a working one
+ * that fired. Every failure to complete now exits **2**.
+ *
+ * An unexpected throw still prints its stack, because a gate that swallows its
+ * own bugs into a tidy sentence is harder to fix than one that does not.
+ */
+function run(): number {
+  try {
+    return main();
+  } catch (err) {
+    if (err instanceof InvocationError) {
+      process.stderr.write(`[phi-scan] ${err.message}\n`);
+    } else {
+      process.stderr.write(
+        `[phi-scan] refusing the scan: it failed before it could account for every in-scope ` +
+          `entry.\n${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`,
+      );
+    }
+    return 2;
+  }
+}
+
+process.exit(run());

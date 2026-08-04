@@ -14,6 +14,67 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Fixed
 
+- **A staged rename walked a symbolic link, or a real patient name, straight into a scan root
+  without the pre-commit PHI gate ever looking at it** (`PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT`; port of
+  the graded fix in `dicom#60`). `R` (rename) and `C` (copy) records are returned by neither `AM` nor
+  `AMT`, so the `--staged` route's `--diff-filter=AMT` deleted the whole two-path record before any
+  mode or any content was read. Measured on this repo's own scanner before the fix, on both shapes it
+  reaches: `git mv notes/leak.txt src/leak.ts` over a link to a name-bearing synthetic payload staged
+  as `:120000 120000 <sha> <sha> R100` (`git ls-files --stage` reading `120000` on the destination)
+  and reported a clean scan, exiting **0**; `git mv notes/payload.txt src/payload.ts` over an ordinary
+  file full of the same payload passed identically. Both are ordinary developer actions, not
+  contrived ones.
+
+  **The gap is at PRE-COMMIT.** The hook is `phi-scan --staged`; the all-mode walk CI runs does
+  enumerate the renamed entry, so the exposure was "PHI enters a local commit or a pushed branch",
+  not "PHI merges". Stated because the containment is the difference between a defect and an
+  incident.
+
+  **The remedy is `--no-renames`, and it costs no stride work.** With detection off git cannot emit
+  `R` or `C` at all, so the destination arrives as an ordinary single-path `A`
+  (`:000000 120000 0000000 <sha> A`) and the source as a `D` the filter drops. No two-path record
+  shape is needed, and the enumeration is a strict **superset** of the previous one: re-measured
+  under `diff.renames=true|copies|false|1` and `renameLimit=1`, every setting yields that same
+  single-path `A`, so the flag also makes the two-field stride **structural** rather than conditional
+  on whatever a caller has configured. This repo previously disclosed the residual as "admitting them
+  needs the two-path record shape, a scope decision"; **that framing was false**, and it had been
+  carried in from a sibling repo rather than measured here.
+
+  **Unmerged (`U`) records were dropped by the same filter and are now refused rather than admitted.**
+  A conflicted path has no stage-0 entry, so `git show :<path>` answers
+  `fatal: path ... is in the index, but not at stage 0` rather than any content. It now refuses
+  (exit 2) through the same closed-set path as a link or a gitlink, naming the path and an
+  engine-owned kind and nothing else. The refusal keys on the **status**, not the mode, and that is
+  measured rather than assumed: across six conflict flavours (both-modified, add/add, modify/delete,
+  delete/modify, rename/rename, symlink/symlink) the status is always `U` and the destination mode
+  always `000000`, while the source mode and the set of index stages present both vary.
+
+  **One route this does not close, measured and disclosed rather than quietly left out:** a scan
+  root's **own path** staged as a non-regular entry is still outside the `--staged` route's scope,
+  because that scope tests `test/fixtures/` and `src/` as path prefixes. Measured on both trees:
+  `ln -s elsewhere src && git add -A` stages `:000000 120000 0000000 <sha> A src`, and `--staged`
+  reports clean and exits 0 while the all-mode walk over the same tree exits 1 on the payload behind
+  it. Pre-existing and unchanged by this slice; the reference implementation this was ported from
+  carries a guard for it that did not come across, and closing it is its own item.
+
+  Pinned in `test/scripts/phi-scan.test.ts` against throwaway git repos under `os.tmpdir()`, with the
+  premise itself pinned (git really does stage `git mv <link>` as `R100` at mode `120000`, and `AMT`
+  really does return nothing for it) so the fix cannot come to rest on a claim about git that stopped
+  being true. **Six of the new cases run red against the previous scanner**, including a repo whose
+  own `diff.renames` is set to `copies`. Two controls stay green on both trees deliberately: a rename
+  landing **outside** a scan root still passes (the fix narrows what the route's existing scope
+  admits; it does not widen the scope), and a stage mixing an add, a modify and a rename still
+  reports the violator behind them.
+
+- **The PHI scanner exited `1`, its code for HITS FOUND, when it could not run at all.**
+  `loadAllowList()` runs outside every `try` in `main`, so a missing `scripts/phi-allow-list.txt`
+  threw out of the process and left node's uncaught-exception status, `1`. A `readdirSync` failure
+  under a walk root did the same. A caller keying on the exit code therefore read a gate that never
+  ran as a gate that ran and fired: the wrong direction to be wrong in. Every failure to complete
+  now exits **2**: `run()` at the foot of the file is the outermost net, and `walk` names an
+  unreadable directory and its errno itself instead of throwing raw. An unexpected throw still
+  prints its stack, deliberately.
+
 - **The exported `VERSION` constant said `"0.0.0"` on a package published as `0.0.4`, and the
   documented install smoke test told an installer to print exactly that constant**
   (`VERSION-CONSTANT-DRIFT`). Measured on the released tarball, not inferred from source:
@@ -106,6 +167,12 @@ dependency: peer @cosyte/fhir@">=0.0.0" from @cosyte/transform@0.0.4`.
   the old scanner and on this one alike. The all-mode walk that CI runs does catch it, so the
   exposure is a local commit or a pushed branch, not a merge. And this scanner has no
   refuse-a-scan-that-observed-nothing rule, so an empty enumeration still reports clean.
+
+  **▶ SUPERSEDED IN THIS SAME RELEASE, AND THE FRAMING ABOVE WAS FALSE.** The `R`/`C` residual is
+  closed by `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` (the first entry in this section): the remedy is
+  `--no-renames`, which needs neither the two-path record shape nor a scope decision. The paragraph
+  above is kept as written because the two bullets ship as one release note and a reader will meet
+  both; what would mislead is leaving it as the last word. The other two residuals it names stand.
 
 - **The `attw` publish gate passed an untyped pack, so a tarball with no type declarations in it
   would have merged and published as green** (`ATTW-FALSE-GREEN-PORT`; port of the graded fix in
