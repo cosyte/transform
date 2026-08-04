@@ -35,10 +35,10 @@ as a trap is clinical-safety content.
 - **Never quote a version here.** This line read "not yet published to npm" for several releases
   after first publish, which is part of why a `VERSION` constant stuck at `"0.0.0"` shipped unnoticed.
   Derive it: `npm view @cosyte/transform version`.
-- **▶ PUBLISHED IS NOT INSTALLABLE. `@cosyte/transform` is on the registry and `npm install
-  @cosyte/transform` FAILS `E404`**, because its `@cosyte/fhir` peer is absent from the registry: its
-  publish is refused with a **persistent, unexplained `E403` on `PUT`**, tracked as `FHIR-NPM-NAME`.
-  Both halves travel together or neither is useful.
+- **▶ PUBLISHED IS NOT INSTALLABLE.** `@cosyte/transform` is on the registry and
+  **`npm install @cosyte/transform` FAILS `E404`**, because its `@cosyte/fhir` peer is absent from
+  the registry: that peer's own publish is refused with a **persistent, unexplained `E403` on
+  `PUT`**, tracked as `FHIR-NPM-NAME`. Both halves travel together or neither is useful.
 - **▶ THE "NAME-SIMILARITY" READING IS RETRACTED. DO NOT RENAME ANYTHING** — not the package, not the
   scope, not an export. `FHIR-NPM-NAME` is a label, not a diagnosis; the error never asked for a
   rename. Why: `documentation/agent-notes.md#publish-state-and-the-stale-claim-inside-it`.
@@ -89,7 +89,7 @@ Full section, with every measurement and provenance:
   context while `ci / verify`, `ci / actionlint` and `codeql` stayed advisory on the branch that
   publishes.
 - **One ruleset per repo means one place to audit.** Fold new contexts into `19914044`; never add a
-  second. `ncpdp` is the cautionary case — it read as "pinned" because *one* of its rulesets was.
+  second. `ncpdp` is the cautionary case — it read as "pinned" because _one_ of its rulesets was.
 - **Pin every required context to `integration_id: 15368`**, or any actor with write access can post
   a same-named commit status and satisfy it.
 - **▶ Read context names off REAL CHECK RUNS, never off a workflow's `name:` field.** The workflow
@@ -102,12 +102,12 @@ Full section, with every measurement and provenance:
   silently un-requires it, no error and no warning. Banner on `ci.yml`.
 - **Three of the five names are set upstream, on a floating ref** (`cosyte/.github@main` defaults).
   Change a default there and every PR here strands pending, with nothing local to warn you.
-- **▶ THE GATE CAN LEAVE THE JOB.** Requiring `ci / verify` pins that `pnpm test` runs, not *what* it
+- **▶ THE GATE CAN LEAVE THE JOB.** Requiring `ci / verify` pins that `pnpm test` runs, not _what_ it
   runs: the `include` glob in `vitest.config.ts` **and** the `test`/`test:coverage` script bodies in
   `package.json` both drop suites invisibly to the ruleset — including the property/fuzz suites that
   carry the fail-safe rule. Banner on `vitest.config.ts`.
 - **The coverage gate is a thin, incidental backstop, not a real one** — a **1.29-point** margin, and
-  it can never see the loss of the *properties* themselves.
+  it can never see the loss of the _properties_ themselves.
 - **PR #10 ("Version Packages") is structurally `BLOCKED`, not stale**: Changesets opens it as
   `github-actions[bot]` with the default `GITHUB_TOKEN`, which starts no workflow runs, and
   `bypass_actors: []` means nobody merges past it. Escape: one empty commit onto
@@ -160,7 +160,7 @@ Full narrative, every measurement: `documentation/agent-notes.md#the-attw-guardr
   `.d.ts` on disk, reproduced with zero concurrency. **So the answer is not a lock, a lease or a
   build queue:** the gate must be able to say its own inputs were missing, whatever removed them.
 - **`scripts/attw.mjs` carries two nets that catch different things** — a path preflight (catches the
-  build window and *names* the missing file) and a post-check on the untyped sentence (catches
+  build window and _names_ the missing file) and a post-check on the untyped sentence (catches
   declarations on disk but excluded from the tarball). **Do not collapse them into one.**
 - **The post-check reads a string, so what would hide that string is refused by option NAME,
   wholesale, not by value** — `--quiet`, `--format`, `--config-path`, and `.attw.json` settings.
@@ -191,10 +191,10 @@ Full narrative, every measurement and both refuter passes:
   blob passes **green**. Keep `U` too (refused: no stage-0 entry), and keep `--no-renames`, which is
   what makes a staged rename arrive as a single-path `A`. Key on the **STATUS, not the mode**.
 - **Adding any argument to that `git diff --cached` ARGV means re-measuring the record stride** —
-  `--find-copies-harder` re-enables two-path records even placed *before* `--no-renames`.
+  `--find-copies-harder` re-enables two-path records even placed _before_ `--no-renames`.
 - **A refusal never echoes the link target** — that is working-tree text and can itself carry PHI.
   Name the repo-relative path plus a token from the closed `entryKind`/`gitModeKind` sets, nothing
-  else. **This applies to the prose too**: write the dangerous target as a *shape*, never an example.
+  else. **This applies to the prose too**: write the dangerous target as a _shape_, never an example.
 - **The walk has NO extension scope of its own** (it skips regular `*.md` and takes everything else);
   `src/**.ts` is the **`--staged`** route's boundary. **Do not describe the two as one rule.**
 - **Exit `2` means every failure to complete; exit `1` means HITS FOUND.** An uncaught throw used to
