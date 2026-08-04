@@ -41,10 +41,21 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
   carried in from a sibling repo rather than measured here.
 
   **Unmerged (`U`) records were dropped by the same filter and are now refused rather than admitted.**
-  A conflicted path has no single staged blob to scan: `git diff --cached --raw` reports
-  `:100644 000000 <sha> 0000000 U`, the index holds three entries at stages 1/2/3, and
-  `git show :<path>` cannot answer for it. It now refuses (exit 2) through the same closed-set path
-  as a link or a gitlink, naming the path and an engine-owned kind and nothing else.
+  A conflicted path has no stage-0 entry, so `git show :<path>` answers
+  `fatal: path ... is in the index, but not at stage 0` rather than any content. It now refuses
+  (exit 2) through the same closed-set path as a link or a gitlink, naming the path and an
+  engine-owned kind and nothing else. The refusal keys on the **status**, not the mode, and that is
+  measured rather than assumed: across six conflict flavours (both-modified, add/add, modify/delete,
+  delete/modify, rename/rename, symlink/symlink) the status is always `U` and the destination mode
+  always `000000`, while the source mode and the set of index stages present both vary.
+
+  **One route this does not close, measured and disclosed rather than quietly left out:** a scan
+  root's **own path** staged as a non-regular entry is still outside the `--staged` route's scope,
+  because that scope tests `test/fixtures/` and `src/` as path prefixes. Measured on both trees:
+  `ln -s elsewhere src && git add -A` stages `:000000 120000 0000000 <sha> A src`, and `--staged`
+  reports clean and exits 0 while the all-mode walk over the same tree exits 1 on the payload behind
+  it. Pre-existing and unchanged by this slice; the reference implementation this was ported from
+  carries a guard for it that did not come across, and closing it is its own item.
 
   Pinned in `test/scripts/phi-scan.test.ts` against throwaway git repos under `os.tmpdir()`, with the
   premise itself pinned (git really does stage `git mv <link>` as `R100` at mode `120000`, and `AMT`
@@ -156,6 +167,12 @@ dependency: peer @cosyte/fhir@">=0.0.0" from @cosyte/transform@0.0.4`.
   the old scanner and on this one alike. The all-mode walk that CI runs does catch it, so the
   exposure is a local commit or a pushed branch, not a merge. And this scanner has no
   refuse-a-scan-that-observed-nothing rule, so an empty enumeration still reports clean.
+
+  **▶ SUPERSEDED IN THIS SAME RELEASE, AND THE FRAMING ABOVE WAS FALSE.** The `R`/`C` residual is
+  closed by `PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT` (the first entry in this section): the remedy is
+  `--no-renames`, which needs neither the two-path record shape nor a scope decision. The paragraph
+  above is kept as written because the two bullets ship as one release note and a reader will meet
+  both; what would mislead is leaving it as the last word. The other two residuals it names stand.
 
 - **The `attw` publish gate passed an untyped pack, so a tarball with no type declarations in it
   would have merged and published as green** (`ATTW-FALSE-GREEN-PORT`; port of the graded fix in

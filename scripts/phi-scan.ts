@@ -138,10 +138,17 @@
  * enumeration is a strict SUPERSET of the previous one.
  *
  * `U` (UNMERGED) IS ADMITTED TOO, AND IS REFUSED RATHER THAN SCANNED. A
- * conflicted path has no single staged blob: `git diff --cached --raw` reports
- * `:100644 000000 <sha> 0000000 U`, the index holds three entries at stages
- * 1/2/3, and `git show :<path>` cannot answer for it. Under `AMT` that record
- * did not exist and the route reported clean over it.
+ * conflicted path has no stage-0 entry, so `git show :<path>` answers
+ * `fatal: path ... is in the index, but not at stage 0` rather than any content.
+ * Under `AMT` that record did not exist and the route reported clean over it.
+ * WHAT IS UNIFORM ACROSS CONFLICT FLAVOURS IS THE STATUS AND THE DESTINATION
+ * MODE, AND NOTHING ELSE. Measured over both-modified, add/add, modify/delete,
+ * delete/modify, rename/rename and symlink/symlink: the status is always `U` and
+ * the destination mode always `000000`, while the SOURCE mode varies (`100644`,
+ * `120000`, `000000`) and so does the set of stages present (1/2/3, 1/2, 2/3,
+ * 1/3). The refusal therefore keys on the STATUS, which is why `gitEntryKind`
+ * consults it before the mode. Do not write `:100644 000000 <sha> 0000000 U`
+ * down as the canonical shape; it is one flavour of six.
  *
  * A refusal names the entry's own repo-relative path and an engine-owned token
  * for its kind. IT NEVER REPORTS THE LINK TARGET, which is text off the working
@@ -594,12 +601,21 @@ function buildTargetsForStaged(): Target[] {
     // config.
     //
     // `U` (UNMERGED) IS IN THE FILTER SO IT CAN BE REFUSED RATHER THAN DROPPED.
-    // A conflicted path has no single staged blob to scan. `git diff --cached
-    // --raw` reports it as `:100644 000000 <sha> 0000000 U`, three entries sit
-    // at stages 1/2/3, and `git show :<path>` cannot answer for it. Under
-    // `--diff-filter=AMT` that record did not exist and the route reported clean
-    // over a path whose conflicted side may carry PHI. It carries a single path,
-    // exactly like `A`/`M`/`T`, so it costs the stride nothing.
+    // A conflicted path has no stage-0 entry, so `git show :<path>` answers
+    // `fatal: path ... is in the index, but not at stage 0` and never content.
+    // Under `--diff-filter=AMT` that record did not exist and the route reported
+    // clean over a path whose conflicted side may carry PHI. It carries a single
+    // path, exactly like `A`/`M`/`T`, so it costs the stride nothing. The status
+    // is the only uniform thing about it: across six conflict flavours the
+    // destination mode is always `000000` but the SOURCE mode and the set of
+    // index stages both vary, which is why the kind is decided by status first.
+    //
+    // ▶ THE STRIDE CLAIM IS ABOUT THIS ARGV, NOT ABOUT `--no-renames` ALONE.
+    // Measured: `--find-copies-harder` re-enables two-path `R`/`C` records even
+    // when it appears BEFORE `--no-renames`, and a `-M`/`-C` appended after it
+    // overrides it in the ordinary way. Neither is passed here and no config key
+    // sets either. If you ever add an argument to this list, re-measure that no
+    // record can carry a second path before assuming the stride still holds.
     listBuf = execFileSync(
       "git",
       ["diff", "--cached", "--raw", "-z", "--no-renames", "--diff-filter=AMTU"],

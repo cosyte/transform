@@ -332,14 +332,28 @@ src/leak.ts` over a link staged `:120000 120000 <sha> <sha> R100`, `--diff-filte
   merges". The enumeration is a strict **superset** of the previous one, re-measured here under
   `diff.renames=true|copies|false|1` and `renameLimit=1`: every setting yields the same single-path
   `A`, which also makes the two-field stride **structural** rather than conditional on a caller's
-  config. Ported from `dicom#60`. **Unmerged (`U`) records went the same way**: returned by neither
-  `AM` nor `AMT`, so a conflicted in-scope path reported clean; `U` is now admitted and **refused**
-  (it has no single staged blob: three index entries at stages 1/2/3, dst mode `000000`, and
-  `git show :<path>` cannot answer for it).
-  **Two residuals remain disclosed, not closed.** Do not silently re-close either, and do not let a
+  config. **The stride claim is about this ARGV, not about `--no-renames` alone**: measured,
+  `--find-copies-harder` re-enables two-path records even placed BEFORE it, and a later `-M`/`-C`
+  overrides it in the ordinary way. Neither is passed and no config key sets either, but adding an
+  argument to that list means re-measuring the stride rather than assuming it.
+  Ported from `dicom#60`. **Unmerged (`U`) records went the same way**: returned by neither
+  `AM` nor `AMT`, so a conflicted in-scope path reported clean; `U` is now admitted and **refused**,
+  because it has no stage-0 entry and `git show :<path>` answers `fatal: path ... is in the index,
+  but not at stage 0`. **Key it on the STATUS, not the mode, and do not write one flavour's record
+  down as canonical**: across both-modified, add/add, modify/delete, delete/modify, rename/rename and
+  symlink/symlink the status is always `U` and the dst mode always `000000`, while the SRC mode
+  (`100644`/`120000`/`000000`) and the set of stages present (1/2/3, 1/2, 2/3, 1/3) both vary.
+  **Three residuals remain disclosed, not closed.** Do not silently re-close any, and do not let a
   future edit read as though they were. (1) This scanner has **no refuse-a-scan-that-observed-nothing
   rule**, so an empty enumeration reports clean. (2) The ancestor-component and absolute/`../` reads
-  above, on the named-path mode only.
+  above, on the named-path mode only. (3) **A scan ROOT'S OWN PATH staged as a non-regular entry is
+  outside the `--staged` route's scope**, because that scope tests `test/fixtures/` and `src/` as
+  path PREFIXES and an index entry at exactly `src` matches neither. Measured identically on both
+  trees: `ln -s elsewhere src && git add -A` stages `:000000 120000 0000000 <sha> A src` and
+  `--staged` reports clean / exit **0**, while the all-mode walk over the same tree exits 1 on the
+  payload behind it. `dicom`'s copy of this function carries exactly that guard
+  (`s.path === "test/fixtures" || s.path.startsWith("test/fixtures/")`) and **it did not come across
+  in the port**. Found by this slice's refuter, pre-existing, and its own item.
   **Exit **2** now means every failure to complete, not just a bad invocation.** A throw raised
   before or outside `main`'s inner `try` blocks (`loadAllowList()` on a missing
   `scripts/phi-allow-list.txt`, `readdirSync` on an unreadable directory under a walk root) left the
