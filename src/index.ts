@@ -37,7 +37,7 @@
  * console.log(VERSION);
  * ```
  */
-export const VERSION: string = "0.0.5";
+export const VERSION: string = "0.0.6";
 
 // ── The diagnostic channel (the fail-safe rule, materialized) ──────────────────────────────────
 export { ISSUE_CODES, FATAL_CODES } from "./diagnostics/codes.js";
