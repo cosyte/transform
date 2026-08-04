@@ -1,5 +1,11 @@
 # @cosyte/transform — Project Guide for Claude
 
+**▶ The long form lives in [`documentation/agent-notes.md`](documentation/agent-notes.md).** Every
+trap below is a one-line imperative with a pointer into that file, where the incident, the
+measurement and the rationale are written out **verbatim**. Relocated 2026-08-04, not deleted
+(umbrella ADR 0023, amendment 2026-08-04). **When a one-liner here and a paragraph there disagree,
+the notes are the measurement.** Re-measure before you soften either.
+
 ## Project
 
 **`@cosyte/transform`** — a developer-focused **HL7 v2 → FHIR R4 transformation** library for
@@ -17,50 +23,37 @@ handed a confident wrong FHIR value**. The borrowed disciplines (not the parser 
 the parser tier; third-party runtime deps stay zero) and `0002` (terminology is a separate
 `@cosyte/terminology` sibling; BYO ConceptMap).
 
+**A silently mis-transformed message is the same harm as a mis-parsed one.** Everything below marked
+as a trap is clinical-safety content.
+
 ## Status
 
-- **Phases 1–6 shipped** (roadmap `operations/roadmaps/transform.md` §Phase 1–6). Pre-alpha `0.0.x`,
-  **published on npm** — this line read "not yet published to npm" for several releases after first
-  publish, which is part of why a `VERSION` constant stuck at `"0.0.0"` went unnoticed on a shipped
-  package. **Never quote a version here**; `npm view @cosyte/transform version` is the only source of
-  truth. **Published is not installable here:** the `@cosyte/fhir` peer is not on the registry, so
-  `npm install @cosyte/transform` fails to resolve. Both halves travel together or neither is
-  useful. Phase 1: the **six safety-critical datatype converters** (`toFhirDateTime`,
-  `toFhirIdentifier`, `toFhirCodeableConcept`, `toFhirHumanName`, `toFhirAddress`, `toFhirQuantity`),
-  the **value-free diagnostic channel** (`ISSUE_CODES`/`FATAL_CODES`, `TransformIssue`,
-  `toOperationOutcome`), and the minimal **NamingSystem resolver** (`createNamingSystem`). Phase 2: the
-  first **message-level assembly** — `toFhir(msg)` turns an HL7 v2 **ADT** message into a FHIR R4
-  **message `Bundle`** (MSH→`MessageHeader`, PID→`Patient`, PV1→`Encounter`, NK1→`RelatedPerson`, with
-  `urn:uuid:` reference wiring, the HL70001/HL70004 table maps, a segment-assembled fallback for
-  non-IG-mapped triggers, and a conservative-emit gate against `@cosyte/fhir.validateResource`). Phase
-  3: the **ORU^R01 → DiagnosticReport + Observation** results graph — OBR→`DiagnosticReport` (status via
-  HL70123, `DIAGNOSTIC_REPORT_STATUS_MAP`), OBX→`Observation` with **OBX-2 value-type discrimination**
-  of OBX-5→`value[x]` (NM→`valueQuantity`, CWE→`valueCodeableConcept`, SN→structured, ST/TX→`valueString`),
-  OBX-8→`interpretation` (HL70078, `HL70078_INTERPRETATION_CODES`), OBX-11→`status` (HL70085,
-  `OBSERVATION_STATUS_MAP`), with the "never a confident wrong result" fail-safes (a corrected/cancelled
-  result never emits as `final`; an unmapped status withholds the resource; a precision-exact magnitude
-  read from the raw OBX-5). Every segment→resource and field→element map is grounded firsthand on the
-  IG's ConceptMaps and cited. Phases 4–5 added the message-level graphs for **ORM_O01/OML_O21 →
-  ServiceRequest** and **RXO → MedicationRequest** (Phase 4) and the thin IG singles **VXU_V04 →
-  Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference** (Phase 5). Phase 6: the
-  **terminology value-translation** layer — a `$translate`-shaped, additive, fail-safe engine
-  (`toFhirCodeableConceptVia`) applying the license-clean IG value ConceptMaps (each transcribed +
-  verified **firsthand against the raw IG JSON**) to the previously structural-only coded fields: RXR
-  route/site (HL70162 / HL70550), SCH-8 appointment type (HL70277), RXO-9 substitution (HL70161), and
-  OBR-5 priority (HL70485, `SERVICE_REQUEST_PRIORITY_MAP`). A code in the IG's `(unmapped)` group is
-  flagged, never coerced; SNOMED-target maps (RXR-4 method, SCH-7 reason) stay structural/BYO — no
-  SNOMED bundled; and fields with no IG value map (TXA-2, RXA-5) are documented as structural, never
-  invented.
+- **Phases 1–6 shipped** — datatype converters + diagnostic channel, ADT/ORU/ORM-OML/RXO/VXU/SIU/MDM
+  message graphs, and the IG value-ConceptMap translation layer. Phases **7 (FHIR→v2)** and
+  **8 (profiles)** and deeper terminology are deferred. Full per-phase inventory:
+  `documentation/agent-notes.md#shipped-phase-history-phases-16`.
+- **Never quote a version here.** This line read "not yet published to npm" for several releases
+  after first publish, which is part of why a `VERSION` constant stuck at `"0.0.0"` shipped unnoticed.
+  Derive it: `npm view @cosyte/transform version`.
+- **▶ PUBLISHED IS NOT INSTALLABLE. `@cosyte/transform` is on the registry and `npm install
+  @cosyte/transform` FAILS `E404`**, because its `@cosyte/fhir` peer is absent from the registry: its
+  publish is refused with a **persistent, unexplained `E403` on `PUT`**, tracked as `FHIR-NPM-NAME`.
+  Both halves travel together or neither is useful.
+- **▶ THE "NAME-SIMILARITY" READING IS RETRACTED. DO NOT RENAME ANYTHING** — not the package, not the
+  scope, not an export. `FHIR-NPM-NAME` is a label, not a diagnosis; the error never asked for a
+  rename. Why: `documentation/agent-notes.md#publish-state-and-the-stale-claim-inside-it`.
+- **▶ THIS REPO'S OLDER PUBLISH-STATE WORDING (`npm 404, a human-gated publish`) IS FLAGGED STALE**
+  in the umbrella backlog alongside `hl7`, `mllp` and `deid`, and is **not** treated as fact here. It
+  is quoted, dated and disputed in the notes — **relocating a disputed claim must not launder it into
+  fact.** The misleading half is **`a human-gated publish`**: the registry refuses at policy, and
+  **there is no approval button to press.** Same section as above. Derive, never recall:
+  `npm view @cosyte/fhir version`. **Visibility and publish state are independent**; never infer one
+  from the other.
 - **Consumes two cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer dependencies**, vendored
   as `pnpm pack` tarballs in `vendor/` for dev/test (ADR 0001 + umbrella ADR 0008) — refresh with
   `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir `7a099b2`. **They are not both unpublished
-  — that wording was stale.** `@cosyte/hl7` is on the registry; **`@cosyte/fhir` is not** (npm 404,
-  a human-gated publish), and it is the fhir peer alone that makes this package uninstallable from
-  npm. Derive it, do not recall it: `npm view @cosyte/hl7 version`, `npm view @cosyte/fhir version`.
-  **Third-party runtime deps: zero.**
-- **Deferred to later phases:** deeper terminology (the full HL7 THO NamingSystem crosswalk beyond the
-  shipped value maps, consumer-supplied ConceptMap application), the reverse FHIR→v2 direction (Phase 7),
-  and profiles (Phase 8).
+  — that wording was stale**; `@cosyte/hl7` is on the registry and it is the `fhir` peer alone that
+  makes this package uninstallable. **Third-party runtime deps: zero.**
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 
@@ -72,140 +65,65 @@ a summary.
   `@cosyte/tsconfig`. **Target ES2023**, `NodeNext`. TypeScript 5.9.x, exact-pinned.
 - **Build:** dual ESM + CJS + `.d.ts` via `tsup` (`@cosyte/tsup-config`); `attw` is a publish gate
   (per-condition types: `.d.ts` for `import`, `.d.cts` for `require`). The `attw` script is
-  **`scripts/attw.mjs`, not the bare CLI** — see the guardrail below; the CLI reports a tarball with
-  no types and exits **0**.
+  **`scripts/attw.mjs`, not the bare CLI** — see the guardrail below.
 - **Node:** **>= 22** (CI matrix 22 + 24).
 - **Package manager:** `pnpm@10`.
 - **Lint/format:** **ESLint 10** + unified `typescript-eslint` (type-checked) via
   `@cosyte/eslint-config`; Prettier via `@cosyte/prettier-config`. Lint at `--max-warnings=0`.
 - **Testing:** **Vitest 4** + v8 coverage (`@cosyte/vitest-config`), per-directory >= 90 gates on
   `src/datatypes`, `src/diagnostics`, `src/terminology` and `src/messages`. Property + fuzz
-  (`fast-check`) over **two** boundaries: the datatype boundary
-  (`test/datatypes/boundary.property.test.ts`) and the message boundary
-  (`test/messages/property.test.ts`): never-throw, only registered value-free issues, no dangling
-  `urn:uuid:` reference, and an emit gate (what is produced validates under
-  `@cosyte/fhir.validateResource`). **Which suites run is decided by the `include` glob in
-  `vitest.config.ts`, and by the `test`/`test:coverage` script bodies in `package.json` that could
-  add a path filter of their own.** Both levers are invisible to a branch ruleset. See "Branch
-  protection" below for why that matters.
+  (`fast-check`) over **two** boundaries: `test/datatypes/boundary.property.test.ts` and
+  `test/messages/property.test.ts` — never-throw, only registered value-free issues, no dangling
+  `urn:uuid:` reference, and an emit gate against `@cosyte/fhir.validateResource`.
 - **CI/CD:** thin callers of the reusable `cosyte/.github` workflows, plus one repo-local job
-  (`no-internal-refs`). **The checks BIND**; see "Branch protection" below.
+  (`no-internal-refs`). **The checks BIND** — ruleset `ci-required-checks`, id `19914044`.
 - **Runtime deps:** **Zero third-party.** `@cosyte/hl7` + `@cosyte/fhir` are peer deps (ADR 0001).
 - **License:** MIT.
 
-## Branch protection (and the limits of this claim)
+## Branch protection, in one screen
 
-`main` is protected by the repository ruleset **`ci-required-checks`** (id `19914044`,
-`source_type: Repository`, `enforcement: active`, conditions `~DEFAULT_BRANCH`, `bypass_actors: []`).
-Rules: `deletion`, `non_fast_forward`, `required_status_checks`.
+Full section, with every measurement and provenance:
+`documentation/agent-notes.md#branch-protection-and-the-limits-of-this-claim`. The traps:
 
-**It did not always bind, and the half-done state is the thing to recognise.** This repo had no
-ruleset at all until `PUBLIC-SURFACE-HYGIENE` (#11) created `19914044` requiring exactly one context,
-`no-internal-refs`. From that point the repo _had a ruleset_ and still did not gate its build:
-`ci / verify`, `ci / actionlint` and `codeql` were all advisory, so any of them could be red and the
-merge still landed on `main`, and `main` is the branch that publishes. **Having a ruleset is not the
-same as being protected.** `CI-REQUIRED-CHECKS` folded the four build contexts into that same ruleset
-rather than adding a second one, deliberately: `ncpdp` is the cautionary case, where a correctly
-pinned base ruleset sat beside two later rulesets that pinned nothing, and the repo read as "pinned"
-because one of its rulesets was. **One ruleset per repo means one place to audit.**
-
-Required contexts, each pinned to **`integration_id: 15368`** (the `github-actions` app) so that a
-commit status of the same name posted by any other actor with write access cannot satisfy it:
-
-| context                                    | emitted by             |
-| ------------------------------------------ | ---------------------- |
-| `ci / verify (22, ubuntu-latest)`          | `ci.yml`               |
-| `ci / verify (24, ubuntu-latest)`          | `ci.yml`               |
-| `ci / actionlint`                          | `ci.yml`               |
-| `codeql / analyze (javascript-typescript)` | `codeql.yml`           |
-| `no-internal-refs`                         | `no-internal-refs.yml` |
-
-These are the names GitHub actually reports, **read off real check runs**, never off a workflow's
-`name:` field. Provenance stated exactly, because "two independent heads" is not true of all five:
-the four build contexts were read off **two** independent `pull_request` heads, `66715e5b` (head of
-#11) and `460bfcf8` (head of #7). `no-internal-refs` could only be read off **one**, `66715e5b`,
-because `460bfcf8` predates the workflow that emits it and carries no such check run. All five were
-then confirmed together on the change that required them, #12, whose first head was `57a62b2`: it
-read `BLOCKED` until the five landed and `CLEAN` after, on that head and on every later one.
-That distinction is the whole trap: the workflow named `Public-surface gate`
-emits the context `no-internal-refs`, and requiring a context nothing emits does not fail a PR, it
-leaves it **pending and unmergeable forever**. None of the three workflows that emit these five
-contexts (`ci.yml`, `codeql.yml`, `no-internal-refs.yml`) carries a `paths:` filter, so no PR can
-skip one.
-
-**What is deliberately NOT required, and why each would be a defect:**
-
-- **`scorecard / analysis`** runs on `push` to `main` and on a schedule, never on `pull_request`.
-  Requiring it would strand every PR pending forever.
-- **`release / release`** runs on `push` to `main`. It is not a PR gate.
-- The **`CodeQL`** check posted by the Advanced Security app (id `57789`) reports **alert state**, not
-  whether the analysis ran. `codeql / analyze (javascript-typescript)` already gates that.
-
-**A required job gates all of its steps.** Splitting a step out of `ci / verify` into its own job
-silently un-requires it, with no error and no warning. There is a banner on `ci.yml` where someone
-would trip it.
-
-**Three of the five names are set upstream, in another repo, on a floating ref.**
-`ci / verify (22, ubuntu-latest)`, `ci / verify (24, ubuntu-latest)` and `ci / actionlint` come from
-the DEFAULT inputs of `cosyte/.github/.github/workflows/ci.yml@main` (`node-versions`, `os`,
-`run-actionlint`). This repo's caller passes none of them. Change a default there and every PR here
-strands pending, with nothing in this repo to warn you. It fails closed rather than open, and every
-repo pinning this reference set shares it, so it is an ecosystem concern rather than a local one --
-but it is the reason the context list is not stable just because this repo is.
-
-**And the gate can leave the job entirely, which is the sharper edge in this repo.** Requiring
-`ci / verify` pins that `pnpm test` runs; it does not pin _what_ it runs. The suites are chosen by the
-`include` glob in `vitest.config.ts`, and the shared `@cosyte/vitest-config` sets no `test.include` of
-its own, so that line decides today. **It is not the only lever:** the `test` and `test:coverage`
-script bodies in `package.json` are plain `vitest run` invocations, and adding a path argument or
-`--exclude` there drops suites without touching the glob, equally unobserved by the ruleset. The glob
-is what currently selects `test/messages/property.test.ts` and
-`test/datatypes/boundary.property.test.ts` -- the property and fuzz suites carrying the never-throw,
-value-free-diagnostic, reference-resolution and emit-validity claims that are the point of the
-fail-safe rule. **Narrow that glob and they stop running with the job still green and the ruleset
-still satisfied.** The ruleset does not protect them; it protects the job that happens to run them.
-There is a banner on `vitest.config.ts` saying so.
-
-The per-directory coverage gate is a **thin, incidental** backstop and should not be mistaken for a
-real one. Measured on `dfc7739`: excluding `test/messages/property.test.ts` alone takes
-`src/messages/**` branch coverage from **90.11% to 88.82%**, which breaches the `>= 90` gate, so that
-particular deletion is caught today. It is caught by a 1.29-point margin, because the property run
-happens to be the only thing reaching some branches -- any example test covering them restores the
-margin and the backstop goes quiet. And coverage can never see the loss of the **properties**
-themselves, since a trivial test touching the same lines satisfies it identically.
-
-**▶ The cost of requiring a new context, which is real and was measured here.** A PR whose branch
-predates a required workflow cannot emit that workflow's context, so it goes `BLOCKED` until it is
-rebased or re-run. **PR #10 ("Version Packages", head `2996df7`) has zero check runs and reports
-`BLOCKED`** -- and it is the structural case, not a stale branch: Changesets opens that PR as
-`github-actions[bot]` with the default `GITHUB_TOKEN`, and GitHub does not start workflow runs for
-that token's events. With `bypass_actors: []` nobody can merge past it. The escape is one empty
-commit onto `changeset-release/main`; it is written out on `release.yml`.
-
-**▶ Scope of the claim, stated plainly: a ruleset makes a red check BLOCK a merge. It does not make
-the check correct, and nothing inside this repository can observe its own ruleset.** Delete the
-ruleset and this test suite stays green, `verify.sh` stays green, and this section keeps asserting
-protection. It is not verifiable from inside the repo, by `verify.sh`, or by any gate here. Verify it
-the only way that works, and check **every** ruleset the call returns:
-
-```bash
-gh api 'repos/cosyte/transform/rulesets?includes_parents=true'
-gh api repos/cosyte/transform/rulesets/19914044
-```
-
-Recorded as **unproven** rather than fine: no fork PR has ever run here, so neither the
-first-time-contributor approval gate nor whether `codeql / analyze` can report on a fork token (which
-cannot hold `security-events: write`) has been observed.
+- **Having a ruleset is not the same as being protected.** This repo had one that required a single
+  context while `ci / verify`, `ci / actionlint` and `codeql` stayed advisory on the branch that
+  publishes.
+- **One ruleset per repo means one place to audit.** Fold new contexts into `19914044`; never add a
+  second. `ncpdp` is the cautionary case — it read as "pinned" because *one* of its rulesets was.
+- **Pin every required context to `integration_id: 15368`**, or any actor with write access can post
+  a same-named commit status and satisfy it.
+- **▶ Read context names off REAL CHECK RUNS, never off a workflow's `name:` field.** The workflow
+  named `Public-surface gate` emits the context `no-internal-refs`. Requiring a context nothing emits
+  does not fail a PR — it leaves it **pending and unmergeable forever**.
+- **Never require `scorecard / analysis` or `release / release`** (neither runs on `pull_request`;
+  requiring them strands every PR), **nor the Advanced-Security `CodeQL` check** (id `57789`) — it
+  reports alert state, not that the analysis ran.
+- **A required job gates all of its steps.** Splitting a step out of `ci / verify` into its own job
+  silently un-requires it, no error and no warning. Banner on `ci.yml`.
+- **Three of the five names are set upstream, on a floating ref** (`cosyte/.github@main` defaults).
+  Change a default there and every PR here strands pending, with nothing local to warn you.
+- **▶ THE GATE CAN LEAVE THE JOB.** Requiring `ci / verify` pins that `pnpm test` runs, not *what* it
+  runs: the `include` glob in `vitest.config.ts` **and** the `test`/`test:coverage` script bodies in
+  `package.json` both drop suites invisibly to the ruleset — including the property/fuzz suites that
+  carry the fail-safe rule. Banner on `vitest.config.ts`.
+- **The coverage gate is a thin, incidental backstop, not a real one** — a **1.29-point** margin, and
+  it can never see the loss of the *properties* themselves.
+- **PR #10 ("Version Packages") is structurally `BLOCKED`, not stale**: Changesets opens it as
+  `github-actions[bot]` with the default `GITHUB_TOKEN`, which starts no workflow runs, and
+  `bypass_actors: []` means nobody merges past it. Escape: one empty commit onto
+  `changeset-release/main`, written out on `release.yml`.
+- **▶ NOTHING INSIDE THIS REPOSITORY CAN OBSERVE ITS OWN RULESET.** Delete it and the suite,
+  `verify.sh`, and this section all stay green. Verify from outside, and check **every** ruleset
+  returned: `gh api 'repos/cosyte/transform/rulesets?includes_parents=true'`.
+- **Recorded unproven, not fine:** no fork PR has ever run here.
 
 ## Dependency watching
 
-`.github/dependabot.yml` configures weekly `npm` and `github-actions` updates. Before it existed this
-repo showed **zero** open Dependabot PRs, which meant nothing was looking, not that nothing was stale.
-Two limits are written into that file rather than left to be discovered: automatic **security** update
-PRs are a repo setting that currently reads `disabled`, and **Dependabot never resolves a
-`file:vendor/*.tgz` specifier**, so the vendored `@cosyte/hl7` and `@cosyte/fhir` tarballs -- the
-versions the tests actually exercise -- are unwatched by both the `file:` route and the peer-dep route
-and stay a `pnpm vendor:refresh` job by hand.
+Weekly `npm` + `github-actions` updates via `.github/dependabot.yml`. Two limits, both written into
+that file: automatic **security** update PRs are a repo setting currently reading `disabled`, and
+**Dependabot never resolves a `file:vendor/*.tgz` specifier** — so the vendored `@cosyte/hl7` and
+`@cosyte/fhir` tarballs, the versions the tests actually exercise, are unwatched on both routes and
+stay a `pnpm vendor:refresh` job by hand. Why: `documentation/agent-notes.md#dependency-watching`.
 
 ## Engineering Guardrails
 
@@ -229,144 +147,67 @@ and stay a `pnpm vendor:refresh` job by hand.
   one is a **breaking change**; new codes are additions only.
 - Coverage: per-directory >= 90% (lines/branches/functions/statements), enforced by
   `pnpm test:coverage`.
+
+### The `attw` gate
+
+Full narrative, every measurement: `documentation/agent-notes.md#the-attw-guardrail-in-full`.
+
 - **▶ `attw` SAYS "does not contain types" AND EXITS 0, SO THE `attw` SCRIPT IS A WRAPPER, NOT THE
-  BARE CLI.** `getExitCode.js` in `@arethetypeswrong/cli@0.18.4` opens with `if (!analysis.types)
-return 0` — an untyped package is a legitimate npm package, so "no types at all" is a description,
-  not a problem, and the problem list is never consulted. No `--profile`, `--ignore-rules` or config
-  setting reaches that early return. For a package that ships types it means the declarations were
-  **not in the tarball**, which is a broken publish reported as a pass. The invocation here was
-  never lenient — it was the bare `attw --pack .` on the default strict profile.
-  **The race only supplies the condition.** Reproduced here on a quiet box with zero concurrency:
-  `rm -rf dist && attw --pack .`, and `pnpm build && rm -f dist/index.d.*ts && attw --pack .`, both
-  print the sentence and exit 0. The second is the realistic window — `tsup` emits the bundles in
-  one pass and the declarations in a later one, so **every** build has an interval where `dist/`
-  holds `.mjs`/`.cjs` and no `.d.ts`; measured at **1,600 / 1,646 / 2,018 ms** over three
-  consecutive quiet-box builds, polling every 5 ms. A concurrent build or `clean` in the same
-  working tree lands `attw` in it. So the answer is **not** a lock, a lease or a build queue: the
-  gate must be able to say its own inputs were missing, whatever removed them.
-  `scripts/attw.mjs` carries **two nets, and they catch different things** — a preflight that every
-  relative path `package.json` promises (`main`, `module`, `types`, `typings`, every string leaf of
-  `exports`) exists and is non-empty, which catches the build window and _names the missing file_;
-  and a post-check on `attw`'s untyped sentence, which catches what the preflight structurally
-  cannot — declarations present on disk but excluded from the tarball by `files`/`.npmignore`.
-  **No instance of that second case is on record in this repo.** `test/scripts/attw-gate.test.ts`
-  pins both nets against the real binary, including the upstream exit-0 itself, so an `attw` upgrade
-  that reworks the wording or fixes the exit code reds the suite instead of letting the net go
-  quietly slack. It also pins a **negative control** on a well-formed package, and that a real
-  `attw` failure still fails with `attw`'s own status — a gate that only ever fails is not a gate,
-  and one that swallows the status is not one either. Reducing the wrapper to the bare CLI reds 10
-  of its 13 tests; that is how the suite was checked for bite rather than assumed to have it.
-  **The post-check reads a string, so what would hide that string is refused**, not tolerated.
-  **Three routes were measured here** to hand back exit 0 over an untyped pack: `--quiet`,
-  `--format json`, and a `.attw.json` setting either (`readConfig()` applies it after argv).
-  `--config-path` is refused too, but **by inference, not measurement**. The refusal is **by option
-  name, wholesale, not by value** — a harmless `--format` value blinds nothing and is refused
-  anyway, which is the deliberate trade against value-parsing them.
-  **Two limits of a green here.** A **complete but stale `dist/`** passes both nets (not live today
-  only because the ladder runs `build` before `attw`); and this package's unpublished
-  `@cosyte/fhir` peer is **not** something `attw` speaks to — measured, a good pack reports "No
-  problems found" and exits 0, identically with `node_modules/@cosyte/fhir` moved aside, so `attw`
-  never resolves that peer. A green `attw` has never meant a consumer can install the peer.
-  **This is a per-repo script.** It was ported here from `terminology`'s graded fix (terminology#28,
-  `bf153cb`); siblings that still invoke the CLI directly still carry the defect, and the prose does
-  **not** port with the code — every number above was re-measured on this package. Derive who is
-  left rather than writing a count down:
+  BARE CLI.** `getExitCode.js` returns 0 before the problem list is read; no `--profile`,
+  `--ignore-rules` or config setting reaches that early return. For a package that ships types, that
+  sentence means **a broken publish reported as a pass**.
+- **The race only supplies the condition** — every `tsup` build has a **~1.6–2.0 s** window with no
+  `.d.ts` on disk, reproduced with zero concurrency. **So the answer is not a lock, a lease or a
+  build queue:** the gate must be able to say its own inputs were missing, whatever removed them.
+- **`scripts/attw.mjs` carries two nets that catch different things** — a path preflight (catches the
+  build window and *names* the missing file) and a post-check on the untyped sentence (catches
+  declarations on disk but excluded from the tarball). **Do not collapse them into one.**
+- **The post-check reads a string, so what would hide that string is refused by option NAME,
+  wholesale, not by value** — `--quiet`, `--format`, `--config-path`, and `.attw.json` settings.
+  A harmless value is refused anyway; that is the deliberate trade.
+- **Do not reduce the wrapper to the bare CLI** — it reds 10 of `test/scripts/attw-gate.test.ts`'s 13
+  tests, which is how the suite was checked for bite rather than assumed to have it.
+- **A green `attw` has never meant a consumer can install the peer** — measured, `attw` never
+  resolves `@cosyte/fhir` at all. And a **complete but stale `dist/`** passes both nets.
+- **This is a per-repo script and the prose does NOT port with the code.** Re-measure every number on
+  the package you port it to. Derive who still runs the bare CLI:
   `rg -l --glob '**/package.json' '"attw":' /workspace`.
 
-- **▶ THE PHI SCANNER REFUSES (exit 2) EVERY ENTRY IT ENUMERATES, AND EVERY PATH NAMED DIRECTLY, THAT
-  IS NOT A REGULAR FILE. THAT IS THE WHOLE CLAIM — "it follows nothing" IS THE LOOSER WORDING, AND
-  TWO SEPARATE REFUTER PASSES MEASURED IT FALSE.** See the ancestor-component residual below before
-  you tighten this sentence back up.
-  Before `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (ported from `terminology#37`, `5f81640`) a symbolic
-  link was clean on **both** enumerating routes, measured on this repo's own scanner over a link under
-  `src/` pointing at a name-bearing synthetic payload: all-mode printed `OK — no hits` / exit **0**,
-  and so did `--staged`. The walk enumerates `Dirent.isFile()`, an **lstat** answer, so a link is
-  neither a file nor a directory — and a linked _directory_ takes its whole subtree with it.
-  `--staged` reads `git show :<path>`, and **git stores a link as its TARGET PATH under mode
-  `120000`**, so that route gets the path text, never the target's bytes.
-  **Do not "fix" this by following the link.** Following reads bytes the enumeration does not control
-  (outside the repo, a loop, a device, a FIFO that blocks the gate forever), and git does not carry
-  them anyway, so a hit on them would be a claim about something no commit contains.
-  **▶ AND THE THIRD MODE IS THE ONE A DRAFT OF THIS GUARDRAIL GOT WRONG — IT SAID "FOLLOWS NOTHING"
-  WHILE ONE ROUTE STILL FOLLOWED.** A refuter measured it: the named-`<path>` mode classified with
-  `statSync`, which **dereferences**, so `pnpm phi-scan src/link.ts` read the TARGET's bytes and
-  reported hits from them — including a target **outside the repository**, the first hazard the
-  sentence above says the scanner does not incur. It was never a false clean, which is exactly why
-  reading the code did not catch it. It lstats now; **if you touch `buildTargetsForPaths`, re-measure
-  the sentence, do not re-assert it.** A dangling link is reported as the link it is, because
-  `existsSync` follows and would call it a missing file.
-  **▶ AND `lstat` ANSWERS FOR THE FINAL COMPONENT ONLY — a second refuter pass measured that too,
-  after the first fix.** A named path whose **ancestor** is a symlink (`src/linkdir/payload.txt`) is
-  still followed and still read from wherever that ancestor lands, as is a plain absolute or `../`
-  argument. The all-mode walk over the same tree **does** refuse that ancestor, so the two routes
-  disagree about one link. **Pre-existing, disclosed, and deliberately NOT closed:** closing it means
-  realpath or containment logic, which is a guard growing past the defect it fixes, and neither
-  commit-gating route (the `--staged` pre-commit hook, the all-mode walk CI runs) reaches it.
-  **▶ THE ONE-LETTER TRAP: `--diff-filter` MUST KEEP `T`.** Replacing a **tracked** file with a link
-  is neither an add nor a modify. Measured here, `git diff --cached --raw --diff-filter=AM` printed
-  **nothing** for that change while the unfiltered `--raw` printed `:100644 120000 <sha> <sha> T` —
-  so under `AM` the record dies before any mode is read and the hook passes a mode-`120000` blob
-  **green** while the changelog claims it refuses one. `T` also buys the reverse typechange (link →
-  real file bearing PHI), which must be _scanned_, not refused. The route reads `--raw -z` purely so
-  the destination mode is visible; `--name-only` cannot see it.
-  **A refusal never echoes the link target** — that is working-tree text and can itself carry PHI.
-  Name the entry's own repo-relative path plus a token from the closed `entryKind`/`gitModeKind`
-  sets, nothing else. **This applies to the prose too**: a diagnostic about a PHI leak is itself a PHI
-  surface, which is why the docblock writes the dangerous target as a _shape_ and not an example.
-  **The walk has NO extension scope of its own** — it skips regular `*.md` as documentation and takes
-  everything else, so a link at `src/leak.json` and a linked directory are refused there too.
-  `src/**.ts` is the **`--staged`** route's boundary; do not describe the two as one rule.
-  **▶ THE RENAME RESIDUAL IS CLOSED, AND THE FRAMING IT WAS FILED UNDER WAS FALSE.** It was
-  disclosed here as "admitting `R`/`C` needs the two-path record shape, a scope decision". **There is
-  no scope decision and no record shape work**: the remedy is `--no-renames` on the `git diff
---cached` invocation, which makes git unable to emit `R` or `C` at all, so the destination arrives
-  as an ordinary single-path `A` and the source as a `D` the filter drops. That sentence was ported
-  in from a sibling and repeated rather than measured: the ecosystem's own porting trap, and the
-  reason to re-measure a disclosure before carrying it forward.
-  Measured on this repo's scanner before the fix, on **both** shapes: `git mv notes/leak.txt
-src/leak.ts` over a link staged `:120000 120000 <sha> <sha> R100`, `--diff-filter=AMT` returned
-  nothing, and `--staged` reported a clean scan and exited **0** over a mode-`120000` entry at
-  `src/leak.ts`; `git mv notes/payload.txt src/payload.ts` over an ordinary PHI-bearing file passed
-  identically. **The gap was at PRE-COMMIT** (the hook is `phi-scan --staged`) with the CI all-mode
-  walk as the backstop, so the exposure was "PHI enters a local commit or a pushed branch", not "PHI
-  merges". The enumeration is a strict **superset** of the previous one, re-measured here under
-  `diff.renames=true|copies|false|1` and `renameLimit=1`: every setting yields the same single-path
-  `A`, which also makes the two-field stride **structural** rather than conditional on a caller's
-  config. **The stride claim is about this ARGV, not about `--no-renames` alone**: measured,
-  `--find-copies-harder` re-enables two-path records even placed BEFORE it, and a later `-M`/`-C`
-  overrides it in the ordinary way. Neither is passed and no config key sets either, but adding an
-  argument to that list means re-measuring the stride rather than assuming it.
-  Ported from `dicom#60`. **Unmerged (`U`) records went the same way**: returned by neither
-  `AM` nor `AMT`, so a conflicted in-scope path reported clean; `U` is now admitted and **refused**,
-  because it has no stage-0 entry and `git show :<path>` answers `fatal: path ... is in the index,
-  but not at stage 0`. **Key it on the STATUS, not the mode, and do not write one flavour's record
-  down as canonical**: across both-modified, add/add, modify/delete, delete/modify, rename/rename and
-  symlink/symlink the status is always `U` and the dst mode always `000000`, while the SRC mode
-  (`100644`/`120000`/`000000`) and the set of stages present (1/2/3, 1/2, 2/3, 1/3) both vary.
-  **Three residuals remain disclosed, not closed.** Do not silently re-close any, and do not let a
-  future edit read as though they were. (1) This scanner has **no refuse-a-scan-that-observed-nothing
-  rule**, so an empty enumeration reports clean. (2) The ancestor-component and absolute/`../` reads
-  above, on the named-path mode only. (3) **A scan ROOT'S OWN PATH staged as a non-regular entry is
-  outside the `--staged` route's scope**, because that scope tests `test/fixtures/` and `src/` as
-  path PREFIXES and an index entry at exactly `src` matches neither. Measured identically on both
-  trees: `ln -s elsewhere src && git add -A` stages `:000000 120000 0000000 <sha> A src` and
-  `--staged` reports clean / exit **0**, while the all-mode walk over the same tree exits 1 on the
-  payload behind it. `dicom`'s copy of this function carries exactly that guard
-  (`s.path === "test/fixtures" || s.path.startsWith("test/fixtures/")`) and **it did not come across
-  in the port**. Found by this slice's refuter, pre-existing, and its own item.
-  **Exit **2** now means every failure to complete, not just a bad invocation.** A throw raised
-  before or outside `main`'s inner `try` blocks (`loadAllowList()` on a missing
-  `scripts/phi-allow-list.txt`, `readdirSync` on an unreadable directory under a walk root) left the
-  process on node's uncaught-exception code, **1**, which is this scanner's code for HITS FOUND. A
-  caller keying on the code read a gate that never ran as one that ran and fired. `run()` at the foot
-  of the file is the outermost net and `walk` names an unreadable directory itself; an unexpected
-  throw still prints its stack, because a gate that swallows its own bugs is harder to fix.
-  Pinned in `test/scripts/phi-scan.test.ts` against **throwaway git repos under `os.tmpdir()`** — the
-  scanner roots everything at `process.cwd()`, so never write a link or a violator into this corpus
-  to test it. **The enumerate-then-read race is deliberately still open here** and is a separate
-  item: measured on this tree, a real `pnpm build` puts **no** transient under either walk root, and
-  both temp-using suites `mkdtemp` into `os.tmpdir()`, so it is unreachable by scope — _until a walk
-  root widens_, which reintroduces it verbatim.
+### The PHI scanner
+
+Full narrative, every measurement and both refuter passes:
+`documentation/agent-notes.md#the-phi-scanner-guardrail-in-full`.
+
+- **▶ THE CLAIM IS EXACTLY: the scanner refuses (exit 2) every entry it ENUMERATES, and every path
+  NAMED DIRECTLY, that is not a regular file.** "It follows nothing" is the looser wording and **two
+  separate refuter passes measured it FALSE.** Do not tighten the sentence back up.
+- **Do not "fix" the link blindness by following the link** — it reads bytes the enumeration does not
+  control (outside the repo, a loop, a device, a blocking FIFO), and git does not carry them anyway.
+- **`lstat` answers for the FINAL COMPONENT ONLY.** A named path with a **symlinked ancestor**, or a
+  plain absolute/`../` argument, is still followed. **Pre-existing, disclosed, deliberately NOT
+  closed.** If you touch `buildTargetsForPaths`, **re-measure the sentence, do not re-assert it**.
+- **▶ THE ONE-LETTER TRAP: `--diff-filter` MUST KEEP `T`.** Replacing a tracked file with a link is
+  neither an add nor a modify — under `AM` the record dies before any mode is read and a mode-`120000`
+  blob passes **green**. Keep `U` too (refused: no stage-0 entry), and keep `--no-renames`, which is
+  what makes a staged rename arrive as a single-path `A`. Key on the **STATUS, not the mode**.
+- **Adding any argument to that `git diff --cached` ARGV means re-measuring the record stride** —
+  `--find-copies-harder` re-enables two-path records even placed *before* `--no-renames`.
+- **A refusal never echoes the link target** — that is working-tree text and can itself carry PHI.
+  Name the repo-relative path plus a token from the closed `entryKind`/`gitModeKind` sets, nothing
+  else. **This applies to the prose too**: write the dangerous target as a *shape*, never an example.
+- **The walk has NO extension scope of its own** (it skips regular `*.md` and takes everything else);
+  `src/**.ts` is the **`--staged`** route's boundary. **Do not describe the two as one rule.**
+- **Exit `2` means every failure to complete; exit `1` means HITS FOUND.** An uncaught throw used to
+  land on node's `1`, so a caller read a gate that never ran as one that ran and fired.
+- **Three residuals are disclosed, NOT closed** — (1) no refuse-a-scan-that-observed-nothing rule, so
+  an empty enumeration reports clean; (2) the ancestor-component / absolute / `../` reads above; (3) a
+  scan **root's own path** staged as a non-regular entry is outside the `--staged` route's prefix
+  scope (`dicom`'s guard for this did not come across in the port). **Do not silently re-close any,
+  and do not let a future edit read as though they were.**
+- **Test against throwaway git repos under `os.tmpdir()`** — the scanner roots everything at
+  `process.cwd()`, so **never write a link or a violator into this corpus** to test it.
+- **The enumerate-then-read race is deliberately still open**, unreachable by scope today — _until a
+  walk root widens_, which reintroduces it verbatim.
 
 ## Standing disciplines (every change)
 
@@ -384,35 +225,32 @@ Mirrors the three disciplines in the meta-repo's `documentation/conventions.md` 
 4. **No internal project bookkeeping on a public surface** (founder directive, 2026-07-27). What a
    consumer reads (`README.md`, `docs-content/`, the npm `description`, a release body, the JSDoc
    their editor renders, the message text their log prints) says what the software does and what
-   changed. Item identifiers (`TRANSFORM-6`), phase and wave language, roadmap section numbers
-   (`roadmap §4.5`, `§Phase 6`), ADR numbers, meta-repo paths and "how this got built" commentary
-   belong in the changeset, `CHANGELOG.md`, the commit, the PR and the roadmap. It is a
-   **translation** at the boundary, not a deletion, and when you strip a label off the front of a
-   line, **repair the head**: a fragment reads worse than the text it replaced. Gated by
-   `pnpm check:no-internal-refs`. The gate keys on known project prefixes, so **a new programme
-   prefix has to be added to it by hand**; and it catches identifiers, not English sentences about
-   our process, so the reviewer still owns half the rule.
-
-   **This repo is dense with the colliding shape**, because a v2-to-FHIR mapper's whole vocabulary is
-   written `WORD-N`: `MSH-9`, `PID-3`, `PV1-44`, `OBX-5`, `OBR-25`, `RXA-20`, `SCH-8`, `TXA-19`.
-   None of those is caught, and the only reason is that their leading token is not on the prefix
-   list. **Never re-key the rule on the `WORD-N` shape**, and never "resync" the prefix list with a
-   sibling repo's copy without re-reading why this one keeps `SYNTH` and the `HL7-\d{3,4}`
-   exclusion. Case sensitivity is load-bearing too: `FHIR-core`, `FHIR-required` and
-   `FHIR-core-fixed` are live here and a case-insensitive rule calls every one of them a violation.
-
-   **Three source surfaces, three different answers.** `/** */` doc comments compile into
-   `dist/*.d.ts` and render in a consumer's editor, so they are **gated**. String literals reach a
-   consumer as diagnostic message text, so they are **gated too**. `//` and plain `/* */` comments
-   are **not gated** and identifiers are **welcome** in them, because **the convention says source
-   comments are a place identifiers belong**. That is the whole reason. **Do not justify this
-   boundary from what reaches `dist/`**: two attempts to do so in a sibling repo were both false.
-   Measured here: this repo's tsup config strips `//` comments from the bundles, but `dist` is
-   `files[0]`, there is no `.npmignore`, and `dist/*.map` carries every tracked source byte in
-   `sourcesContent`, so **everything in `src/` is in the tarball anyway**. The line is not what
-   reaches a consumer's disk (all of it does) but what a consumer is **shown**. Two consequences: a
-   doc comment is not the place for "which stage added this" framing, and **removing a doc comment
-   to satisfy the gate is a regression**, not a fix (JSDoc with `@example` on every public export is
-   a hard guardrail above, and neither lint nor coverage will catch its loss). What the gate cannot
-   do is read `dist/` itself: `dist/` is untracked build output, so this is a gate on the source of
-   the published text, not on the published text.
+   changed. Item identifiers (`TRANSFORM-6`), phase and wave language, roadmap section numbers, ADR
+   numbers, meta-repo paths and "how this got built" commentary belong in the changeset,
+   `CHANGELOG.md`, the commit, the PR and the roadmap. It is a **translation** at the boundary, not a
+   deletion — when you strip a label off the front of a line, **repair the head**. Gated by
+   `pnpm check:no-internal-refs`. Full rationale and every measurement:
+   `documentation/agent-notes.md#no-internal-project-bookkeeping-on-a-public-surface-in-full`.
+   The traps:
+   - **The gate keys on known project prefixes**, so a new programme prefix has to be added by hand;
+     and it catches identifiers, not English sentences about our process — **the reviewer owns half
+     the rule.**
+   - **▶ NEVER RE-KEY THE RULE ON THE `WORD-N` SHAPE.** This repo's whole domain vocabulary is
+     written that way (`MSH-9`, `PID-3`, `OBX-5`, `OBR-25`, `SCH-8`, `TXA-19`) and none of it is a
+     violation. Never "resync" the prefix list with a sibling's copy without re-reading why this one
+     keeps `SYNTH` and the `HL7-\d{3,4}` exclusion.
+   - **Case sensitivity is load-bearing** — `FHIR-core`, `FHIR-required`, `FHIR-core-fixed` are live
+     here, and a case-insensitive rule calls every one of them a violation.
+   - **Three source surfaces, three answers:** `/** */` doc comments are **gated** (they render in a
+     consumer's editor); string literals are **gated** (they reach a consumer as diagnostic text);
+     `//` and `/* */` comments are **not gated and identifiers are welcome in them**, because the
+     convention says source comments are a place identifiers belong.
+   - **▶ DO NOT JUSTIFY THAT BOUNDARY FROM WHAT REACHES `dist/`** — two attempts to do so in a
+     sibling repo were both false. Measured here, `dist/*.map` ships every tracked source byte in
+     `sourcesContent`, so **all of `src/` is in the tarball anyway**. The line is what a consumer is
+     **shown**, not what lands on their disk.
+   - **Removing a doc comment to satisfy the gate is a REGRESSION, not a fix** — JSDoc with
+     `@example` on every public export is a hard guardrail above, and neither lint nor coverage will
+     catch its loss.
+   - The gate cannot read `dist/` (untracked build output): it gates the **source** of the published
+     text, not the published text.
