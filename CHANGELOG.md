@@ -14,6 +14,56 @@ its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until firs
 
 ### Fixed
 
+- **A staged rename walked a symbolic link, or a real patient name, straight into a scan root
+  without the pre-commit PHI gate ever looking at it** (`PHI-SCAN-RENAME-BLIND-AT-PRECOMMIT`; port of
+  the graded fix in `dicom#60`). `R` (rename) and `C` (copy) records are returned by neither `AM` nor
+  `AMT`, so the `--staged` route's `--diff-filter=AMT` deleted the whole two-path record before any
+  mode or any content was read. Measured on this repo's own scanner before the fix, on both shapes it
+  reaches: `git mv notes/leak.txt src/leak.ts` over a link to a name-bearing synthetic payload staged
+  as `:120000 120000 <sha> <sha> R100` (`git ls-files --stage` reading `120000` on the destination)
+  and reported a clean scan, exiting **0**; `git mv notes/payload.txt src/payload.ts` over an ordinary
+  file full of the same payload passed identically. Both are ordinary developer actions, not
+  contrived ones.
+
+  **The gap is at PRE-COMMIT.** The hook is `phi-scan --staged`; the all-mode walk CI runs does
+  enumerate the renamed entry, so the exposure was "PHI enters a local commit or a pushed branch",
+  not "PHI merges". Stated because the containment is the difference between a defect and an
+  incident.
+
+  **The remedy is `--no-renames`, and it costs no stride work.** With detection off git cannot emit
+  `R` or `C` at all, so the destination arrives as an ordinary single-path `A`
+  (`:000000 120000 0000000 <sha> A`) and the source as a `D` the filter drops. No two-path record
+  shape is needed, and the enumeration is a strict **superset** of the previous one: re-measured
+  under `diff.renames=true|copies|false|1` and `renameLimit=1`, every setting yields that same
+  single-path `A`, so the flag also makes the two-field stride **structural** rather than conditional
+  on whatever a caller has configured. This repo previously disclosed the residual as "admitting them
+  needs the two-path record shape, a scope decision"; **that framing was false**, and it had been
+  carried in from a sibling repo rather than measured here.
+
+  **Unmerged (`U`) records were dropped by the same filter and are now refused rather than admitted.**
+  A conflicted path has no single staged blob to scan: `git diff --cached --raw` reports
+  `:100644 000000 <sha> 0000000 U`, the index holds three entries at stages 1/2/3, and
+  `git show :<path>` cannot answer for it. It now refuses (exit 2) through the same closed-set path
+  as a link or a gitlink, naming the path and an engine-owned kind and nothing else.
+
+  Pinned in `test/scripts/phi-scan.test.ts` against throwaway git repos under `os.tmpdir()`, with the
+  premise itself pinned (git really does stage `git mv <link>` as `R100` at mode `120000`, and `AMT`
+  really does return nothing for it) so the fix cannot come to rest on a claim about git that stopped
+  being true. **Six of the new cases run red against the previous scanner**, including a repo whose
+  own `diff.renames` is set to `copies`. Two controls stay green on both trees deliberately: a rename
+  landing **outside** a scan root still passes (the fix narrows what the route's existing scope
+  admits; it does not widen the scope), and a stage mixing an add, a modify and a rename still
+  reports the violator behind them.
+
+- **The PHI scanner exited `1`, its code for HITS FOUND, when it could not run at all.**
+  `loadAllowList()` runs outside every `try` in `main`, so a missing `scripts/phi-allow-list.txt`
+  threw out of the process and left node's uncaught-exception status, `1`. A `readdirSync` failure
+  under a walk root did the same. A caller keying on the exit code therefore read a gate that never
+  ran as a gate that ran and fired: the wrong direction to be wrong in. Every failure to complete
+  now exits **2**: `run()` at the foot of the file is the outermost net, and `walk` names an
+  unreadable directory and its errno itself instead of throwing raw. An unexpected throw still
+  prints its stack, deliberately.
+
 - **The exported `VERSION` constant said `"0.0.0"` on a package published as `0.0.4`, and the
   documented install smoke test told an installer to print exactly that constant**
   (`VERSION-CONSTANT-DRIFT`). Measured on the released tarball, not inferred from source:

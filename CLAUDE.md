@@ -316,16 +316,37 @@ return 0` — an untyped package is a legitimate npm package, so "no types at al
   **The walk has NO extension scope of its own** — it skips regular `*.md` as documentation and takes
   everything else, so a link at `src/leak.json` and a linked directory are refused there too.
   `src/**.ts` is the **`--staged`** route's boundary; do not describe the two as one rule.
-  **Three residuals are disclosed, not closed** — do not silently re-close any and do not let a
-  future edit read as though they were. (1) `R`/`C` rename/copy records are **not enumerated by
-  `--staged` at all** (admitting them needs the two-path record shape, a scope decision). This is
-  **reachable by an ordinary action**, measured: `git mv notes/payload.txt src/payload.ts` raises
-  `R100`, which `--diff-filter=AMT` drops, so the pre-commit hook prints `OK — no hits` / exit 0 over
-  a staged PHI-bearing `src/payload.ts` — on base and on the fix alike. Containment, also measured:
-  the CI all-mode walk **does** catch it, so the exposure is "PHI enters a local commit or a pushed
-  branch", not "PHI merges". (2) This scanner has **no refuse-a-scan-that-observed-nothing rule**, so
-  an empty enumeration reports clean. (3) The ancestor-component and absolute/`../` reads above, on
-  the named-path mode only.
+  **▶ THE RENAME RESIDUAL IS CLOSED, AND THE FRAMING IT WAS FILED UNDER WAS FALSE.** It was
+  disclosed here as "admitting `R`/`C` needs the two-path record shape, a scope decision". **There is
+  no scope decision and no record shape work**: the remedy is `--no-renames` on the `git diff
+--cached` invocation, which makes git unable to emit `R` or `C` at all, so the destination arrives
+  as an ordinary single-path `A` and the source as a `D` the filter drops. That sentence was ported
+  in from a sibling and repeated rather than measured: the ecosystem's own porting trap, and the
+  reason to re-measure a disclosure before carrying it forward.
+  Measured on this repo's scanner before the fix, on **both** shapes: `git mv notes/leak.txt
+src/leak.ts` over a link staged `:120000 120000 <sha> <sha> R100`, `--diff-filter=AMT` returned
+  nothing, and `--staged` reported a clean scan and exited **0** over a mode-`120000` entry at
+  `src/leak.ts`; `git mv notes/payload.txt src/payload.ts` over an ordinary PHI-bearing file passed
+  identically. **The gap was at PRE-COMMIT** (the hook is `phi-scan --staged`) with the CI all-mode
+  walk as the backstop, so the exposure was "PHI enters a local commit or a pushed branch", not "PHI
+  merges". The enumeration is a strict **superset** of the previous one, re-measured here under
+  `diff.renames=true|copies|false|1` and `renameLimit=1`: every setting yields the same single-path
+  `A`, which also makes the two-field stride **structural** rather than conditional on a caller's
+  config. Ported from `dicom#60`. **Unmerged (`U`) records went the same way**: returned by neither
+  `AM` nor `AMT`, so a conflicted in-scope path reported clean; `U` is now admitted and **refused**
+  (it has no single staged blob: three index entries at stages 1/2/3, dst mode `000000`, and
+  `git show :<path>` cannot answer for it).
+  **Two residuals remain disclosed, not closed.** Do not silently re-close either, and do not let a
+  future edit read as though they were. (1) This scanner has **no refuse-a-scan-that-observed-nothing
+  rule**, so an empty enumeration reports clean. (2) The ancestor-component and absolute/`../` reads
+  above, on the named-path mode only.
+  **Exit **2** now means every failure to complete, not just a bad invocation.** A throw raised
+  before or outside `main`'s inner `try` blocks (`loadAllowList()` on a missing
+  `scripts/phi-allow-list.txt`, `readdirSync` on an unreadable directory under a walk root) left the
+  process on node's uncaught-exception code, **1**, which is this scanner's code for HITS FOUND. A
+  caller keying on the code read a gate that never ran as one that ran and fired. `run()` at the foot
+  of the file is the outermost net and `walk` names an unreadable directory itself; an unexpected
+  throw still prints its stack, because a gate that swallows its own bugs is harder to fix.
   Pinned in `test/scripts/phi-scan.test.ts` against **throwaway git repos under `os.tmpdir()`** — the
   scanner roots everything at `process.cwd()`, so never write a link or a violator into this corpus
   to test it. **The enumerate-then-read race is deliberately still open here** and is a separate
