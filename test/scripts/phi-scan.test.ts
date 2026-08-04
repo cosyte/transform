@@ -503,11 +503,13 @@ describe("phi-scan: the --staged route refuses a staged non-regular entry", () =
   });
 
   it("refuses an UNMERGED path instead of reporting clean over it (exit 2)", () => {
-    // A conflicted path has no single staged blob: `git diff --cached --raw`
-    // reports `:100644 000000 <sha> 0000000 U`, the index holds three entries at
-    // stages 1/2/3, and `git show :<path>` cannot answer for it. `U` is returned
-    // by neither `AM` nor `AMT`, so the record did not exist and the route
-    // reported a clean scan over a path whose conflicted side carries PHI.
+    // A conflicted path has no stage-0 entry, so `git show :<path>` answers
+    // `fatal: path ... is in the index, but not at stage 0` and never content.
+    // Its status is `U`, which is returned by neither `AM` nor `AMT`, so the
+    // record did not exist and the route reported a clean scan over a path whose
+    // conflicted side carries PHI. The status is the uniform part: the source
+    // mode and the set of stages present both vary by conflict flavour, which is
+    // why the scanner keys the refusal on the status rather than the mode.
     const root = makeRepo();
     writeFileSync(join(root, "src", "conflict.ts"), "export const a = 1;\n");
     git(root, ["add", "src/conflict.ts"]);
@@ -521,9 +523,21 @@ describe("phi-scan: the --staged route refuses a staged non-regular entry", () =
     git(root, ["add", "src/conflict.ts"]);
     git(root, ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm", "second"]);
     // Conflicts, deliberately: `git merge` exits non-zero here, so it is run
-    // through the tolerant helper rather than the throwing one.
-    gitOut(root, ["merge", "other"]);
+    // through the tolerant helper rather than the throwing one. The identity is
+    // passed INLINE and that is not decoration: a merge refuses outright with
+    // "Committer identity unknown" when it can neither read nor auto-detect one,
+    // leaving the index untouched, and `gitOut` discards the status. A developer
+    // box hides that (a global identity, or one auto-detected from the passwd
+    // entry and hostname); a CI runner has neither. Measured: this case failed on
+    // `ci / verify` for both Node 22 and 24 with `expected '' to contain ' U\t'`,
+    // green on the same commit locally, because the merge never ran at all.
+    gitOut(root, ["-c", "user.email=t@example.com", "-c", "user.name=t", "merge", "other"]);
 
+    // Non-vacuity FIRST: prove the merge really did leave a conflict, since
+    // every assertion below is about a state that a silently-failed merge would
+    // not have produced. `gitOut` discards git's exit status, so the state is
+    // what gets checked, never the command's success.
+    expect(gitOut(root, ["ls-files", "-u"])).toContain("src/conflict.ts");
     // The premise: an unmerged record really is dropped by the old filter.
     expect(gitOut(root, ["diff", "--cached", "--raw", "--diff-filter=AMT"]).trim()).toBe("");
     expect(gitOut(root, ["diff", "--cached", "--raw"])).toContain(" U\t");
