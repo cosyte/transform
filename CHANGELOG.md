@@ -1,16 +1,27 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## Released before this file was generated
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-Versions and publishing are managed with [Changesets](https://github.com/changesets/changesets);
-this file is maintained by hand (Changesets handles the version bump and publish only).
+Every release section above this heading is written by
+[Changesets](https://github.com/changesets/changesets) from the changesets in `.changeset/`, newest
+release first. The release writes its own version heading, so nothing above this line is maintained
+by hand: a change is recorded by adding a changeset, and that changeset's summary is the entry a
+reader sees here.
 
-## [Unreleased]
+Everything below this heading was maintained by hand. It sat under a single `[Unreleased]` heading
+that no release ever rolled over, so it went on describing already-published code as unreleased,
+inside the published tarball, for the whole of this package's public history. It is left as it was
+written rather than re-sorted into version sections: the file never recorded which release each
+entry went out in, and this is the text that installed copies already carry on disk. No entry was
+reworded, re-sorted or removed. What was dropped was scaffolding for the hand-written workflow that
+no longer runs: the file's former header, the `[Unreleased]` heading and its link definition at the
+foot of the file, the note beneath that heading promising a first release which had in fact already
+shipped, and the empty section stubs that existed to receive the next hand-written entry.
 
-The first pre-alpha release (`0.0.1`) will ship the initial public API surface. The package begins
-its public history at `0.0.x`, per the cosyte version ladder (`0.0.x` until first alpha).
+The entries below follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the generated
+sections above use the format Changesets writes, which is a version heading and a list of the
+changes that release consumed. Versions follow the cosyte pre-alpha ladder, `0.0.x` until first
+alpha, rather than [Semantic Versioning](https://semver.org/spec/v2.0.0.html) alone.
 
 ### Fixed
 
@@ -532,10 +543,6 @@ dependency: peer @cosyte/fhir@">=0.0.0" from @cosyte/transform@0.0.4`.
   `parseTransform` / `WARNING_CODES` / `FATAL_CODES` parser stubs and the round-trip property test;
   rewrote `docs-content/`, `README`, and this repo's `CLAUDE.md` for the transformation library.
 
-### Deprecated
-
-### Removed
-
 ### Fixed
 
 - **The README no longer says this package is unpublished.** It is on npm, and the sentence sat a
@@ -544,7 +551,3 @@ dependency: peer @cosyte/fhir@">=0.0.0" from @cosyte/transform@0.0.4`.
   rendered directly beneath npm's own header, which shows the version being served. The replacement
   names no version deliberately. A version written into prose is the part that goes stale, and the
   registry is the only thing that knows which one is current.
-
-### Security
-
-[Unreleased]: https://github.com/cosyte/transform/commits/main
