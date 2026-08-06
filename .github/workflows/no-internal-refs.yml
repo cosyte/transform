@@ -66,3 +66,29 @@ jobs:
       # fail is documentation.
       - name: Check the public surface
         run: bash scripts/check-no-internal-refs.sh
+
+      # THE AGENT-INSTRUCTION CONTRACT (always-read CLAUDE.md + on-demand
+      # documentation/agent-notes.md). It rides in THIS job on purpose, and the reason is the
+      # banner above: a required job gates all of its steps, so a step added here is required
+      # the moment it lands, with no ruleset edit and therefore no window in which open PRs
+      # strand pending on a context nothing has emitted yet.
+      #
+      # IT IS ALSO ENFORCED A SECOND, INDEPENDENT WAY, and that is deliberate rather than
+      # belt-and-braces habit. test/scripts/agent-notes-contract.test.ts runs the same gate
+      # from inside `ci / verify`. But that route inherits this repo's documented "THE GATE
+      # CAN LEAVE THE JOB" hole verbatim -- the `include` glob in vitest.config.ts and the
+      # `test`/`test:coverage` script bodies in package.json can each drop the suite with the
+      # job still green. This step depends on neither, so the two routes cannot be removed by
+      # the same edit.
+      #
+      # BARE `node`, NOT `tsx`, so this job stays a checkout plus a node -- no pnpm, no
+      # lockfile install, which is what keeps it cheap next to the full ci.yml matrix. Node 24
+      # strips types natively; the local `pnpm check:agent-notes` runs the same file through
+      # tsx because the repo's engine floor is 22. The two paths are pinned to agree by a test
+      # in the suite above, so a divergence reds rather than being assumed away.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Check the agent-instruction contract
+        run: node scripts/check-agent-notes.ts
