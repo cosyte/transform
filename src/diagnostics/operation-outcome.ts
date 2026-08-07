@@ -5,7 +5,7 @@
  * materializes it as an actual `@cosyte/fhir` resource node a consumer can serialize, validate, or
  * return alongside a bundle. It is **value-free**: every field is drawn from the issue's static
  * metadata (code, severity, message) and its positional locations (v2 location → `diagnostics`, FHIR
- * path → `expression`) — no patient data is reachable here.
+ * path → `expression`). No patient data is reachable here.
  *
  * @packageDocumentation
  */
@@ -39,7 +39,7 @@ function renderIssue(i: TransformIssue): FhirComplex {
     prop("severity", primitive(i.severity)),
     prop("code", primitive(fhirIssueTypeFor(i.code))),
     prop("details", details),
-    // `diagnostics` carries the v2 source location — positional metadata, never a value.
+    // `diagnostics` carries the v2 source location: positional metadata, never a value.
     prop("diagnostics", primitive(i.v2Location)),
   ];
   if (i.fhirPath !== undefined) {

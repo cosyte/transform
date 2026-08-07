@@ -2,7 +2,7 @@
  * Bundle-assembly primitives shared by the segment→resource builders: fresh `urn:uuid:` identities,
  * FHIR `Reference` nodes, and the small coding/data-absent helpers the message maps need.
  *
- * The identities are the wiring of the resource graph — a produced resource is registered under a
+ * The identities are the wiring of the resource graph: a produced resource is registered under a
  * `urn:uuid:` `fullUrl`, and every intra-bundle reference (Encounter→subject→Patient,
  * RelatedPerson→patient→Patient, MessageHeader→focus→…) points at that same `fullUrl` so references
  * always resolve **within** the bundle. Identities come from {@link TransformOptions.generateId}
@@ -92,7 +92,7 @@ export function coding(
  * Build one order `identifier` (an EI's EI.1 → `Identifier.value`) with a v2-0203 identifier-type
  * coding, or `undefined` when the value is empty. Shared by the order/result-anchoring resources
  * whose IG maps route the placer/filler order numbers (OBR-2/ORC-2 `PLAC`, OBR-3/ORC-3 `FILL`) to
- * `Identifier` with a `type` from HL7 Table 0203 — `DiagnosticReport` and `ServiceRequest`
+ * `Identifier` with a `type` from HL7 Table 0203: `DiagnosticReport` and `ServiceRequest`
  * both use it, so the shape lives here rather than being duplicated per builder.
  *
  * @param value - The order number (EI.1); an empty string yields `undefined`.
@@ -124,7 +124,7 @@ export function orderIdentifier(value: string, typeCode: string): FhirComplex | 
 }
 
 /**
- * A value-absent FHIR primitive carrying only a `data-absent-reason` extension — the spec-clean way
+ * A value-absent FHIR primitive carrying only a `data-absent-reason` extension: the spec-clean way
  * to satisfy a required primitive whose value is genuinely unknown, **without fabricating one**.
  *
  * @param reasonCode - The `data-absent-reason` code (e.g. `"unknown"`).

@@ -1,20 +1,20 @@
 /**
- * Order-message grouping — the message-map structure the ServiceRequest / MedicationRequest graph is
+ * Order-message grouping: the message-map structure the ServiceRequest / MedicationRequest graph is
  * assembled over, grounded firsthand on the IG **ORM_O01** and **OML_O21** message
  * maps (`ConceptMap-message-orm-o01-to-bundle.html`, `ConceptMap-message-oml-o21-to-bundle.html`).
  *
  * Both message maps model the ORDER group the same way: **`ORC` creates the request** and the
- * following **ORDER_DETAIL** segment is *incorporated into that same request* — `OBR` →
- * `ServiceRequest`, `RXO` (+ `RXR` route) → `MedicationRequest`. So one order group is an `ORC`
+ * following **ORDER_DETAIL** segment is *incorporated into that same request*, so `OBR` →
+ * `ServiceRequest` and `RXO` (+ `RXR` route) → `MedicationRequest`. One order group is an `ORC`
  * anchor plus at most one order-detail segment (an `OBR` for a service order, an `RXO` for a
  * pharmacy order) and the `RXR` route segments beneath a pharmacy order. This walks the segments in
- * document order and buckets each detail segment under the most recent `ORC` — the same positional
+ * document order and buckets each detail segment under the most recent `ORC`: the same positional
  * grouping `@cosyte/hl7`'s `orders()` performs, done here so the raw `ORC`/`OBR`/`RXO`/`RXR`
  * `Segment`s (the request/dose fields the lean `Order` view omits) are available.
  *
  * A detail segment that precedes any `ORC` still anchors its own group (a bare `OBR`/`RXO` order),
- * and any `RXE` — for which the IG ships **no** segment map at all (verified against the STU1
- * artifacts index) — is counted by {@link OrderGrouping.rxeCount} so the assembler can flag it as
+ * and any `RXE` (for which the IG ships **no** segment map at all, verified against the STU1
+ * artifacts index) is counted by {@link OrderGrouping.rxeCount} so the assembler can flag it as
  * un-grounded rather than fabricate an RXE→MedicationRequest layout.
  *
  * @packageDocumentation
@@ -38,7 +38,7 @@ export interface OrderGroup {
 export interface OrderGrouping {
   /** The order groups, in document order. */
   readonly groups: readonly OrderGroup[];
-  /** The count of `RXE` segments — the IG ships no RXE map, so they are flagged, never assembled. */
+  /** The count of `RXE` segments: the IG ships no RXE map, so they are flagged, never assembled. */
   readonly rxeCount: number;
 }
 
@@ -93,7 +93,7 @@ export function collectOrderGroups(msg: Hl7Message): OrderGrouping {
         if (current !== undefined) current.rxrs.push(seg);
         break;
       case "RXE":
-        // No IG segment map exists for RXE — surfaced for a flag, never assembled.
+        // No IG segment map exists for RXE: surfaced for a flag, never assembled.
         rxeCount += 1;
         break;
       default:

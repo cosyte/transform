@@ -17,7 +17,7 @@ function valueText(node: FhirComplex): string | undefined {
   return undefined;
 }
 
-describe("toFhirQuantity — precision-exact value, UCUM-shape-checked units", () => {
+describe("toFhirQuantity: precision-exact value, UCUM-shape-checked units", () => {
   it("carries the magnitude precision-exact and sets code/system for a valid UCUM unit", () => {
     const { value, issues } = toFhirQuantity(
       { raw: "5.40", value: 5.4 },
@@ -25,7 +25,7 @@ describe("toFhirQuantity — precision-exact value, UCUM-shape-checked units", (
       { namingSystem: createNamingSystem() },
     );
     const q = value as FhirComplex;
-    expect(valueText(q)).toBe("5.40"); // trailing zero preserved — never through a JS number
+    expect(valueText(q)).toBe("5.40"); // trailing zero preserved, never through a JS number
     expect(propString(q, "unit")).toBe("mg/dL");
     expect(propString(q, "system")).toBe("http://unitsofmeasure.org");
     expect(propString(q, "code")).toBe("mg/dL");
@@ -43,7 +43,7 @@ describe("toFhirQuantity — precision-exact value, UCUM-shape-checked units", (
   });
 });
 
-describe("toFhirQuantity — the non-UCUM unit fail-safe", () => {
+describe("toFhirQuantity: the non-UCUM unit fail-safe", () => {
   it("preserves a non-UCUM unit verbatim with no code/system, never converting", () => {
     const { value, issues } = toFhirQuantity(
       { raw: "3", value: 3 },

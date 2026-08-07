@@ -1,11 +1,11 @@
 /**
- * Property + fuzz coverage over the **message boundary** (roadmap §6). For arbitrary — including
- * hostile — parsed ADT messages, `toFhir` must:
+ * Property + fuzz coverage over the **message boundary** (roadmap §6). For arbitrary (including
+ * hostile) parsed ADT messages, `toFhir` must:
  *   1. **never throw** (the fail-safe rule at the message level);
  *   2. raise only **registered**, **value-free** issue codes (a sentinel threaded through every PID/
  *      PV1/NK1 value must never reach the diagnostic channel);
  *   3. produce a bundle whose **references all resolve within it** (no dangling `urn:uuid:`); and
- *   4. emit only **structurally-valid** focal resources — every `Patient` entry validates strict under
+ *   4. emit only **structurally-valid** focal resources, every `Patient` entry validates strict under
  *      `@cosyte/fhir` (an invalid one is withheld, never shipped).
  */
 
@@ -92,8 +92,8 @@ function assertResult(result: TransformResult): void {
   // (3) references resolve within the bundle
   const { refs, urls } = refsAndUrls(result);
   for (const r of refs) expect(urls.has(r)).toBe(true);
-  // (4) every emitted resource is structurally valid — Patient strict, the rest against the emit
-  // schemas (lenient): a resource that would fail R4 required-cardinality is never in the bundle.
+  // (4) every emitted resource is structurally valid: Patient strict, the rest against the emit
+  // schemas (lenient), so a resource that would fail R4 required-cardinality is never in the bundle.
   const parsed = parseResource(serializeResource(result.bundle)).resource;
   const entry = getProperty(parsed, "entry");
   if (entry !== undefined && isList(entry)) {
@@ -111,7 +111,7 @@ function assertResult(result: TransformResult): void {
   }
 }
 
-describe("message boundary — fail-safe, value-free, references resolve, Patient validates", () => {
+describe("message boundary: fail-safe, value-free, references resolve, Patient validates", () => {
   const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.3.4" } });
 
   it("never throws and holds every invariant over structured ADT messages", () => {
@@ -197,7 +197,7 @@ describe("message boundary — fail-safe, value-free, references resolve, Patien
         try {
           msg = parseHL7(raw);
         } catch {
-          return; // parser rejected it — that is @cosyte/hl7's contract, not ours
+          return; // parser rejected it: that is @cosyte/hl7's contract, not ours
         }
         let result: TransformResult;
         try {

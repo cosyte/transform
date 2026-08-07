@@ -1,4 +1,4 @@
-# @cosyte/transform — agent notes
+# @cosyte/transform: agent notes
 
 **What this is.** The long-form narrative that used to live in `CLAUDE.md`: the per-incident
 sections, the shipped-phase history, and the long rationales behind the guardrails. It was relocated
@@ -6,26 +6,26 @@ here on **2026-08-04** under `CLAUDE-MD-AUDIT`, because `CLAUDE.md` is always-re
 that `cd`s into this repo and the per-worker token cost is paid on every session (umbrella ADR 0023,
 amendment 2026-08-04).
 
-**Relocated, not deleted.** The narrative below is the CLAUDE.md text **verbatim** — nothing was
+**Relocated, not deleted.** The narrative below is the CLAUDE.md text **verbatim**: nothing was
 softened, summarised, or dropped. Be precise about what that claim covers, because this file's whole
 value is that it does not overstate. **The accounting below covers the seven sections the 2026-08-04
-relocation produced, and nothing after them** — sections added later are new prose written here, not
+relocation produced, and nothing after them**: sections added later are new prose written here, not
 relocated `CLAUDE.md` text, and the verbatimness claim does not reach them. (It said "the narrative
 below" without that scope until 2026-08-06, when the first later section made it false; a refuter
 measured it, and it is scoped rather than deleted.) Of those seven: **two headings**
 (`Branch protection…`, `Dependency watching`) are the originals carried across whole; **four** are new
 headings over relocated bodies that were bullets in `CLAUDE.md`'s `Status`, `Engineering Guardrails`
-and `Standing disciplines` sections; and **one** — `Publish state, and the stale claim inside it` — is
+and `Standing disciplines` sections; and **one** (`Publish state, and the stale claim inside it`) is
 mostly **newly written on 2026-08-04**, with the relocated original quoted inside it as a blockquote. Every `##` section heading is a pointer
 target from `CLAUDE.md`, and the contract gate keeps that true. **`###` subsections inside them are
-deliberately NOT pointer targets** — requiring one would force the always-read file to grow a line per
+deliberately NOT pointer targets**: requiring one would force the always-read file to grow a line per
 subsection, which is what its byte ratchet exists to prevent. This sentence read "Every heading" until
 2026-08-06, when adding the first `###` headings here made that literally false; it is narrowed to
 what is checked rather than left as a claim nothing holds up.
 
 `CLAUDE.md` keeps the cursor, the rules, and **every** trap as a one-line imperative that points back
 here. If a one-liner there and a paragraph here ever disagree, **this file is the measurement** and
-the one-liner is the reminder — fix the one-liner, do not weaken this.
+the one-liner is the reminder: fix the one-liner, do not weaken this.
 
 **These are things that cost a defect to learn.** Several are refuted claims: a sentence someone
 wrote, a refuter measured false, and the correction stayed. Do not re-assert one of them from
@@ -36,7 +36,7 @@ reading the code. **Re-measure, or leave it alone.**
 ## Shipped-phase history (Phases 1–6)
 
 **Phases 1–6 shipped** (roadmap `operations/roadmaps/transform.md` §Phase 1–6). Pre-alpha `0.0.x`,
-**published on npm** — this line read "not yet published to npm" for several releases after first
+**published on npm**: this line read "not yet published to npm" for several releases after first
 publish, which is part of why a `VERSION` constant stuck at `"0.0.0"` went unnoticed on a shipped
 package. **Never quote a version here**; `npm view @cosyte/transform version` is the only source of
 truth. **Published is not installable here:** the `@cosyte/fhir` peer is not on the registry, so
@@ -44,12 +44,12 @@ truth. **Published is not installable here:** the `@cosyte/fhir` peer is not on 
 useful. Phase 1: the **six safety-critical datatype converters** (`toFhirDateTime`,
 `toFhirIdentifier`, `toFhirCodeableConcept`, `toFhirHumanName`, `toFhirAddress`, `toFhirQuantity`),
 the **value-free diagnostic channel** (`ISSUE_CODES`/`FATAL_CODES`, `TransformIssue`,
-`toOperationOutcome`), and the minimal **NamingSystem resolver** (`createNamingSystem`). Phase 2: the
-first **message-level assembly** — `toFhir(msg)` turns an HL7 v2 **ADT** message into a FHIR R4
+`toOperationOutcome`), and the minimal **NamingSystem resolver** (`createNamingSystem`). Phase 2 was
+the first **message-level assembly**: `toFhir(msg)` turns an HL7 v2 **ADT** message into a FHIR R4
 **message `Bundle`** (MSH→`MessageHeader`, PID→`Patient`, PV1→`Encounter`, NK1→`RelatedPerson`, with
 `urn:uuid:` reference wiring, the HL70001/HL70004 table maps, a segment-assembled fallback for
 non-IG-mapped triggers, and a conservative-emit gate against `@cosyte/fhir.validateResource`). Phase
-3: the **ORU^R01 → DiagnosticReport + Observation** results graph — OBR→`DiagnosticReport` (status via
+3: the **ORU^R01 → DiagnosticReport + Observation** results graph, OBR→`DiagnosticReport` (status via
 HL70123, `DIAGNOSTIC_REPORT_STATUS_MAP`), OBX→`Observation` with **OBX-2 value-type discrimination**
 of OBX-5→`value[x]` (NM→`valueQuantity`, CWE→`valueCodeableConcept`, SN→structured, ST/TX→`valueString`),
 OBX-8→`interpretation` (HL70078, `HL70078_INTERPRETATION_CODES`), OBX-11→`status` (HL70085,
@@ -58,13 +58,13 @@ result never emits as `final`; an unmapped status withholds the resource; a prec
 read from the raw OBX-5). Every segment→resource and field→element map is grounded firsthand on the
 IG's ConceptMaps and cited. Phases 4–5 added the message-level graphs for **ORM_O01/OML_O21 →
 ServiceRequest** and **RXO → MedicationRequest** (Phase 4) and the thin IG singles **VXU_V04 →
-Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference** (Phase 5). Phase 6: the
-**terminology value-translation** layer — a `$translate`-shaped, additive, fail-safe engine
+Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference** (Phase 5). Phase 6 added the
+**terminology value-translation** layer: a `$translate`-shaped, additive, fail-safe engine
 (`toFhirCodeableConceptVia`) applying the license-clean IG value ConceptMaps (each transcribed +
 verified **firsthand against the raw IG JSON**) to the previously structural-only coded fields: RXR
 route/site (HL70162 / HL70550), SCH-8 appointment type (HL70277), RXO-9 substitution (HL70161), and
 OBR-5 priority (HL70485, `SERVICE_REQUEST_PRIORITY_MAP`). A code in the IG's `(unmapped)` group is
-flagged, never coerced; SNOMED-target maps (RXR-4 method, SCH-7 reason) stay structural/BYO — no
+flagged, never coerced; SNOMED-target maps (RXR-4 method, SCH-7 reason) stay structural/BYO, no
 SNOMED bundled; and fields with no IG value map (TXA-2, RXA-5) are documented as structural, never
 invented.
 
@@ -78,31 +78,35 @@ and profiles (Phase 8).
 readings of the same fact are on record here. The relocation of 2026-08-04 deliberately carried
 **both** across rather than picking one, because picking one is how a stale claim becomes fact.
 
-**The paragraph as it stood in `CLAUDE.md`, verbatim:**
+**The paragraph as it stood in `CLAUDE.md`, verbatim in wording.** Its dash punctuation was
+normalized by the brand sweep of 2026-08-07, which took `U+2014` out of every tracked file in this
+repository including this quotation. **Not one word, claim, qualifier or identifier changed**, and the
+sweep is recorded here rather than left for a reader to discover, because this section's whole value
+is that it does not overstate what it reproduces.
 
 > **Consumes two cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer dependencies**, vendored
-> as `pnpm pack` tarballs in `vendor/` for dev/test (ADR 0001 + umbrella ADR 0008) — refresh with
-> `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir `7a099b2`. **They are not both unpublished
-> — that wording was stale.** `@cosyte/hl7` is on the registry; **`@cosyte/fhir` is not** (npm 404,
+> as `pnpm pack` tarballs in `vendor/` for dev/test (ADR 0001 + umbrella ADR 0008): refresh with
+> `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir `7a099b2`. **They are not both unpublished,
+> and that wording was stale.** `@cosyte/hl7` is on the registry; **`@cosyte/fhir` is not** (npm 404,
 > a human-gated publish), and it is the fhir peer alone that makes this package uninstallable from
 > npm. Derive it, do not recall it: `npm view @cosyte/hl7 version`, `npm view @cosyte/fhir version`.
 > **Third-party runtime deps: zero.**
 
 **That paragraph is itself flagged stale**, in the umbrella backlog, alongside the same claim in
-`hl7`, `mllp` and `deid`. It has now been corrected **twice** — first from "both unpublished", then
-again below — which is the reason it is quoted rather than silently rewritten. **Relocating a
+`hl7`, `mllp` and `deid`. It has now been corrected **twice**: first from "both unpublished", then
+again below, which is the reason it is quoted rather than silently rewritten. **Relocating a
 disputed claim must not launder it into fact.** It is reproduced above as history, not as a
 measurement.
 
 **The specific words under dispute are `npm 404, a human-gated publish`, and the two halves are not
-equally wrong — say which is which rather than rejecting the line wholesale.** Two different facts
+equally wrong: say which is which rather than rejecting the line wholesale.** Two different facts
 sit behind them and the old wording collapses them into one:
 
 - **The package is absent from the registry**, so `npm view @cosyte/fhir` answers **404** and a
   consumer install of `@cosyte/transform` fails **`E404`** on the missing peer. That half is not the
-  defect. **Do not generalise the code across siblings** — `@cosyte/synth` is blocked by the same
+  defect. **Do not generalise the code across siblings**: `@cosyte/synth` is blocked by the same
   absent peer but fails **`ERESOLVE`**, a different code for the same cause.
-- **The publish ATTEMPT is refused with `E403` on `PUT`**, cause unestablished — tracked as
+- **The publish ATTEMPT is refused with `E403` on `PUT`**, cause unestablished: tracked as
   `FHIR-NPM-NAME`. **This is where `a human-gated publish` misleads.** It reads as a routine approval
   someone has not clicked yet. It is not: CI is green, provenance reaches the transparency log
   _before_ the refusal, and the registry rejects at **policy**. The human step on record is
@@ -115,8 +119,8 @@ The work is staged on `main`; the registry refuses it. The same blockage takes `
 
 **The `FHIR-NPM-NAME` name is a label, not a diagnosis. The "name-similarity" reading is
 RETRACTED.** It implied a rename, and **the error never asked for one**. **DO NOT RENAME ANYTHING**
-— not `@cosyte/fhir`, not `@cosyte/transform`, not a scope, not an export — on the strength of that
-identifier. The cause is unexplained and staying unexplained is the honest state.
+on the strength of that identifier: not `@cosyte/fhir`, not `@cosyte/transform`, not a scope, not an
+export. The cause is unexplained and staying unexplained is the honest state.
 
 **So do not resolve this from memory, and do not resolve it from this file.** Every reading here has
 a date on it and at least one was wrong when read. Derive it:
@@ -127,7 +131,7 @@ npm view @cosyte/hl7 version
 npm view @cosyte/fhir version
 ```
 
-**Visibility and publish state are independent** — never infer one from the other. And **never move a
+**Visibility and publish state are independent**, never infer one from the other. And **never move a
 published version backwards** (umbrella ADR 0001).
 
 ## Branch protection (and the limits of this claim)
@@ -248,73 +252,73 @@ and stay a `pnpm vendor:refresh` job by hand.
 
 **▶ `attw` SAYS "does not contain types" AND EXITS 0, SO THE `attw` SCRIPT IS A WRAPPER, NOT THE
 BARE CLI.** `getExitCode.js` in `@arethetypeswrong/cli@0.18.4` opens with `if (!analysis.types)
-return 0` — an untyped package is a legitimate npm package, so "no types at all" is a description,
+return 0`: an untyped package is a legitimate npm package, so "no types at all" is a description,
 not a problem, and the problem list is never consulted. No `--profile`, `--ignore-rules` or config
 setting reaches that early return. For a package that ships types it means the declarations were
 **not in the tarball**, which is a broken publish reported as a pass. The invocation here was
-never lenient — it was the bare `attw --pack .` on the default strict profile.
+never lenient: it was the bare `attw --pack .` on the default strict profile.
 **The race only supplies the condition.** Reproduced here on a quiet box with zero concurrency:
 `rm -rf dist && attw --pack .`, and `pnpm build && rm -f dist/index.d.*ts && attw --pack .`, both
-print the sentence and exit 0. The second is the realistic window — `tsup` emits the bundles in
+print the sentence and exit 0. The second is the realistic window: `tsup` emits the bundles in
 one pass and the declarations in a later one, so **every** build has an interval where `dist/`
 holds `.mjs`/`.cjs` and no `.d.ts`; measured at **1,600 / 1,646 / 2,018 ms** over three
 consecutive quiet-box builds, polling every 5 ms. A concurrent build or `clean` in the same
 working tree lands `attw` in it. So the answer is **not** a lock, a lease or a build queue: the
 gate must be able to say its own inputs were missing, whatever removed them.
-`scripts/attw.mjs` carries **two nets, and they catch different things** — a preflight that every
+`scripts/attw.mjs` carries **two nets, and they catch different things**: a preflight that every
 relative path `package.json` promises (`main`, `module`, `types`, `typings`, every string leaf of
 `exports`) exists and is non-empty, which catches the build window and _names the missing file_;
 and a post-check on `attw`'s untyped sentence, which catches what the preflight structurally
-cannot — declarations present on disk but excluded from the tarball by `files`/`.npmignore`.
+cannot, namely declarations present on disk but excluded from the tarball by `files`/`.npmignore`.
 **No instance of that second case is on record in this repo.** `test/scripts/attw-gate.test.ts`
 pins both nets against the real binary, including the upstream exit-0 itself, so an `attw` upgrade
 that reworks the wording or fixes the exit code reds the suite instead of letting the net go
 quietly slack. It also pins a **negative control** on a well-formed package, and that a real
-`attw` failure still fails with `attw`'s own status — a gate that only ever fails is not a gate,
+`attw` failure still fails with `attw`'s own status: a gate that only ever fails is not a gate,
 and one that swallows the status is not one either. Reducing the wrapper to the bare CLI reds 10
 of its 13 tests; that is how the suite was checked for bite rather than assumed to have it.
 **The post-check reads a string, so what would hide that string is refused**, not tolerated.
 **Three routes were measured here** to hand back exit 0 over an untyped pack: `--quiet`,
 `--format json`, and a `.attw.json` setting either (`readConfig()` applies it after argv).
 `--config-path` is refused too, but **by inference, not measurement**. The refusal is **by option
-name, wholesale, not by value** — a harmless `--format` value blinds nothing and is refused
+name, wholesale, not by value**: a harmless `--format` value blinds nothing and is refused
 anyway, which is the deliberate trade against value-parsing them.
 **Two limits of a green here.** A **complete but stale `dist/`** passes both nets (not live today
 only because the ladder runs `build` before `attw`); and this package's unpublished
-`@cosyte/fhir` peer is **not** something `attw` speaks to — measured, a good pack reports "No
+`@cosyte/fhir` peer is **not** something `attw` speaks to: measured, a good pack reports "No
 problems found" and exits 0, identically with `node_modules/@cosyte/fhir` moved aside, so `attw`
 never resolves that peer. A green `attw` has never meant a consumer can install the peer.
 **This is a per-repo script.** It was ported here from `terminology`'s graded fix (terminology#28,
 `bf153cb`); siblings that still invoke the CLI directly still carry the defect, and the prose does
-**not** port with the code — every number above was re-measured on this package. Derive who is
+**not** port with the code: every number above was re-measured on this package. Derive who is
 left rather than writing a count down:
 `rg -l --glob '**/package.json' '"attw":' /workspace`.
 
 ## The PHI scanner guardrail, in full
 
 **▶ THE PHI SCANNER REFUSES (exit 2) EVERY ENTRY IT ENUMERATES, AND EVERY PATH NAMED DIRECTLY, THAT
-IS NOT A REGULAR FILE. THAT IS THE WHOLE CLAIM — "it follows nothing" IS THE LOOSER WORDING, AND
+IS NOT A REGULAR FILE. THAT IS THE WHOLE CLAIM: "it follows nothing" IS THE LOOSER WORDING, AND
 TWO SEPARATE REFUTER PASSES MEASURED IT FALSE.** See the ancestor-component residual below before
 you tighten this sentence back up.
 Before `PHI-SCAN-SYMLINK-BLIND-ON-BOTH-ROUTES` (ported from `terminology#37`, `5f81640`) a symbolic
 link was clean on **both** enumerating routes, measured on this repo's own scanner over a link under
-`src/` pointing at a name-bearing synthetic payload: all-mode printed `OK — no hits` / exit **0**,
+`src/` pointing at a name-bearing synthetic payload: all-mode printed `OK: no hits` / exit **0**,
 and so did `--staged`. The walk enumerates `Dirent.isFile()`, an **lstat** answer, so a link is
-neither a file nor a directory — and a linked _directory_ takes its whole subtree with it.
+neither a file nor a directory, and a linked _directory_ takes its whole subtree with it.
 `--staged` reads `git show :<path>`, and **git stores a link as its TARGET PATH under mode
 `120000`**, so that route gets the path text, never the target's bytes.
 **Do not "fix" this by following the link.** Following reads bytes the enumeration does not control
 (outside the repo, a loop, a device, a FIFO that blocks the gate forever), and git does not carry
 them anyway, so a hit on them would be a claim about something no commit contains.
-**▶ AND THE THIRD MODE IS THE ONE A DRAFT OF THIS GUARDRAIL GOT WRONG — IT SAID "FOLLOWS NOTHING"
+**▶ AND THE THIRD MODE IS THE ONE A DRAFT OF THIS GUARDRAIL GOT WRONG: IT SAID "FOLLOWS NOTHING"
 WHILE ONE ROUTE STILL FOLLOWED.** A refuter measured it: the named-`<path>` mode classified with
 `statSync`, which **dereferences**, so `pnpm phi-scan src/link.ts` read the TARGET's bytes and
-reported hits from them — including a target **outside the repository**, the first hazard the
+reported hits from them, including a target **outside the repository**, the first hazard the
 sentence above says the scanner does not incur. It was never a false clean, which is exactly why
 reading the code did not catch it. It lstats now; **if you touch `buildTargetsForPaths`, re-measure
 the sentence, do not re-assert it.** A dangling link is reported as the link it is, because
 `existsSync` follows and would call it a missing file.
-**▶ AND `lstat` ANSWERS FOR THE FINAL COMPONENT ONLY — a second refuter pass measured that too,
+**▶ AND `lstat` ANSWERS FOR THE FINAL COMPONENT ONLY: a second refuter pass measured that too,
 after the first fix.** A named path whose **ancestor** is a symlink (`src/linkdir/payload.txt`) is
 still followed and still read from wherever that ancestor lands, as is a plain absolute or `../`
 argument. The all-mode walk over the same tree **does** refuse that ancestor, so the two routes
@@ -323,16 +327,16 @@ realpath or containment logic, which is a guard growing past the defect it fixes
 commit-gating route (the `--staged` pre-commit hook, the all-mode walk CI runs) reaches it.
 **▶ THE ONE-LETTER TRAP: `--diff-filter` MUST KEEP `T`.** Replacing a **tracked** file with a link
 is neither an add nor a modify. Measured here, `git diff --cached --raw --diff-filter=AM` printed
-**nothing** for that change while the unfiltered `--raw` printed `:100644 120000 <sha> <sha> T` —
+**nothing** for that change while the unfiltered `--raw` printed `:100644 120000 <sha> <sha> T`,
 so under `AM` the record dies before any mode is read and the hook passes a mode-`120000` blob
 **green** while the changelog claims it refuses one. `T` also buys the reverse typechange (link →
 real file bearing PHI), which must be _scanned_, not refused. The route reads `--raw -z` purely so
 the destination mode is visible; `--name-only` cannot see it.
-**A refusal never echoes the link target** — that is working-tree text and can itself carry PHI.
+**A refusal never echoes the link target**: that is working-tree text and can itself carry PHI.
 Name the entry's own repo-relative path plus a token from the closed `entryKind`/`gitModeKind`
 sets, nothing else. **This applies to the prose too**: a diagnostic about a PHI leak is itself a PHI
 surface, which is why the docblock writes the dangerous target as a _shape_ and not an example.
-**The walk has NO extension scope of its own** — it skips regular `*.md` as documentation and takes
+**The walk has NO extension scope of its own**: it skips regular `*.md` as documentation and takes
 everything else, so a link at `src/leak.json` and a linked directory are refused there too.
 `src/**.ts` is the **`--staged`** route's boundary; do not describe the two as one rule.
 **▶ THE RENAME RESIDUAL IS CLOSED, AND THE FRAMING IT WAS FILED UNDER WAS FALSE.** It was
@@ -380,11 +384,11 @@ process on node's uncaught-exception code, **1**, which is this scanner's code f
 caller keying on the code read a gate that never ran as one that ran and fired. `run()` at the foot
 of the file is the outermost net and `walk` names an unreadable directory itself; an unexpected
 throw still prints its stack, because a gate that swallows its own bugs is harder to fix.
-Pinned in `test/scripts/phi-scan.test.ts` against **throwaway git repos under `os.tmpdir()`** — the
+Pinned in `test/scripts/phi-scan.test.ts` against **throwaway git repos under `os.tmpdir()`**: the
 scanner roots everything at `process.cwd()`, so never write a link or a violator into this corpus
 to test it. **The enumerate-then-read race is deliberately still open here** and is a separate
 item: measured on this tree, a real `pnpm build` puts **no** transient under either walk root, and
-both temp-using suites `mkdtemp` into `os.tmpdir()`, so it is unreachable by scope — _until a walk
+both temp-using suites `mkdtemp` into `os.tmpdir()`, so it is unreachable by scope, _until a walk
 root widens_, which reintroduces it verbatim.
 
 ## No internal project bookkeeping on a public surface, in full
@@ -429,7 +433,7 @@ the published text, not on the published text.
 
 **What it is.** `scripts/check-agent-notes.ts`, run as `pnpm check:agent-notes`, plus
 `test/scripts/agent-notes-contract.test.ts`. It checks the two-file agent-instruction split that
-landed across the fleet on **2026-08-04** — an always-read `CLAUDE.md` carrying the cursor, the
+landed across the fleet on **2026-08-04**: an always-read `CLAUDE.md` carrying the cursor, the
 rules and every trap as a one-line imperative with a pointer, and this on-demand file carrying the
 narrative those imperatives point at. The relocation took the tree from **1,327,773 to 527,428
 bytes**, roughly **200K tokens off every worker**. Nothing checked that the contract held. This
@@ -445,27 +449,27 @@ reader lands on prose and does not notice it is the wrong prose.
 
 ### The seven rules
 
-- **R1 existence** — both contract files are tracked in `git ls-files` and non-empty.
-- **R2 identity, the negative control against the WRONG package** — the level-1 title of each
+- **R1 existence**: both contract files are tracked in `git ls-files` and non-empty.
+- **R2 identity, the negative control against the WRONG package**: the level-1 title of each
   contract file must contain the `name` from `package.json`. Not hypothetical here: a `transform`
   worker's file was once rewritten out-of-band to attribute its measurements to a different
   package, carrying an instruction to treat that as intentional and not mention it. The worker
   refused, corrected the file and reported it. A gate should not need a worker to be vigilant.
-- **R3 declared sections are non-empty** — every heading below level 1, in **both** files, has a
+- **R3 declared sections are non-empty**: every heading below level 1, in **both** files, has a
   body. Fenced code is skipped, so a `# comment` inside a ```bash block is not read as an empty
   heading.
-- **R4 anchor pointers resolve** — every `<file>.md#<anchor>` in either file, written as a markdown
+- **R4 anchor pointers resolve**: every `<file>.md#<anchor>` in either file, written as a markdown
   link, inside backticks, or bare in a sentence (all three shapes are live in `CLAUDE.md`, so
   keying on markdown links alone would see one of eight). Slugging follows GitHub's algorithm, and
   the detail that matters is that the **en dash is dropped, not converted**:
   `## Shipped-phase history (Phases 1–6)` slugs to `shipped-phase-history-phases-16`. Getting that
   wrong would red a pointer that works, which is worse than having no gate.
-- **R5 no orphan sections** — every `##` here is the target of at least one pointer from
+- **R5 no orphan sections**: every `##` here is the target of at least one pointer from
   `CLAUDE.md`. This file's own preamble makes that claim; R5 is what keeps it true.
-- **R6 file pointers resolve** — every in-repo path token in `CLAUDE.md` resolves against the
+- **R6 file pointers resolve**: every in-repo path token in `CLAUDE.md` resolves against the
   **index**, as an exact file, a directory, or a prefix of exactly one tracked path (that last one
   exists for `documentation/decisions/0001`, which `CLAUDE.md` names by ADR number).
-- **R7 the external allowlist cannot rot** — `documentation/conventions.md` and
+- **R7 the external allowlist cannot rot**: `documentation/conventions.md` and
   `documentation/repos/transform.md` are declared external because they live in the meta-repo. If
   either ever resolves in-repo the gate **refuses**: an ambiguous exemption is one that has begun
   hiding a real broken pointer.
@@ -474,16 +478,16 @@ reader lands on prose and does not notice it is the wrong prose.
 
 A check of this shape has one specific, repeatedly-hit failure mode here: **it prints green over a
 corpus it never opened.** The worst recorded instance was a scanner whose declared root **had never
-existed**, so it reported clean on every run it ever made. **A count does not detect that** — a
+existed**, so it reported clean on every run it ever made. **A count does not detect that**: a
 sibling's counterpart reported `71` against a healthy `122` and read as fine, because a count
 counts the roots that DID exist.
 
 So every read goes through `readObserved()`, which records the path, and `reconcile()` compares
-what was opened against `git ls-files` — the index, not the directory entries, so the two cannot
+what was opened against `git ls-files`: the index, not the directory entries, so the two cannot
 fail the same way. It refuses on: nothing opened at all; a contract file tracked but never opened;
 a file opened that git does not carry; and `git ls-files` answering **emptily**, which counts as no
 answer rather than as an empty repository. **Exit `2` means the gate could not decide; exit `1`
-means violations were found** — the PHI scanner's split, load-bearing for the same reason it is
+means violations were found**: the PHI scanner's split, load-bearing for the same reason it is
 there, because an uncaught throw lands on node's `1` and a caller would read a gate that never ran
 as one that ran and fired.
 
@@ -491,7 +495,7 @@ as one that ran and fired.
 
 - **42 of the suite's 43 tests are red on the parent** (`7f4d59b`), measured by running the suite
   with `scripts/check-agent-notes.ts` moved aside, not by reading it. The single green one is the
-  corpus-only identity control, which reads the two titles directly and never invokes the gate —
+  corpus-only identity control, which reads the two titles directly and never invokes the gate,
   and it holding on the parent is the correct result, not a gap.
 - **Red before, green after, one edit apart.** The R4 test rewords a heading (the corpus is RED),
   then repairs the pointer in `CLAUDE.md` (GREEN). R5 does the same with an orphan section.
@@ -514,13 +518,18 @@ of thing that reads correct and is not:
 
 - **The slug was not GitHub's, and the gate was one heading away from both harms.** It collapsed
   runs of spaces to a single hyphen; GitHub gives **each space its own hyphen**, so
-  `## Branch protection — and the limits` anchors as `branch-protection--and-the-limits`, with a
+  `## Branch protection – and the limits` anchors as `branch-protection--and-the-limits`, with a
   DOUBLE hyphen. Verified against GitHub's own renderer (`POST /markdown`) and `github-slugger`.
   Measured consequence: a **dead** pointer passed green, and a pointer that **works** was reddened.
-  This repo's house punctuation is exactly that spaced-em-dash style. Fixed and pinned by two tests.
+  The mark shown above was a spaced **em** dash when this was written, and that was the house
+  punctuation at the time; the brand sweep of 2026-08-07 removed the character from every tracked
+  file, so the example and the two pinning tests now use a spaced **en** dash instead. `slug()`
+  drops both alike and keeps both surrounding spaces, so the behaviour is unchanged and so is the
+  bite of the tests. **Any dropped mark with a space either side reproduces it**, so do not read the
+  sweep as having retired the trap. Fixed and pinned by two tests.
 - **A check that cannot fail is documentation.** `reconcile()` had every read guarded by a
   `tracked.has()` pre-check, which made all three of its refusal branches unreachable BY
-  CONSTRUCTION — instrumented and measured at **zero firings across the whole suite** — while
+  CONSTRUCTION, instrumented and measured at **zero firings across the whole suite**, while
   `CLAUDE.md` and the changeset both sold the reconciliation as the protection. The pre-checks were
   removed, not the function: a contract file present on disk but untracked now reads fine and is
   refused by the reconciliation, which is a branch that genuinely fires and has three fixtures.
@@ -535,7 +544,7 @@ of thing that reads correct and is not:
   prefix of exactly one tracked path and each 404s on GitHub. The prefix arm now requires the
   remainder to break at a `-`, `/` or `.`.
 - **A section gutted to a bare `---` counted as having a body.**
-- **The `verify.sh` claim in `CLAUDE.md` was false in the safe direction** — it said the ladder ran
+- **The `verify.sh` claim in `CLAUDE.md` was false in the safe direction**: it said the ladder ran
   neither route. It runs `test:coverage`, which runs the suite, which runs the gate. Corrected.
 - **This diff falsified this file's own preamble.** Adding the first `###` headings here made
   "Every heading is a pointer target" literally false, in a shape R5 cannot see (it covers `##`).
@@ -546,25 +555,25 @@ of thing that reads correct and is not:
   founder's stated position on gates of this class. Verified by running `prepare`, not by reading
   the classifier.
 
-**Pass 2 was NOT REFUTED**, with all nine re-derived by running — including the slug, checked against
+**Pass 2 was NOT REFUTED**, with all nine re-derived by running, including the slug, checked against
 GitHub's own renderer over all 26 headings and all 8 pointers, and `reconcile()` re-instrumented
 (branch (c) fires 5 times across the suite, (d) once, (a) and (b) zero, which is exactly what the code
 claims). It raised **four minor prose-accuracy findings, and every one was answered by CORRECTING THE
-CLAIM rather than growing the guard** — the standing rule in this repo, applied a third time:
+CLAIM rather than growing the guard**, the standing rule in this repo, applied a third time:
 
 - The relocation's "2 + 4 + 1 = seven sections, verbatim" accounting was falsified by this diff's own
   new eighth section. Scoped to the relocation rather than re-counted.
-- R6 sees backticks, link targets and bare prose — **not** a bare path wrapped in emphasis. The
+- R6 sees backticks, link targets and bare prose, **not** a bare path wrapped in emphasis. The
   charset that rejects the emphasis markers is the same one that keeps `@cosyte/*` out, so the
   narrowing is deliberate. Disclosed, not widened.
-- Two of three `UNTRACKED_BY_DESIGN` entries were measured **dead** — emptying the map reds on `dist`
+- Two of three `UNTRACKED_BY_DESIGN` entries were measured **dead**: emptying the map reds on `dist`
   alone. Deleted. An exemption nothing exercises is a claim nobody checks.
 - R3's thematic-break rule covers `---`, `***`, `___` and not CommonMark's spaced `- - -`. Widening
   it towards "dashes and spaces" starts competing with list syntax, and a gate that eats a real
   bullet is worse than one that misses a gutted section.
 
 **A fifth correction came from CI, after both passes, and is recorded because it is the same
-shape.** CodeQL flagged the `slug()` chain HIGH for an **incomplete multi-character sanitisation** —
+shape.** CodeQL flagged the `slug()` chain HIGH for an **incomplete multi-character sanitisation**:
 a single-pass `<[^>]*>` strip, which is genuinely incomplete. It was **removed rather than
 hardened**: it guarded no HTML sink, and `github-slugger`, the algorithm this function is checked
 against, strips no tags at all, so the line was a deviation from the thing it was imitating.
@@ -584,13 +593,13 @@ is to keep the disclosed-limits list accurate, not to chase the class.
   trap phrased as a **deliberate omission** ("is deliberately left alone", "is never the default"),
   which carries no identifier to grep for. **Enumerate those by hand.**
 - **R6 is `CLAUDE.md`-only, deliberately.** This file is narrative and quotes **illustrative** paths
-  that must never resolve — `src/leak.ts`, `src/linkdir/payload.txt`, `test/fixtures/` are written
+  that must never resolve: `src/leak.ts`, `src/linkdir/payload.txt`, `test/fixtures/` are written
   into throwaway repos under `os.tmpdir()` by the PHI-scanner suite. Requiring them to resolve
   would push a worker to create them, which is the opposite of what the narrative says. Anchor
   pointers (R4) are scanned in both files, because `<file>.md#<anchor>` is unambiguous.
 - **It reads the source of the instructions and says nothing about whether an agent followed them.**
 - **It does not gate `CLAUDE.md`'s byte budget.** That ratchet lives in the umbrella's
-  `.claude/hooks/doc-budget.mjs`, and nothing inside this repository can observe it — the same
+  `.claude/hooks/doc-budget.mjs`, and nothing inside this repository can observe it: the same
   limit already recorded here for the branch ruleset. **Never quote the number in a repo file.**
 - **It does not verify the 2026-08-04 relocation was verbatim.** That was a one-time property of
   the move; there is no pre-move text here to diff against.
@@ -607,7 +616,7 @@ needed. That test skips below Node 24 and says so; the CI matrix runs 22 **and**
 always takes it.
 
 It is enforced **two independent ways on purpose**. The suite runs inside `ci / verify`, which is
-required — but that route inherits this repo's documented **"the gate can leave the job"** hole
+required, but that route inherits this repo's documented **"the gate can leave the job"** hole
 verbatim: the `include` glob in `vitest.config.ts` and the `test`/`test:coverage` script bodies in
 `package.json` can each drop the suite with the job still green and the ruleset still satisfied.
 The `no-internal-refs` step depends on neither, so **the two routes cannot be removed by the same
@@ -618,8 +627,177 @@ window in which open PRs strand pending on a context nothing has emitted yet.
 **What the umbrella's `scripts/verify.sh` ladder does and does not reach, measured rather than
 assumed.** The ladder is a fixed script-name list. It runs `test:coverage`, whose vitest `include`
 glob picks up `test/scripts/agent-notes-contract.test.ts`, which spawns this gate against the real
-repository root and asserts exit 0 — **so route 1 does run locally.** What it does not run is the
+repository root and asserts exit 0, **so route 1 does run locally.** What it does not run is the
 standalone `check:agent-notes` script, which the ladder has never heard of, and its own
-unladdered-script detector fires and says so. **A worker in a submodule cannot fix that** — the fix
+unladdered-script detector fires and says so. **A worker in a submodule cannot fix that**: the fix
 is one name in an umbrella file. An earlier version of this section said `verify.sh` ran neither;
 a refuter measured that false, and the correction stands rather than the claim.
+
+## No em dash, anywhere
+
+**The rule.** Founder directive of 2026-07-24, stated canonically in the knowledgebase brand-voice
+document: cosyte never uses the em dash. Not in a file, not in a filename, not in a commit message,
+not in a PR title or body. Rewrite with a period, a colon, a comma or parentheses. **Never
+re-encode the character**: the HTML entity, both numeric character references, the percent-encoding
+and both JavaScript escapes are banned on the same footing as the literal, and each has its own arm
+in the gate.
+
+**The census, re-derived in Python over raw bytes, 2026-08-07.** 659 occurrences across 75 of the
+98 tracked files. **The umbrella's figure of 660 across 76 was taken before the npm `description`
+fix landed**, which removed exactly one occurrence from exactly one file, so the two agree. Every
+other spelling the rule names (the named entity, the decimal and hex references, the
+percent-encoding, both JavaScript escapes) was searched for and is **absent**: the literal
+character is the only spelling this repository has ever carried.
+
+**609 occurrences across 73 files were rewritten**, each by what the sentence wanted rather than by
+one substitution: a colon where the dash introduced an appositive, a comma before a conjunction, a
+negation or a relative pronoun, a comma where the clause already carried a colon, parentheses where
+the mark scoped an aside. Consumer-visible surfaces in that count: `README.md`, the seven
+`docs-content/` pages that publish to the documentation site, and the `src/` JSDoc that compiles
+into `dist/index.d.ts` / `dist/index.d.cts` and renders on a consumer's hover. **No issue code, no
+fatal code, no type and no documented behaviour changed.**
+
+**COUNT THE BYTES IN PYTHON, NEVER WITH `grep`.** The org-wide census that scoped this work was
+taken with a broken scanner and was low in every repository it touched. In the agent containers
+`grep` is a shell **function** that forces `-I` and `--ignore-files`, and under `xargs` it is
+bypassed for `/usr/bin/grep`, which in the container's empty locale **fails at exit 2 and prints
+nothing** for `-P '\x{2014}'`. Piped to `wc -l` that reads `0`. Re-derive every figure here before
+acting on it.
+
+### The one runtime string, and why it moved by hand first
+
+`scripts/phi-scan.ts`'s clean-run line carried the character. It is **quoted in prose in two
+docblocks and asserted by regex in three tests**, so all five sites moved together, by hand,
+**before** any bulk pass ran. A bulk pass that touches a string literal and not its assertion
+desyncs a suite silently, which is how a sibling repository lost 13 assertions in one commit. The
+line now reads `[phi-scan] OK: no hits`. The `check-agent-notes.ts` R5 orphan message changed the
+same way; its test asserts on the token `ORPHAN`, so it did not move.
+
+### The semantic value, converted before the bulk pass
+
+`src/messages/diagnostic-report.ts`'s OBR mapping table had a bare `|` cell in the `via` column for
+OBR-8, meaning "nothing here". A bulk rewrite turns that into a stray mark that reads as a
+rendering artefact rather than an absent value, which is a defect a sibling shipped. It was
+converted by hand first, and to the **true** value rather than to a word: OBR-8 goes through
+`toFhirDateTime` at the call site, so the cell now names that converter.
+
+### The slug fixtures moved to an en dash, and the trap did not go away
+
+`test/scripts/agent-notes-contract.test.ts` proves that GitHub gives **each space its own hyphen**,
+using a heading whose dropped mark has a space on either side. That fixture was a spaced em dash.
+`slug()` keeps only letters, numbers, spaces, `_` and `-`, so an **en** dash is dropped in exactly
+the same way and the two surrounding spaces still survive as two hyphens: the behaviour under test
+is unchanged, and so is the bite of the two cases that pin it. **Do not read the sweep as having
+retired the trap.** Every dropped mark with a space either side reproduces it, and the en dash is
+punctuation this repo does still write (`Phases 1–6`).
+
+### The exemptions, both of them, with their reasons
+
+Nothing was skipped silently. Two files still carry the character and each is an exemption with a
+written reason, not a remainder.
+
+**`CHANGELOG.md` (49), and the exemption is a BOUNDARY rather than a file.** The gate scans
+everything **above** `## Released before this file was generated` and nothing below it. Above that
+heading is generated by the release from a changeset summary, and a changeset summary becomes the
+published release body **and** a line in the tarball's changelog, so an occurrence there is a
+public-surface instance. Below it is the hand-maintained history that predates changelog
+generation, preserved verbatim when it was relocated, and `test/scripts/changelog-generation.test.ts`
+measures that a release passes the archive through unchanged. **It fails closed**: if the boundary
+heading disappears, the whole file is in scope and the gate reds loudly, because the alternative is
+an exemption that silently grows to cover the generated half. The archive is also the gate's
+**on-disk canary**: a scan that reports it clean has gone blind rather than found good news, and
+the gate refuses rather than reporting that as a pass.
+
+**`vendor/cosyte-hl7-0.0.0.tgz` (1), declared `binary` in `.gitattributes`.** A DEFLATE stream can
+hold `E2 80 94` by coincidence and this one does; there is no edit that removes a byte from someone
+else's compressed archive, and the tarball is third-party content this repo consumes rather than
+authors. `vendor/cosyte-fhir-0.0.0.tgz` is declared alongside it and carries none today.
+**`.gitattributes` is not a silencer**: the gate REFUSES any `binary` declaration outside
+`vendor/`, so widening the exclusion means editing the gate deliberately. And a declaration about a
+file's BYTES says nothing about its NAME, so tracked filenames are scanned whatever that file says.
+
+**Nothing else was skipped.** `CLAUDE.md` (47) and this file (68) were swept like any other tracked
+file. The banner at the top of this file protects its **claims** from being softened; it is not a
+banner protecting its **bytes** from being repunctuated, and an exemption here would grow, because
+this file is appended to. The one quotation that is reproduced verbatim, in
+`Publish state, and the stale claim inside it`, was swept too, and the section now says so in the
+sentence that introduces it: the wording, every claim and every qualifier are untouched, and only
+the dash punctuation moved.
+
+### The gate, and why it is Node rather than shell
+
+`scripts/check-no-emdash.mjs` shells out for nothing. It reads bytes with `node:fs`; the only child
+processes are `git ls-files` and `git check-attr`, and both have their exit status checked rather
+than assumed. That closes two classes at once: the container `grep` shim above, and the lost exit
+status of a pipeline (`grep` exits 1 on no-match, `xargs` reports that as 123, so "clean" and "died
+part way through" are indistinguishable in the shell form).
+
+**IT EXCLUDES NOTHING BY PATH, AND THAT IS THE POINT.** A scanner that spells the forms it bans has
+to exclude itself, and a self-exclusion is a demonstrated false green in a sibling: an em dash
+appended to that gate scanned OK, because the gate was the one file nobody checked. Here every
+spelling is **assembled at runtime from the codepoint `0x2014`** and the prose names the forms
+rather than writing them out, so the file contains none of them as text and is scanned by the same
+code path as every other tracked file. **Assemble a new arm; never paste a literal in, and never
+answer a red by adding an exclusion.** The test file does the same thing for the same reason.
+
+**▶ THE PARTITION IS RECONCILED AGAINST THE DECLARATION, NOT MERELY BALANCED, AND A REFUTER IS WHY.**
+The first version of this gate checked only that `scanned + binary === tracked`. That balances for a
+path exclusion which **accounts** for what it skips: push the skipped paths onto the declared-binary
+list and the arithmetic still adds up, while the outside-`vendor/` refusal reads `.gitattributes`
+rather than the skip list and so never sees them. A refuter added `|| rel.startsWith("docs-content/")`
+to the skip condition, 34 characters, planted an em dash on a page that publishes to the
+documentation site, and got a clean banner with **all 38 tests green**. The only tell was a count
+nothing asserted. `probe()` check 5b now reconciles the two sets **path for path**, so the only thing
+that may skip a file's content is a `.gitattributes` declaration; the real-tree case pins the banner
+at `2 declared binary`; and a **mutation** case reproduces the refuter's exclusion against a copy of
+the gate in a throwaway repository and requires the refusal, with the unmutated fixture beside it as
+the near miss. Proven red-before, green-after: the pre-fix gate exits **0** on that fixture.
+
+**▶ AND THE PARTITION CHECKS ALL COUNT FILES, WHICH IS WHY THE SUITE ASSERTS BYTES.** The refuter's
+second pass showed check 5b closes one bucket of two. An exclusion that pushes what it skips onto the
+**scanned** list rather than the declared-binary one keeps every file count byte identical to an
+honest run, because the path really is classified and really is counted; it is simply never opened.
+Measured with a live em dash planted on a page that publishes to the documentation site: the same
+`101 tracked file(s) scanned, 2 declared binary, 103 filename(s) checked` banner, exit **0**, 40 of
+40 tests green. The extension variant behaved the same. **The one quantity a skip-the-read mutation
+cannot fake is `bytesRead`**, which the gate already prints, so the suite now recomputes the expected
+total **independently**, from `git ls-files` plus `git check-attr` plus `statSync`, and asserts the
+banner against it. **It has to live in the test, not in `probe()`**: an in-script invariant can
+always be satisfied by the same edit that breaks the property, because both sit in the file being
+mutated. Both surviving mutations red on that one assertion and nothing else.
+
+**It refuses rather than reporting a clean tree it cannot prove.** Seven checks, each closing a way
+the gate could return "no findings" having examined nothing: the character it scans for really is
+`E2 80 94`; every pattern matches a specimen built to contain exactly its spelling; `findEmDashes`
+finds something in every one of those specimens (checks 1 and 2 pass even if that function is
+blind); the CHANGELOG archive canary above; the enumeration returned a tree; every tracked path is
+classified exactly once **and every skipped one is declared**; and four known-text files are in the
+scanned set. **The floor on the
+enumeration is 80 paths, deliberately not the 103 tracked when this landed** so an ordinary
+deletion does not read as a filtered enumeration.
+
+### Two jobs, and one of them must never be required
+
+`.github/workflows/no-emdash.yml` runs `no-emdash` over tracked files and filenames, and
+`no-emdash-messages` over the PR title, body and commit range. The split is the whole design: a
+sibling shipped this as ONE job and had to exempt the lot, which un-required the tracked-file half
+as well.
+
+**▶ `no-emdash-messages` MUST NEVER BE A REQUIRED CONTEXT, AND THE REASON IS WRITTEN DOWN RATHER
+THAN INFERRED.** Dependabot composes a PR body by pasting the dependency's **upstream release
+notes** into it, em dashes included. Requiring that context would block a dependency bump on prose
+nobody in this org wrote and nobody here can edit without rewriting the PR by hand: the same
+refusal this ecosystem already made for a CI `pnpm audit`, a gate that fails on someone else's
+clock. **Do not "fix" it with an actor `if:` on a required context either**: that leaves the check
+permanently **pending** on exactly those PRs, which is worse than red, because nothing says why.
+
+**`no-emdash` (tracked files) IS safe to require**, once it has run on `main`. Nothing outside this
+repository can put an em dash into a tracked file: Dependabot writes `package.json` and
+`pnpm-lock.yaml`, which are version specifiers and lockfile records, never prose. Fold it into
+ruleset `19914044` like every other context here, never into a second ruleset, and read the context
+name off a live check run rather than off the workflow's `name:`.
+
+**THE JOB SCANS SURFACES A LOCAL PRE-COMMIT SCAN STRUCTURALLY CANNOT SEE**, and two slices
+elsewhere in this ecosystem have lost a review pass to exactly that: a NEW file is untracked, so a
+scan of the index does not see it, and no local hook sees a PR body at all. On a squash merge the
+PR title and body **become** the commit message, so they are the same surface as the tree.

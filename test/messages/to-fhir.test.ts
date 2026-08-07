@@ -79,7 +79,7 @@ const ADT_A01 = [
   }),
 ];
 
-describe("toFhir — ADT^A01 message assembly", () => {
+describe("toFhir: ADT^A01 message assembly", () => {
   const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } });
   const result = toFhir(msg(ADT_A01), { namingSystem: registry, generateId: seq() });
 
@@ -148,7 +148,7 @@ describe("toFhir — ADT^A01 message assembly", () => {
   });
 });
 
-describe("toFhir — reference wiring & fail-safe edges", () => {
+describe("toFhir: reference wiring & fail-safe edges", () => {
   it("omits Encounter.subject (flagged) when there is no PID/Patient to anchor it", () => {
     const noPid = ["MSH|^~\\&|A|B|C|D|20260101||ADT^A01|M1|P|2.5.1", "PV1|1|O|||||||||||||||||V9"];
     const result = toFhir(msg(noPid), { generateId: seq() });
@@ -355,7 +355,7 @@ describe("toFhir — reference wiring & fail-safe edges", () => {
     ).toBe(true);
   });
 
-  it("drops unparseable admit/discharge timestamps — no period, no fabricated instant", () => {
+  it("drops unparseable admit/discharge timestamps: no period, no fabricated instant", () => {
     const badTs = [
       "MSH|^~\\&|A|B|C|D|20260101||ADT^A01|M1|P|2.5.1",
       "PID|1||MRN1^^^HOSP^MR||Doe^Jane||19900101|M",

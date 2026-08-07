@@ -7,7 +7,7 @@
  *
  * `XPN.7`→`use` is a **lossy code translation**: only the codes the IG's HL70200→name-use map covers
  * are translated; any other name-type code leaves `use` **absent** and raises
- * {@link ISSUE_CODES.TRANSFORM_NAME_USE_UNMAPPED} — never guessed. Not converted, and flagged:
+ * {@link ISSUE_CODES.TRANSFORM_NAME_USE_UNMAPPED}, never guessed. Not converted, and flagged:
  * the name-validity period (`XPN.12`/`XPN.13`), whose FHIR `period` needs the timezone policy of the
  * dateTime path.
  *
@@ -66,7 +66,7 @@ export function toFhirHumanName(xpn: XPN): ConvertResult<FhirComplex> {
     }
   }
 
-  // XPN.12 / XPN.13 name-validity period is deferred (needs the dateTime timezone policy) — flagged.
+  // XPN.12 / XPN.13 name-validity period is deferred (needs the dateTime timezone policy): flagged.
   if (xpn.effectiveDate !== undefined && xpn.effectiveDate !== "") {
     issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "XPN.12", "HumanName.period"));
   }

@@ -18,7 +18,7 @@ function propStrings(node: FhirComplex, name: string): string[] {
   );
 }
 
-describe("toFhirAddress — component mapping (IG XAD→Address)", () => {
+describe("toFhirAddress: component mapping (IG XAD→Address)", () => {
   it("maps line, city, district, state, postalCode, country", () => {
     const { value, issues } = toFhirAddress({
       street: "1 Main St",
@@ -60,7 +60,7 @@ describe("toFhirAddress — component mapping (IG XAD→Address)", () => {
   });
 });
 
-describe("toFhirAddress — fail-safe on unmapped type and dropped components", () => {
+describe("toFhirAddress: fail-safe on unmapped type and dropped components", () => {
   it("flags an unmapped XAD.7 (e.g. HV vacation) with use and type absent", () => {
     const { value, issues } = toFhirAddress({ city: "X", addressType: "HV" });
     expect(propString(value as FhirComplex, "use")).toBeUndefined();

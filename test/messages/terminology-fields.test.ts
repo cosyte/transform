@@ -145,7 +145,7 @@ describe("RXO-9 → MedicationRequest.substitution (HL70161, value-translated)",
     const mr = resource(r, "MedicationRequest") as FhirComplex;
     const dosage = getProperty(mr, "dosageInstruction");
     const di = dosage !== undefined && isList(dosage) ? dosage.items.find(isComplex) : undefined;
-    // method present (structural), but NOT emitted with a SNOMED system/code — its code stays "CH".
+    // method present (structural), but NOT emitted with a SNOMED system/code: its code stays "CH".
     expect(firstCoding(getProperty(di as FhirComplex, "method") as FhirComplex).code).toBe("CH");
     expect(firstCoding(getProperty(di as FhirComplex, "method") as FhirComplex).system).not.toBe(
       "http://snomed.info/sct",

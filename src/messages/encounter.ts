@@ -1,5 +1,5 @@
 /**
- * PV1 → FHIR `Encounter` — grounded on the IG **Segment PV1 to Encounter** ConceptMap plus the two
+ * PV1 → FHIR `Encounter`, grounded on the IG **Segment PV1 to Encounter** ConceptMap plus the two
  * **Table HL70004** ConceptMaps (to V3 ActCode, and to Encounter Status), all verified firsthand
  * against the published `hl7.fhir.uv.v2mappings` STU1 maps:
  *
@@ -34,7 +34,7 @@ import { coding, reference } from "./reference.js";
 
 /** The v3 ActCode canonical system (FHIR `Encounter.class` binding). */
 const V3_ACTCODE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ActCode";
-/** The HL7 v2 Table 0004 (Patient Class) canonical system — for classes with no v3 ActCode row. */
+/** The HL7 v2 Table 0004 (Patient Class) canonical system, for classes with no v3 ActCode row. */
 const V2_0004_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0004";
 
 /**
@@ -56,7 +56,7 @@ const V2_SELF_CLASSES: ReadonlySet<string> = new Set(["R", "B", "C", "N", "U"]);
 
 /**
  * HL7 v2 Table 0004 (Patient Class) → FHIR `Encounter.status`, per the IG **Table HL70004 to
- * Encounter Status** ConceptMap. Applied only when PV1-45 (discharge date) is *not* valued — a valued
+ * Encounter Status** ConceptMap. Applied only when PV1-45 (discharge date) is *not* valued: a valued
  * discharge sets `status = finished` per the PV1→Encounter map.
  */
 export const ENCOUNTER_STATUS_MAP: Readonly<Record<string, string>> = Object.freeze({
@@ -80,7 +80,7 @@ function buildClass(
   const v3 = ENCOUNTER_CLASS_V3_MAP[patientClass];
   if (v3 !== undefined) return coding(V3_ACTCODE_SYSTEM, v3.code, v3.display);
   if (V2_SELF_CLASSES.has(patientClass)) return coding(V2_0004_SYSTEM, patientClass);
-  // Unknown patient-class code — never coerced to a neighbor; class left absent and flagged.
+  // Unknown patient-class code, never coerced to a neighbor; class left absent and flagged.
   issues.push(issue(ISSUE_CODES.TRANSFORM_CODE_UNMAPPED, "PV1.2", "Encounter.class"));
   return undefined;
 }

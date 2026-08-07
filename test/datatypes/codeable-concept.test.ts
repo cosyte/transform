@@ -14,7 +14,7 @@ function propString(node: FhirComplex, name: string): string | undefined {
   return undefined;
 }
 
-describe("toFhirCodeableConcept — recognized systems", () => {
+describe("toFhirCodeableConcept: recognized systems", () => {
   it("resolves a LOINC mnemonic to its canonical URI", () => {
     const { value, issues } = toFhirCodeableConcept(
       {
@@ -52,7 +52,7 @@ describe("toFhirCodeableConcept — recognized systems", () => {
   });
 });
 
-describe("toFhirCodeableConcept — the unmapped-code fail-safe (MANDATORY)", () => {
+describe("toFhirCodeableConcept: the unmapped-code fail-safe (MANDATORY)", () => {
   it("preserves a bare local code with no coding system, never fabricating a FHIR code", () => {
     const { value, issues } = toFhirCodeableConcept(
       { identifier: "LOCAL42", text: "House glucose" }, // no nameOfCodingSystem
@@ -84,7 +84,7 @@ describe("toFhirCodeableConcept — the unmapped-code fail-safe (MANDATORY)", ()
     expect(issues).toEqual([]);
   });
 
-  it("works with no context (no namingSystem) — system unresolved, code preserved", () => {
+  it("works with no context (no namingSystem): system unresolved, code preserved", () => {
     const { value, issues } = toFhirCodeableConcept({
       identifier: "789-8",
       nameOfCodingSystem: "LN",

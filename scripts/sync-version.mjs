@@ -5,8 +5,8 @@
  * Why this exists: `VERSION` is a public export, but the version bump is owned by Changesets, which
  * only rewrites `package.json`. Without this step the package publishes a `VERSION` that *lies*.
  * That is not hypothetical here: `@cosyte/transform@0.0.4` is on the registry today exporting
- * `VERSION === "0.0.0"` — verified in the released tarball, whose `dist/index.mjs`, `dist/index.cjs`,
- * `dist/index.d.ts` and `dist/index.d.cts` all carry `"0.0.0"` — and `docs-content/installation.md` tells an installer
+ * `VERSION === "0.0.0"`, verified in the released tarball, whose `dist/index.mjs`, `dist/index.cjs`,
+ * `dist/index.d.ts` and `dist/index.d.cts` all carry `"0.0.0"`, and `docs-content/installation.md` tells an installer
  * to print exactly that constant as the install smoke test. The constant's own doc comment already
  * claimed it was "synced with `package.json#version` by the release tooling" while no such step
  * existed. The `version` script (which the shared release workflow invokes as `pnpm run version`)

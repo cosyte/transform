@@ -1,5 +1,5 @@
 /**
- * SIU_S12 → FHIR `Appointment` — the thin IG single for scheduling, grounded
+ * SIU_S12 → FHIR `Appointment`: the thin IG single for scheduling, grounded
  * firsthand on the IG **SIU_S12 message map**, the **SCH/AIS/PID → Appointment** segment maps, the
  * **Table HL70278 → AppointmentStatus** ConceptMap, and the **TQ → Appointment** datatype map
  * (`hl7.fhir.uv.v2mappings`, STU1; `ConceptMap-message-siu-s12-to-bundle.json`,
@@ -13,7 +13,7 @@
  * |---|---|---|
  * | SCH-25 Filler Status Code | `status` (required 1..1) | {@link APPOINTMENT_STATUS_MAP} (HL70278) |
  * | SCH-1 Placer / SCH-2 Filler Appointment ID | `identifier` | EI.1 → `Identifier.value` |
- * | SCH-7 Appointment Reason (CWE) | `reasonCode` | {@link toFhirCodeableConcept} (structural — SNOMED target, BYO) |
+ * | SCH-7 Appointment Reason (CWE) | `reasonCode` | {@link toFhirCodeableConcept} (structural: SNOMED target, BYO) |
  * | SCH-8 Appointment Type (CWE) | `appointmentType` | {@link APPOINTMENT_TYPE_VALUE_MAP} (HL70277, value-translated) |
  * | SCH-9 Duration + SCH-10 Units | `minutesDuration` | integer, only when SCH-10 is minutes |
  * | SCH-11 Appointment Timing Quantity (TQ) | `start` / `end` (instant) | TQ.4/TQ.5 → {@link toFhirDateTime} |
@@ -24,11 +24,11 @@
  * - **`status` (required 1..1).** SCH-25 → {@link APPOINTMENT_STATUS_MAP} (HL70278). The three HL70278
  *   codes the IG leaves unmatched (`Discontinued`, `Blocked`, `Overbook`) and an absent SCH-25 leave
  *   `status` absent + flagged {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}; the required-`status` emit gate
- *   then **withholds** the Appointment — never guessed.
+ *   then **withholds** the Appointment, never guessed.
  * - **`participant` (required 1..*).** The bundle Patient is emitted as the required participant. Its
  *   `participant.status` (a required-bound `code` the IG supplies no source for) is emitted as a
- *   `data-absent-reason` primitive (value `unknown`) + flagged {@link ISSUE_CODES.TRANSFORM_REQUIRED_ELEMENT_UNKNOWN}
- *   — the spec-clean way to satisfy a required code whose value is genuinely unknown, never fabricated. An
+ *   `data-absent-reason` primitive (value `unknown`) + flagged {@link ISSUE_CODES.TRANSFORM_REQUIRED_ELEMENT_UNKNOWN},
+ *   the spec-clean way to satisfy a required code whose value is genuinely unknown, never fabricated. An
  *   Appointment with no resolvable Patient (and no other groundable actor this library builds) has no
  *   participant and is withheld.
  * - **`start`/`end` (instant).** SCH-11's TQ.4/TQ.5 become `start`/`end` only when they are fully-zoned
@@ -37,10 +37,10 @@
  * - **`appointmentType` value translation.** SCH-8 → {@link APPOINTMENT_TYPE_VALUE_MAP}
  *   (HL70277 `Normal`/`Tentative`/`Complete` identity into `v2-0277`); a code outside the table is
  *   preserved + flagged, never coerced. **`reasonCode` is NOT value-translated:** SCH-7's IG map target
- *   is SNOMED CT (`table-hl70276-to-sct`) — encumbered, **not bundled** — so the reason is carried
+ *   is SNOMED CT (`table-hl70276-to-sct`), which is encumbered and **not bundled**, so the reason is carried
  *   structurally (BYO ConceptMap), never SNOMED-translated here. (The IG's SCH→Appointment map *also*
  *   carries a redundant SCH-7 → `appointmentType[1]` row via `table-hl70277-to-v2-0277`; it is not
- *   applied — SCH-7 carries HL70276 *reason* codes, not HL70277 *type* codes, so translating them through
+ *   applied: SCH-7 carries HL70276 *reason* codes, not HL70277 *type* codes, so translating them through
  *   the type table would only ever produce spurious unmapped flags. `appointmentType` comes from SCH-8,
  *   the appointment-*type* field, per that same map's SCH-8 → `appointmentType[1]` row.)
  *
@@ -68,7 +68,7 @@ import { dataAbsent, reference } from "./reference.js";
 /**
  * HL7 v2 Table 0278 (Filler Status Code) → FHIR `appointmentstatus` (`Appointment.status`), per the IG
  * **Table HL70278 to AppointmentStatus** ConceptMap (each `is equivalent to`). The three source codes
- * the IG leaves **unmatched** (`Discontinued`, `Blocked`, `Overbook`) are absent here on purpose — an
+ * the IG leaves **unmatched** (`Discontinued`, `Blocked`, `Overbook`) are absent here on purpose: an
  * SCH-25 carrying one of them (or any local code) leaves `Appointment.status` absent + flagged and the
  * required-`status` emit gate withholds the Appointment.
  */
@@ -141,7 +141,7 @@ function patientParticipant(
  * Build a FHIR `Appointment` resource node from an SIU message's `SCH` segment (+ the first `AIS`), with
  * the bundle Patient wired as the required participant. Returns `{ value: undefined }` when there is no
  * `SCH`. `Appointment.status` is left absent (and the resource withheld by the emit gate) when SCH-25
- * cannot be grounded via HL70278 — never guessed.
+ * cannot be grounded via HL70278, never guessed.
  *
  * @param sch - The `SCH` `@cosyte/hl7` `Segment` (the schedule anchor).
  * @param ais - The first `AIS` service segment, when present (supplies `serviceType`).

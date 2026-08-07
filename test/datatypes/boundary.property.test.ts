@@ -1,10 +1,10 @@
 /**
  * Property + fuzz coverage over the whole v2→FHIR **datatype boundary** (roadmap §6 fuzz #1).
  *
- * For arbitrary — including hostile — parsed-v2 composites, every converter must:
+ * For arbitrary (including hostile) parsed-v2 composites, every converter must:
  *   1. **never throw** (the fail-safe rule: ambiguity becomes an issue, not an exception);
  *   2. raise only **registered** issue codes, each with a positional `v2Location` and a static message;
- *   3. keep the diagnostic channel **value-free** — no input field value ever reaches an issue (proven
+ *   3. keep the diagnostic channel **value-free**, no input field value ever reaches an issue (proven
  *      by threading a sentinel through every generated field and asserting no issue carries it);
  *   4. produce output that, when embedded in a host resource, **validates under `@cosyte/fhir`**.
  */
@@ -87,7 +87,7 @@ function guard<T>(fn: () => { value: T | undefined; issues: readonly TransformIs
   }
 }
 
-describe("datatype boundary — fail-safe, value-free, validates", () => {
+describe("datatype boundary: fail-safe, value-free, validates", () => {
   it("toFhirDateTime never throws and never fabricates a zone", () => {
     const tsArb = fc.oneof(
       fc.constantFrom(
@@ -231,7 +231,7 @@ describe("datatype boundary — fail-safe, value-free, validates", () => {
       fc
         .double({ min: -1e6, max: 1e6, noNaN: true, noDefaultInfinity: true })
         .map((n) => ({ raw: String(n), value: n })),
-      // v2 NM lexical forms that `Number()` accepts but the FHIR `decimal` literal rejects — leading
+      // v2 NM lexical forms that `Number()` accepts but the FHIR `decimal` literal rejects: leading
       // `+`, leading zeros, a trailing dot. These are the inputs that made an unguarded decimal() throw.
       fc
         .constantFrom("+5", "05", "007", "5.", "+0.5", "-0", "+.5", "0.010", "1e3", "  5")

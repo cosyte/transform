@@ -5,7 +5,7 @@ import { primitive } from "@cosyte/fhir";
 import { toFhirDateTime, ISSUE_CODES } from "../../src/index.js";
 import { embedAndValidate } from "../_support/fhir.js";
 
-describe("toFhirDateTime — precision preserved, no padding", () => {
+describe("toFhirDateTime: precision preserved, no padding", () => {
   it.each([
     ["2026", "2026"],
     ["202607", "2026-07"],
@@ -33,10 +33,10 @@ describe("toFhirDateTime — precision preserved, no padding", () => {
   });
 });
 
-describe("toFhirDateTime — the naked-timestamp fail-safe (MANDATORY)", () => {
+describe("toFhirDateTime: the naked-timestamp fail-safe (MANDATORY)", () => {
   it("never turns a timezone-less timestamp into a zoned/UTC instant", () => {
     const { value, issues } = toFhirDateTime(parseDtm("20260721143000"));
-    // Reduced to date precision — never fabricated a zone.
+    // Reduced to date precision, never fabricated a zone.
     expect(value).toBe("2026-07-21");
     expect(value).not.toMatch(/T/);
     expect(value).not.toMatch(/[Zz]/);
@@ -67,7 +67,7 @@ describe("toFhirDateTime — the naked-timestamp fail-safe (MANDATORY)", () => {
   });
 });
 
-describe("toFhirDateTime — invalid input fails safe", () => {
+describe("toFhirDateTime: invalid input fails safe", () => {
   it("emits no value and a typed issue for an unparseable timestamp", () => {
     const { value, issues } = toFhirDateTime(parseDtm("not-a-date"));
     expect(value).toBeUndefined();
@@ -75,7 +75,7 @@ describe("toFhirDateTime — invalid input fails safe", () => {
   });
 });
 
-describe("toFhirDateTime — output validates under @cosyte/fhir (emit gate)", () => {
+describe("toFhirDateTime: output validates under @cosyte/fhir (emit gate)", () => {
   it.each(["2026", "20260721", "20260721143000-0500", "20260721143000", "20260721143000.5-0500"])(
     "produces a FHIR-valid dateTime for %s",
     (raw) => {

@@ -1,5 +1,5 @@
 /**
- * ORC + OBR → FHIR `ServiceRequest` — the order-entry request, grounded firsthand
+ * ORC + OBR → FHIR `ServiceRequest`: the order-entry request, grounded firsthand
  * on the IG **Segment ORC to ServiceRequest** and **Segment OBR to ServiceRequest** ConceptMaps and
  * the **Table HL70119 to Request Status** ConceptMap (`hl7.fhir.uv.v2mappings`, STU1;
  * `ConceptMap-segment-orc-to-servicerequest.html`, `ConceptMap-segment-obr-to-servicerequest.html`,
@@ -25,26 +25,26 @@
  *   {@link REQUEST_STATUS_MAP}; the many codes the IG leaves in its `(unmapped)` group (CH, CP, PA,
  *   RE, RF, RP, SC, the U* "unable to …" family, …) have **no** target and leave `status` absent +
  *   flagged {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}. When **ORC-5** (Order Status) is valued the
- *   IG routes status through ORC-5 via an *unspecified* mapping (no code table) — so we cannot derive
+ *   IG routes status through ORC-5 via an *unspecified* mapping (no code table), so we cannot derive
  *   it, flag ORC-5 unmapped, and leave `status` absent rather than mis-applying the ORC-1 table
- *   against the IG's own condition. The required-`status` emit gate then **withholds** the request —
+ *   against the IG's own condition. The required-`status` emit gate then **withholds** the request,
  *   never guessed, never coerced.
  * - **`intent` (required 1..1) = `order`.** The IG maps ORC-1/OBR → `intent` as `equivalent` but ships
  *   **no value ConceptMap** for it; the ORM_O01/OML_O21 families are, by definition, *order* messages
  *   (their message maps create a `ServiceRequest`/`MedicationRequest` per order), so `intent` is fixed
  *   to the `request-intent` code `order` from that message context. This is a resource-level constant
- *   grounded in the message family — **not** a fabricated per-code translation row. The finer
+ *   grounded in the message family, **not** a fabricated per-code translation row. The finer
  *   OBR-11-conditioned intent refinement is deferred.
  * - **`subject` (required 1..1).** Wired to the bundle's Patient; a request with no resolvable Patient
  *   is withheld rather than emitted with a dangling/absent subject.
  *
- * - **`priority` (0..1) — value-translated.** OBR-5 → `ServiceRequest.priority` via the IG
+ * - **`priority` (0..1), value-translated.** OBR-5 → `ServiceRequest.priority` via the IG
  *   **Table HL70485 to Request Priority** ConceptMap ({@link SERVICE_REQUEST_PRIORITY_MAP}): only
  *   `S→stat`, `A→asap`, `R→routine` carry a target (each `equivalent`, and all three are valid
- *   `request-priority` members). Every other v2-0485 code — `P`, `C`, `T`, the `T{S,M,H,D,W,L}<integer>`
- *   timing-critical family, `PRN` — sits in the IG map's `(unmapped)` group, so a valued OBR-5 the map
+ *   `request-priority` members). Every other v2-0485 code (`P`, `C`, `T`, the
+ *   `T{S,M,H,D,W,L}<integer>` timing-critical family, `PRN`) sits in the IG map's `(unmapped)` group, so a valued OBR-5 the map
  *   has no target for leaves `priority` absent + flagged {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED},
- *   never guessed. (`priority` is 0..1, so an unmapped value simply omits it — the request still emits.)
+ *   never guessed. (`priority` is 0..1, so an unmapped value simply omits it: the request still emits.)
  *
  * Deferred and flagged elsewhere, not silently mapped: ORC-7/OBR-27 timing (`$this`), ORC-12/OBR-16
  * requester + ORC-21..24 ordering facility/provider (need Practitioner/PractitionerRole/Organization
@@ -69,7 +69,7 @@ import { orderIdentifier, reference } from "./reference.js";
  * HL7 v2 Table 0119 (Order Control Codes) → FHIR `request-status` (`ServiceRequest.status`), per the
  * IG **Table HL70119 to Request Status** ConceptMap (each `is equivalent to`). Only these **19** source
  * codes carry a target; every other v2-0119 code sits in the IG's explicit `(unmapped)` group
- * (verified firsthand against the published v1.0.0 ConceptMap — CH/CN/CP/DE/LI/NA/OE/OF/OP/OR/PA/RE/
+ * (verified firsthand against the published v1.0.0 ConceptMap: CH/CN/CP/DE/LI/NA/OE/OF/OP/OR/PA/RE/
  * RF/RP/RR/RU/SC/SN/SR/SS/UA/UC/UD/UF/UH/UM/UN/UR/UX/XO/XR/XX/MC are all `unmatched`, and the map
  * declares no `unmapped` default), so an ORC-1 with one of them leaves `status` absent + flagged and
  * the request is withheld. `request-status` has no `cancelled`; the cancel/discontinue codes map to
@@ -101,8 +101,8 @@ export const REQUEST_STATUS_MAP: Readonly<Record<string, string>> = Object.freez
  * HL7 v2 Table 0485 (Extended Priority Codes) → FHIR `request-priority` (`ServiceRequest.priority`),
  * per the IG **Table HL70485 to Request Priority** ConceptMap (each `is equivalent to`; verified
  * firsthand against the published v1.0.0 ConceptMap). Only these **three** source codes carry a
- * target; every other v2-0485 code — `P` (Preop), `C` (Callback), `T` (Timing critical), the
- * `T{S,M,H,D,W,L}<integer>` timing-critical family, and `PRN` (As needed) — sits in the IG's
+ * target; every other v2-0485 code, namely `P` (Preop), `C` (Callback), `T` (Timing critical), the
+ * `T{S,M,H,D,W,L}<integer>` timing-critical family, and `PRN` (As needed), sits in the IG's
  * `(unmapped)` group with no target, so an OBR-5 carrying one leaves `priority` absent + flagged.
  * All three targets (`stat`/`asap`/`routine`) are valid `request-priority` members.
  */
@@ -124,7 +124,7 @@ function fieldValue(seg: Segment | undefined, index: number): string {
  * Build a FHIR `ServiceRequest` resource node from an order group's `ORC` and/or `OBR` segments.
  * Returns `{ value: undefined }` only when both segments are absent (nothing to build).
  * `ServiceRequest.status` is left absent (and the request withheld by the emit gate) when it cannot be
- * grounded via HL70119 — never guessed.
+ * grounded via HL70119, never guessed.
  *
  * @param orc - The `ORC` `@cosyte/hl7` `Segment`, when the order carries one.
  * @param obr - The `OBR` `@cosyte/hl7` `Segment`, when the order carries one.
@@ -168,11 +168,11 @@ export function buildServiceRequest(
     }
   }
 
-  // intent (required) = order — the order-message context, not a per-code translation (see module note).
+  // intent (required) = order: the order-message context, not a per-code translation (see module note).
   props.push({ name: "intent", value: primitive(ORDER_INTENT) });
 
   // ORC-2/OBR-2 (placer) + ORC-3/OBR-3 (filler) → identifier. The IG conditions each on the other
-  // ("OBR-2 IF ORC-2 NOT VALUED" and vice-versa); prefer OBR, fall back to ORC — either way, one each.
+  // ("OBR-2 IF ORC-2 NOT VALUED" and vice-versa); prefer OBR, fall back to ORC; either way, one each.
   const placer = fieldValue(obr, 2) !== "" ? fieldValue(obr, 2) : fieldValue(orc, 2);
   const filler = fieldValue(obr, 3) !== "" ? fieldValue(obr, 3) : fieldValue(orc, 3);
   const identifiers = [orderIdentifier(placer, "PLAC"), orderIdentifier(filler, "FILL")].filter(
@@ -189,7 +189,7 @@ export function buildServiceRequest(
 
   // OBR-5 → priority (HL70485 → request-priority; value-translated). Applied only when OBR-5 is a
   // v2-0485 code (CWE.3 absent or names HL70485); a code from a foreign coding system, or one the IG
-  // leaves in its (unmapped) group, is flagged and priority left absent (0..1) — never guessed.
+  // leaves in its (unmapped) group, is flagged and priority left absent (0..1), never guessed.
   const obr5cwe = obr?.field(5).asCwe();
   const obr5 = obr5cwe?.identifier ?? "";
   if (obr5 !== "") {
@@ -214,7 +214,7 @@ export function buildServiceRequest(
     props.push({ name: "encounter", value: reference(encounterFullUrl) });
 
   // ORC-9 → authoredOn, only for a new order (ORC-1 = NW), per the IG condition. authoredOn is a
-  // `dateTime`, so a date-only value is valid (unlike the `instant` fields) — no timezone gate needed.
+  // `dateTime`, so a date-only value is valid (unlike the `instant` fields), no timezone gate needed.
   if (orc1 === "NW" && fieldValue(orc, 9) !== "" && orc !== undefined) {
     const authored = toFhirDateTime(orc.field(9).asTs(), ctx.options);
     issues.push(...authored.issues);

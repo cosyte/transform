@@ -90,7 +90,7 @@ const ORU_R01 = [
   obx({ 1: "4", 2: "ST", 3: "NOTE^Comment^LN", 5: "See attached report", 11: "F" }),
 ];
 
-describe("toFhir — ORU^R01 → DiagnosticReport + Observation graph", () => {
+describe("toFhir: ORU^R01 → DiagnosticReport + Observation graph", () => {
   const result = toFhir(msg(ORU_R01), { namingSystem: registry, generateId: seq() });
 
   it("assembles MessageHeader, Patient, Encounter, then DiagnosticReport followed by its Observations", () => {
@@ -179,7 +179,7 @@ describe("toFhir — ORU^R01 → DiagnosticReport + Observation graph", () => {
   });
 });
 
-describe("toFhir — ORU result-status safety (never a confident wrong result)", () => {
+describe("toFhir: ORU result-status safety (never a confident wrong result)", () => {
   // OBR-25 defaults to `P` (preliminary) so a stray `final` in the JSON can only be an Observation's.
   const base = (obxFields: Record<number, string>, obrStatus = "P") => [
     "MSH|^~\\&|LAB|F|EHR|H|20260101120000-0500||ORU^R01|M1|P|2.5.1",
@@ -226,7 +226,7 @@ describe("toFhir — ORU result-status safety (never a confident wrong result)",
 
   it("OBR-25 = N (results pending) is unmapped → report withheld, NEVER emitted as `appended`", () => {
     // HL70123 `N` "Procedure completed, results pending" is in the IG's (not mapped) group. Emitting
-    // it as the post-final `appended` would misrepresent a pending report — a fabricated status.
+    // it as the post-final `appended` would misrepresent a pending report: a fabricated status.
     const result = toFhir(msg(base({ 11: "F" }, "N")), {
       namingSystem: registry,
       generateId: seq(),
@@ -236,7 +236,7 @@ describe("toFhir — ORU result-status safety (never a confident wrong result)",
     expect(has(result, ISSUE_CODES.TRANSFORM_CODE_UNMAPPED, "DiagnosticReport.status")).toBe(true);
   });
 
-  it("an unrecognized OBX-8 abnormal flag is flagged and dropped — NEVER coerced to normal", () => {
+  it("an unrecognized OBX-8 abnormal flag is flagged and dropped: NEVER coerced to normal", () => {
     const result = toFhir(msg(base({ 8: "ZZ", 11: "F" })), {
       namingSystem: registry,
       generateId: seq(),
@@ -270,7 +270,7 @@ describe("toFhir — ORU result-status safety (never a confident wrong result)",
   });
 });
 
-describe("toFhir — ORU value-type discrimination edges", () => {
+describe("toFhir: ORU value-type discrimination edges", () => {
   const wrap = (obxLine: string) =>
     msg([
       "MSH|^~\\&|LAB|F|EHR|H|20260101120000-0500||ORU^R01|M1|P|2.5.1",
@@ -347,7 +347,7 @@ describe("toFhir — ORU value-type discrimination edges", () => {
   });
 });
 
-describe("toFhir — ORU dispatch & non-R01 fallback", () => {
+describe("toFhir: ORU dispatch & non-R01 fallback", () => {
   it("a non-R01 ORU trigger builds the results graph but is flagged segment-assembled", () => {
     const oruR30 = [
       "MSH|^~\\&|LAB|F|EHR|H|20260101120000-0500||ORU^R30|M1|P|2.5.1",
@@ -389,7 +389,7 @@ describe("exported Phase-3 table maps mirror the IG ConceptMaps", () => {
       W: "entered-in-error",
       X: "cancelled",
     });
-    // The IG leaves these unmapped — they must NOT resolve (never coerced to final).
+    // The IG leaves these unmapped: they must NOT resolve (never coerced to final).
     for (const c of ["B", "I", "N", "O", "R", "S", "U", "V"]) {
       expect(Object.hasOwn(OBSERVATION_STATUS_MAP, c)).toBe(false);
     }
@@ -406,7 +406,7 @@ describe("exported Phase-3 table maps mirror the IG ConceptMaps", () => {
       F: "final",
       X: "cancelled",
     });
-    // The IG leaves these unmapped. `N` (results *pending*) in particular must NOT resolve — mapping it
+    // The IG leaves these unmapped. `N` (results *pending*) in particular must NOT resolve: mapping it
     // to the post-final `appended` would misrepresent a pending report (a fabricated status).
     for (const c of ["A", "M", "N", "Y", "Z"]) {
       expect(Object.hasOwn(DIAGNOSTIC_REPORT_STATUS_MAP, c)).toBe(false);

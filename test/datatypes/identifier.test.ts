@@ -16,7 +16,7 @@ function propString(node: FhirComplex, name: string): string | undefined {
   return undefined;
 }
 
-describe("toFhirIdentifier — CX.1 → value, CX.4 → system via registry", () => {
+describe("toFhirIdentifier: CX.1 → value, CX.4 → system via registry", () => {
   it("resolves an OID assigning authority (HD.2=OID, HD.3=ISO) to urn:oid:", () => {
     const { value, issues } = toFhirIdentifier(
       {
@@ -72,14 +72,14 @@ describe("toFhirIdentifier — CX.1 → value, CX.4 → system via registry", ()
   });
 });
 
-describe("toFhirIdentifier — the HD.1-only fail-safe (MANDATORY)", () => {
+describe("toFhirIdentifier: the HD.1-only fail-safe (MANDATORY)", () => {
   it("NEVER synthesizes a system URI from a bare namespace mnemonic", () => {
     const { value, issues } = toFhirIdentifier(
       { idNumber: "999", assigningAuthority: { namespaceId: "HOSPMRN" } },
       { namingSystem: createNamingSystem() }, // no registry entry for HOSPMRN
     );
     expect(value).toBeDefined();
-    // value preserved, system absent — never guessed.
+    // value preserved, system absent, never guessed.
     expect(propString(value as FhirComplex, "value")).toBe("999");
     expect(propString(value as FhirComplex, "system")).toBeUndefined();
     expect(issues).toHaveLength(1);
@@ -105,7 +105,7 @@ describe("toFhirIdentifier — the HD.1-only fail-safe (MANDATORY)", () => {
   });
 });
 
-describe("toFhirIdentifier — empties and dropped components", () => {
+describe("toFhirIdentifier: empties and dropped components", () => {
   it("emits nothing for a CX with no id number", () => {
     const { value, issues } = toFhirIdentifier({ checkDigit: "7" });
     expect(value).toBeUndefined();

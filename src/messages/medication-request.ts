@@ -1,5 +1,5 @@
 /**
- * RXO (+ RXR route) → FHIR `MedicationRequest` — the pharmacy-order request,
+ * RXO (+ RXR route) → FHIR `MedicationRequest`: the pharmacy-order request,
  * grounded firsthand on the IG **Segment RXO to MedicationRequest** and **Segment RXR to
  * MedicationRequest** ConceptMaps (`hl7.fhir.uv.v2mappings`, STU1;
  * `ConceptMap-segment-rxo-to-medicationrequest.html`, `ConceptMap-segment-rxr-to-medicationrequest.html`).
@@ -14,7 +14,7 @@
  * | RXO-13 Number of Refills (NM) | `dispenseRequest.numberOfRepeatsAllowed` (unsignedInt) | integer-valued `decimal` |
  * | RXR-1 Route (CWE) | `dosageInstruction.route` | {@link ROUTE_VALUE_MAP} (HL70162, value-translated) |
  * | RXR-2 Site (CWE) | `dosageInstruction.site` | {@link SITE_VALUE_MAP} (HL70550, value-translated) |
- * | RXR-4 Method (CWE) | `dosageInstruction.method` | {@link toFhirCodeableConcept} (structural — SNOMED target, BYO) |
+ * | RXR-4 Method (CWE) | `dosageInstruction.method` | {@link toFhirCodeableConcept} (structural: SNOMED target, BYO) |
  * | RXO-9 Allow Substitutions (CWE) | `substitution.allowedCodeableConcept` | {@link SUBSTITUTION_VALUE_MAP} (HL70161) |
  * | ORC-9 Date/Time of Order Event | `authoredOn` | {@link toFhirDateTime}, *IF ORC-1 = `NW`* |
  * | (order message context) | `intent` = `order` | see below |
@@ -26,31 +26,31 @@
  *   The ingredient/strength paths (RXO-5/18/19/25/26 → a *contained* `Medication` with `ingredient`)
  *   and `medicationReference` are deferred, not fabricated.
  * - **`status` (required 1..1) = `unknown` + flag.** Unlike `ServiceRequest`, the IG ships **no**
- *   status source for `MedicationRequest` at all — there is no RXO→status row and no orc-to-
+ *   status source for `MedicationRequest` at all: there is no RXO→status row and no orc-to-
  *   medicationrequest map, and the `request-status` codes HL70119 yields (`revoked`, …) are **not**
  *   valid `medicationrequest-status` codes, so borrowing that table would emit invalid FHIR. Rather
  *   than guess a clinical state, `status` is set to the value-set's own `unknown` (an honest
  *   "not known", asserting nothing) and flagged {@link ISSUE_CODES.TRANSFORM_REQUIRED_ELEMENT_UNKNOWN}.
  * - **`intent` (required 1..1) = `order`.** The IG maps RXO → `intent` `equivalent` with no value
  *   ConceptMap; the ORM_O01 family is an *order* message, so `intent` is fixed to `order` from that
- *   message context — a resource-level constant, not a fabricated per-code row (as for `ServiceRequest`).
+ *   message context: a resource-level constant, not a fabricated per-code row (as for `ServiceRequest`).
  * - **Dose/dispense units.** Carried through {@link quantityFromRawMagnitude}: a magnitude is
  *   precision-exact (string-backed `decimal`, never rescaled), and a non-UCUM unit is preserved
- *   verbatim in `.unit` with `.code`/`.system` absent + flagged — a UCUM code is never fabricated.
+ *   verbatim in `.unit` with `.code`/`.system` absent + flagged, and a UCUM code is never fabricated.
  * - **Route/site value translation.** RXR-1 route → {@link ROUTE_VALUE_MAP} (HL70162: a
- *   41-code identity group into `v2-0162` plus a 6-code remap into `v3-RouteOfAdministration` —
- *   `IM→IM`, `SC→SQ`, …) and RXR-2 site → {@link SITE_VALUE_MAP} (HL70550: 443-code identity into
+ *   41-code identity group into `v2-0162` plus a 6-code remap into `v3-RouteOfAdministration`,
+ *   namely `IM→IM`, `SC→SQ`, …) and RXR-2 site → {@link SITE_VALUE_MAP} (HL70550: 443-code identity into
  *   `v2-0550`). Both are additive: the derived target coding is added and the raw coding preserved; a
  *   code outside the table is preserved + flagged, never coerced. RXR-4 method's IG target is SNOMED CT
- *   (encumbered — **not bundled**), so method stays structurally carried (BYO), never SNOMED-translated.
+ *   (encumbered, **not bundled**), so method stays structurally carried (BYO), never SNOMED-translated.
  * - **Substitution.** RXO-9 → `substitution.allowedCodeableConcept` via
  *   {@link SUBSTITUTION_VALUE_MAP} (HL70161 `N`/`G`/`T` identity into `v2-0161`). A valued RXO-9 the map
- *   has no target for is flagged and the **substitution backbone is withheld** — a substitution
+ *   has no target for is flagged and the **substitution backbone is withheld**: a substitution
  *   permission (whether the pharmacist may swap the drug) is never emitted from an unrecognized code.
  *
  * **`RXE` is out of scope by grounding, not omission.** The STU1 IG ships no `RXE` segment map and no
  * `RDE`/`RGV` message map; the assembler flags any `RXE` rather than mapping it here (an RXE layout is
- * never guessed from the RXO map — the field positions differ).
+ * never guessed from the RXO map: the field positions differ).
  *
  * @packageDocumentation
  */
@@ -85,9 +85,9 @@ const UNSIGNED_INT = /^(0|[1-9][0-9]*)$/;
 
 /**
  * Build a `dosageInstruction.method` CodeableConcept from RXR-4 **structurally** (no value translation).
- * The IG maps RXR-4 → method via `table-hl70165-to-sct`, whose target is **SNOMED CT** — license-
+ * The IG maps RXR-4 → method via `table-hl70165-to-sct`, whose target is **SNOMED CT**: license-
  * encumbered and **not bundled**. So the code is carried structurally (system recognized if the
- * CWE declares one, else flagged) and the SNOMED translation is left BYO — never fabricated here.
+ * CWE declares one, else flagged) and the SNOMED translation is left BYO, never fabricated here.
  */
 function codeableFrom(
   seg: Segment,
@@ -152,7 +152,7 @@ function buildDosageInstruction(
     if (route !== undefined) props.push({ name: "route", value: route });
     const site = translatedFrom(rxr, 2, SITE_VALUE_MAP, ctx, issues);
     if (site !== undefined) props.push({ name: "site", value: site });
-    // RXR-4 method stays structural (its IG target is SNOMED CT — encumbered, BYO; see codeableFrom).
+    // RXR-4 method stays structural (its IG target is SNOMED CT: encumbered, BYO; see codeableFrom).
     const method = codeableFrom(rxr, 4, ctx, issues);
     if (method !== undefined) props.push({ name: "method", value: method });
   }
@@ -218,7 +218,7 @@ function buildDispenseRequest(
 
 /**
  * Build a FHIR `MedicationRequest` resource node from an order group's `RXO` and `RXR` segments and
- * its opening `ORC`. Returns `{ value: undefined }` when RXO-1 (the give code) is absent — a
+ * its opening `ORC`. Returns `{ value: undefined }` when RXO-1 (the give code) is absent: a
  * medication request with no `medication[x]` cannot be emitted.
  *
  * @param rxo - The `RXO` `@cosyte/hl7` `Segment` (the pharmacy order detail).
@@ -254,13 +254,13 @@ export function buildMedicationRequest(
     { name: "resourceType", value: primitive("MedicationRequest") },
   ];
 
-  // status (required) = unknown — the IG grounds no MedicationRequest status; an honest "not known".
+  // status (required) = unknown: the IG grounds no MedicationRequest status; an honest "not known".
   props.push({ name: "status", value: primitive(STATUS_UNKNOWN) });
   issues.push(
     issue(ISSUE_CODES.TRANSFORM_REQUIRED_ELEMENT_UNKNOWN, "RXO", "MedicationRequest.status"),
   );
 
-  // intent (required) = order — the order-message context, not a per-code translation.
+  // intent (required) = order: the order-message context, not a per-code translation.
   props.push({ name: "intent", value: primitive(ORDER_INTENT) });
 
   props.push({ name: "medicationCodeableConcept", value: medication.value });
@@ -291,7 +291,7 @@ export function buildMedicationRequest(
   const cwe9 = rxo.field(9).asCwe();
   if (cwe9.identifier !== undefined && cwe9.identifier !== "") {
     // translateBound withholds a translation for a foreign coding system (CWE.3 ≠ HL70161) too, not
-    // just an unmapped code — a substitution permission is never asserted from a non-v2-0161 code.
+    // just an unmapped code: a substitution permission is never asserted from a non-v2-0161 code.
     const target = translateBound(cwe9, SUBSTITUTION_VALUE_MAP);
     if (target === undefined) {
       issues.push(

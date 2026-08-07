@@ -7,7 +7,7 @@
  * - **Never convert magnitudes.** The numeric value is carried through **precision-exact** via
  *   `@cosyte/fhir`'s string-backed `decimal` (a dose or lab value is never routed through a JS
  *   `number`). UCUM magnitude conversion (mg/dL ↔ mmol/L) is analyte-dependent and a
- *   clinical-safety footgun — an explicit non-goal, never a transform side effect.
+ *   clinical-safety footgun: an explicit non-goal, never a transform side effect.
  * - **Never fabricate a UCUM code.** A unit is emitted into `Quantity.code`/`.system` **only** when
  *   it is declared UCUM and passes `@cosyte/fhir`'s UCUM shape check. Any other unit is preserved
  *   verbatim in `Quantity.unit` with `code`/`system` absent, flagged
@@ -68,11 +68,11 @@ export function toFhirQuantity(
  * the magnitude and the unit, with an optional `Quantity.comparator`. This is the shared core behind
  * {@link toFhirQuantity} (NM) and the SN → `valueQuantity`/`valueRange`/`valueRatio` observation path.
  * Both must carry the magnitude through **precision-exact** as a string-backed `decimal` and
- * apply the identical no-fabricated-UCUM unit gate — so they share one implementation rather than two
+ * apply the identical no-fabricated-UCUM unit gate, so they share one implementation rather than two
  * that could drift.
  *
  * Returns `{ value: undefined }` (+ a {@link ISSUE_CODES.TRANSFORM_QUANTITY_VALUE_INVALID} issue) when
- * the raw magnitude is not a faithful FHIR `decimal` literal — never a canonicalized (altered) value.
+ * the raw magnitude is not a faithful FHIR `decimal` literal, never a canonicalized (altered) value.
  *
  * @param raw - The magnitude's exact lexical form (e.g. OBX-5 NM `.raw`, or an SN component string).
  * @param units - The units component (a CWE); its CWE.1 is the candidate UCUM code.
@@ -101,9 +101,9 @@ export function quantityFromRawMagnitude(
     return { value: undefined, issues };
   }
   // A raw magnitude keeps its v2 lexical form (v2 allows a leading `+`, leading zeros, a trailing dot),
-  // but the FHIR `decimal` literal forbids those. Rather than canonicalize — which would ALTER the
-  // magnitude's lexical form — fail safe: if a faithful decimal can't be built, emit a typed issue and
-  // no value. (`decimal` throws on a non-conforming literal; catch it so this never throws — §4.6.)
+  // but the FHIR `decimal` literal forbids those. Rather than canonicalize, which would ALTER the
+  // magnitude's lexical form, fail safe: if a faithful decimal can't be built, emit a typed issue and
+  // no value. (`decimal` throws on a non-conforming literal; catch it so this never throws: §4.6.)
   let valueNode: FhirNode;
   try {
     valueNode = primitive(decimal(raw));
@@ -116,8 +116,8 @@ export function quantityFromRawMagnitude(
     };
   }
 
-  const unitCode = units.identifier; // CWE.1 — the candidate coded (UCUM) unit
-  const unitDisplay = units.text; // CWE.2 — the human display unit
+  const unitCode = units.identifier; // CWE.1: the candidate coded (UCUM) unit
+  const unitDisplay = units.text; // CWE.2: the human display unit
   const hasUnit =
     (unitCode !== undefined && unitCode !== "") ||
     (unitDisplay !== undefined && unitDisplay !== "");

@@ -1,12 +1,12 @@
 /**
- * Unit tests for scripts/phi-scan.ts — the STARTER PHI commit-gate.
+ * Unit tests for scripts/phi-scan.ts: the STARTER PHI commit-gate.
  *
  * These exercise the SHARED MACHINERY and the cross-cutting SSN/email FLOOR that
  * ships with the template. They deliberately do NOT test structured, field-level
- * PHI detection — that is format-specific and is the author's obligation to add
+ * PHI detection, that is format-specific and is the author's obligation to add
  * (see the STARTER banner in scripts/phi-scan.ts). When you add structured
  * detectors, add positive tests here proving they CATCH real-looking names /
- * DOBs / ids for this standard — a weak scanner is worse than none.
+ * DOBs / ids for this standard: a weak scanner is worse than none.
  *
  * The scanner is invoked via spawnSync (array args, no shell) so the full CLI
  * path (argv parse, exit code, stderr) is exercised. Violator/clean files are
@@ -52,7 +52,7 @@ function runScanner(args: string[]): RunResult {
   return { code: r.status ?? -1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 }
 
-/** Write a file to the temp dir and scan it by path (paths mode — no git needed). */
+/** Write a file to the temp dir and scan it by path (paths mode, no git needed). */
 function scan(name: string, content: string): RunResult {
   const path = join(dir, name);
   writeFileSync(path, content);
@@ -87,7 +87,7 @@ describe("phi-scan starter: clean + allow-listed content passes", () => {
   it("a clean file with no PHI shapes exits 0", () => {
     const r = scan("clean.txt", "just some ordinary text, no identifiers here\n");
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 
   it("honors the allow-list: an email at a reserved test domain passes (exit 0)", () => {
@@ -114,7 +114,7 @@ describe("phi-scan starter: the override-log gate", () => {
 // neither a file nor a directory; `--staged` reads content with
 // `git show :<path>`, and git stores a link as its TARGET PATH under mode
 // 120000. Measured on this package's own scanner before the fix, a link under
-// `src/` pointing at the payload below printed "OK — no hits" and exited 0 on
+// `src/` pointing at the payload below printed "OK: no hits" and exited 0 on
 // BOTH routes, and so did a tracked file replaced by such a link. These cases
 // pin the refusal on each route, the negative controls that keep ordinary files
 // scanned on each route, and the rule that a refusal never echoes what is on
@@ -176,7 +176,7 @@ const repos: string[] = [];
 /**
  * A throwaway git repo laid out the way the scanner expects: an allow-list under
  * `scripts/`, a `src/` walk root, and one ordinary source file so the walk has
- * something legitimate to find. `test/fixtures/` is created too — it is the
+ * something legitimate to find. `test/fixtures/` is created too: it is the
  * scanner's other root and does not exist in this repo, so a synthetic tree is
  * the only place its behaviour can be exercised at all.
  */
@@ -215,7 +215,7 @@ describe("phi-scan: the synthetic payload is genuinely detectable", () => {
     const root = makeRepo();
     const r = runIn(root, []);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 });
 
@@ -285,7 +285,7 @@ describe("phi-scan: the all-mode walk refuses a non-regular entry", () => {
     expectNoPhi(r.stderr);
   });
 
-  it("has no extension scope of its own — a link at a non-.ts path is refused too", () => {
+  it("has no extension scope of its own: a link at a non-.ts path is refused too", () => {
     // `src/**.ts` is the `--staged` route's boundary, NOT the walk's. The walk
     // skips regular `*.md` as documentation and takes everything else.
     const root = makeRepo();
@@ -323,10 +323,10 @@ describe("phi-scan: the all-mode walk refuses a non-regular entry", () => {
 
 // NOTE: these cases cover the FINAL path component only. A named path whose
 // ANCESTOR is a symlink, and a plain absolute or `../` argument, ARE still
-// followed — pre-existing, disclosed in the docblock and CHANGELOG.md, and
+// followed: pre-existing, disclosed in the docblock and CHANGELOG.md, and
 // deliberately not closed. Do not retitle this block "follows nothing".
 describe("phi-scan: the named-path route refuses a non-regular path it is handed", () => {
-  // This route was NOT blind — it classified with `statSync`, which dereferences,
+  // This route was NOT blind: it classified with `statSync`, which dereferences,
   // so it read the target's bytes and reported the hits it found there. It never
   // reported a false clean; it made "the scan follows nothing" untrue, and it
   // could read bytes from outside the repository entirely.
@@ -409,7 +409,7 @@ describe("phi-scan: the --staged route refuses a staged non-regular entry", () =
     expectNoPhi(r.stderr);
   });
 
-  it("refuses a TYPECHANGE — a tracked regular file replaced by a link (exit 2)", () => {
+  it("refuses a TYPECHANGE: a tracked regular file replaced by a link (exit 2)", () => {
     // The shape `--diff-filter=AM` used to delete before any mode could be read.
     // Replacing a TRACKED file with a link is neither an add nor a modify: git
     // raises `:100644 120000 <sha> <sha> T`, and without `T` in the filter the
@@ -434,7 +434,7 @@ describe("phi-scan: the --staged route refuses a staged non-regular entry", () =
     expectNoPhi(r.stderr);
   });
 
-  it("scans the other direction of a typechange — a link replaced by a real file (exit 1)", () => {
+  it("scans the other direction of a typechange: a link replaced by a real file (exit 1)", () => {
     const root = makeRepo();
     symlinkSync("ordinary.ts", join(root, "src", "link.ts"));
     git(root, ["add", "src/link.ts"]);
@@ -499,7 +499,7 @@ describe("phi-scan: the --staged route refuses a staged non-regular entry", () =
     git(root, ["add", "src/ordinary.ts"]);
     const r = runIn(root, ["--staged"]);
     expect(r.code, `stderr: ${r.stderr}`).toBe(0);
-    expect(r.stdout).toMatch(/OK — no hits/);
+    expect(r.stdout).toMatch(/OK: no hits/);
   });
 
   it("refuses an UNMERGED path instead of reporting clean over it (exit 2)", () => {

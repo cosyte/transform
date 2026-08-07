@@ -78,7 +78,7 @@ const ORM_O01 = [
   rxr({ 1: "PO^Oral^HL70162" }),
 ];
 
-describe("toFhir — ORM_O01 → ServiceRequest + MedicationRequest graph", () => {
+describe("toFhir: ORM_O01 → ServiceRequest + MedicationRequest graph", () => {
   const result = toFhir(msg(ORM_O01), { namingSystem: registry, generateId: seq() });
 
   it("assembles MessageHeader, Patient, Encounter, then the ServiceRequest and MedicationRequest", () => {
@@ -164,7 +164,7 @@ describe("toFhir — ORM_O01 → ServiceRequest + MedicationRequest graph", () =
   });
 });
 
-describe("toFhir — ServiceRequest status safety (never a guessed request status)", () => {
+describe("toFhir: ServiceRequest status safety (never a guessed request status)", () => {
   const base = (orcFields: Record<number, string>) => [
     "MSH|^~\\&|CPOE|H|LAB|H|20260101120000-0500||ORM^O01|M1|P|2.5.1",
     "PID|1||MRN1^^^HOSP^MR||Doe^Jane||19900101|F",
@@ -197,7 +197,7 @@ describe("toFhir — ServiceRequest status safety (never a guessed request statu
   });
 });
 
-describe("toFhir — medication path fail-safes", () => {
+describe("toFhir: medication path fail-safes", () => {
   const wrap = (rxoLine: string, extra: readonly string[] = []) =>
     msg([
       "MSH|^~\\&|CPOE|H|PH|H|20260101120000-0500||ORM^O01|M1|P|2.5.1",
@@ -242,7 +242,7 @@ describe("toFhir — medication path fail-safes", () => {
   });
 });
 
-describe("toFhir — order-message dispatch", () => {
+describe("toFhir: order-message dispatch", () => {
   it("an OMP^O09 order (no IG message map) is segment-assembled + flagged, resources still emit", () => {
     const omp = [
       "MSH|^~\\&|CPOE|H|PH|H|20260101120000-0500||OMP^O09|M1|P|2.5.1",
@@ -268,7 +268,7 @@ describe("toFhir — order-message dispatch", () => {
   });
 });
 
-describe("toFhir — order-group assembly & optional fields", () => {
+describe("toFhir: order-group assembly & optional fields", () => {
   it("an ORC-only order (no OBR) → a ServiceRequest from ORC alone (status/identifiers, no code)", () => {
     const lines = [
       "MSH|^~\\&|CPOE|H|LAB|H|20260101120000-0500||ORM^O01|M1|P|2.5.1",
