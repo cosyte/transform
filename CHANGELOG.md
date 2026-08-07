@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.0.7
+
+### Patch Changes
+
+- a9c522a: No runtime impact: a repository-internal CI check now verifies this repository's own contributor instructions, which are not part of the published package.
+
+  The instructions live in two files, one always read and one read on demand, and until now nothing checked that the second one existed, that the sections it declares had any content, or that the cross-references between the two resolved. A new check refuses all three, refuses a cross-reference pointing at a file or path the repository does not carry, and refuses a relocated section that nothing points at any more.
+
+  It also refuses to report a clean run over a corpus it did not actually open: the files it read are reconciled against the list of files tracked by version control, and an empty or unreadable list is treated as a failure to run rather than as nothing to check.
+
+- 9fd8f24: The npm `description` no longer carries an em dash (`EMDASH-CONFORMANCE`).
+
+  The brand rule bans U+2014 on every cosyte surface, and this string is the most visible one the
+  package has: it is the subtitle on the npm package page and the one line shown in every npm search
+  result. It now reads with a colon, which is what the rule's own remedy list names first.
+
+  The `→` in the same string is U+2192, not an em dash, and it is load-bearing: it names the direction
+  of the transformation. It stays.
+
+  Scoped deliberately to the description alone. The full tree sweep for this repo is a separate unit,
+  still queued, and lands with the CI gate that keeps it swept.
+
+- 9fb82e8: The README lockup now links to cosyte.com (`ASSETS`).
+
+  The `<picture>` block above the H1 is wrapped in an anchor to https://cosyte.com, per the founder
+  requirement of 2026-08-06. Nothing inside the block moved: the `<source>`, the `<img>`, the alt text
+  and both tile URLs are byte-identical.
+
+  What the anchor does was measured on both surfaces by `fhir`, not assumed, because fourteen READMEs
+  carry this shape. On GitHub the anchor works and the colour-scheme switch keeps working, because the
+  `<img>` stays a direct child of `<picture>`, which is the condition the HTML spec puts on `<source>`
+  applying at all. On an npm package page the anchor is lost: npm wraps a README image in its own
+  anchor to the image file, a nested anchor is not representable, so the parser closes ours early and
+  the image ends up linked to the image file rather than to cosyte.com. Shipped anyway by founder
+  decision of 2026-08-07: on npm that is no worse than the unlinked lockup it replaces, and GitHub is
+  where these READMEs are read.
+
+- 7f4d59b: The published changelog no longer describes its own contents as unreleased: a release now writes its own version heading and its own entry into `CHANGELOG.md`.
+
+  `CHANGELOG.md` ships inside the npm tarball, and for the whole of this package's public history it carried no version heading at all. A single `[Unreleased]` heading spanned everything, and the preamble above it said the first pre-alpha release "will ship" the API surface listed below it, in a tarball that had already shipped that surface several versions earlier. Changesets now generates the changelog, so a release writes the version heading and the entry, and there is no hand-maintained section left to go stale.
+
+  The hand-written history is kept verbatim beneath a `Released before this file was generated` divider, with generated release sections above it, newest first. No entry was reworded, re-sorted or removed. What was dropped was scaffolding for the old hand-written workflow: the file's former header, the `[Unreleased]` heading and its link definition, the note beneath that heading promising a first release which had in fact already shipped, and the empty section stubs that existed to receive the next hand-written entry.
+
 ## Released before this file was generated
 
 Every release section above this heading is written by
