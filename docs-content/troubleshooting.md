@@ -10,7 +10,7 @@ Common symptoms when converting v2 → FHIR, and how to read what the transform 
 
 ## A converter returned `value: undefined`
 
-Nothing could be **safely** emitted. This is by design, not an error — it happens for an empty input
+Nothing could be **safely** emitted. This is by design, not an error: it happens for an empty input
 composite, an unparseable timestamp, or a numeric value that wasn't numeric. Check `issues` for the
 typed reason (e.g. `TRANSFORM_TIMESTAMP_INVALID`).
 
@@ -29,7 +29,7 @@ A missing FHIR element usually comes with a diagnostic explaining the refusal:
 ## My timestamp lost its time-of-day
 
 `TRANSFORM_TIMESTAMP_NO_TIMEZONE`: the v2 timestamp had a time but no offset, and FHIR forbids a time
-without a zone — so it was reduced to date precision rather than assuming UTC (which would shift the
+without a zone, so it was reduced to date precision rather than assuming UTC (which would shift the
 clinical instant by hours). Supply `assumeTimezoneOffsetMinutes` if you know the sender's offset.
 
 ## My unit didn't populate `Quantity.code`
@@ -41,18 +41,18 @@ preserved verbatim in `Quantity.unit` with `code`/`system` absent. Magnitudes ar
 ## Are diagnostics safe to log?
 
 Yes. A `TransformIssue` carries only a stable code, a severity, a **positional** v2 location, and a
-FHIR path — **never a value**. Its `message` is static. Do not log the raw v2 message or the produced
+FHIR path, **never a value**. Its `message` is static. Do not log the raw v2 message or the produced
 resource values; those carry PHI.
 
 ## Known limitations
 
-- **Message families: the IG-covered set** — `toFhir(msg)` assembles ADT → Patient + Encounter,
+- **Message families: the IG-covered set.** `toFhir(msg)` assembles ADT → Patient + Encounter,
   ORU^R01 → DiagnosticReport + Observation, ORM_O01 / OML_O21 → ServiceRequest and
   RXO → MedicationRequest, and the thin IG singles VXU_V04 → Immunization, SIU_S12 →
   Appointment, and MDM_T02 → DocumentReference. The v2→FHIR direction is
   feature-complete for the IG-covered message set; terminology depth, profiles, and the reverse
   FHIR → v2 direction are not implemented.
-- **Thin-IG-single scope** — each family covers the single trigger the IG maps and the
+- **Thin-IG-single scope**: each family covers the single trigger the IG maps and the
   resource-internal fields; references to resources this tier does not yet build (Immunization
   performer/manufacturer/location, Appointment practitioner/location participants, DocumentReference
   author/authenticator) are deferred and flagged, never dangling. `Immunization.status` follows the IG's
@@ -62,17 +62,17 @@ resource values; those carry PHI.
   IG-unsourced required `status` is a `data-absent-reason` primitive, and the MDM document body is
   base64-encoded verbatim (the IG-assigned `application/text` / `text/hl7v2` contentType), carried and
   never interpreted.
-- **ORU scope** — `DiagnosticReport.category` is not defaulted (the IG segment map sets none; it is
+- **ORU scope**: `DiagnosticReport.category` is not defaulted (the IG segment map sets none; it is
   realm-dependent), the results graph uses the first PID/PV1 (multiple patient result groups are not
   handled), and OBR performers/specimen and `basedOn` ServiceRequest are deferred. An OBX value
   type with no first-class FHIR `value[x]` (`NA`, `ED`, `DR`, `TM`, `NR`, …) preserves the raw value as
-  `valueString` and flags it — never a fabricated typed value.
-- **Terminology value translation** — coded fields with an IG `mappedVia` value ConceptMap
-  are value-translated via `toFhirCodeableConceptVia`: RXR route/site (HL70162/HL70550), SCH-8
+  `valueString` and flags it, never a fabricated typed value.
+- **Terminology value translation**: coded fields with an IG `mappedVia` value ConceptMap
+  are value-translated via `toFhirCodeableConceptVia`, covering RXR route/site (HL70162/HL70550), SCH-8
   appointment type (HL70277), RXO-9 substitution (HL70161), and OBR-5 priority (HL70485). Each map is
   transcribed and verified firsthand against the raw published IG ConceptMap JSON; a source code the IG
   leaves in its `(unmapped)` group is flagged (`TRANSFORM_CODE_UNMAPPED`), never coerced. Two fields the
-  IG maps into **SNOMED CT** (RXR-4 method, SCH-7 reason) stay structural (SNOMED is not bundled — BYO
+  IG maps into **SNOMED CT** (RXR-4 method, SCH-7 reason) stay structural (SNOMED is not bundled; BYO
   ConceptMap), and fields the IG ships no value map for (TXA-2 document type, RXA-5 vaccine code) are
   carried as-is. The built-in NamingSystem code-system seed is still the FHIR-core-fixed systems; the
   full HL7 THO crosswalk beyond these maps is not implemented.

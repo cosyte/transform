@@ -1,5 +1,5 @@
 /**
- * NK1 → FHIR `RelatedPerson` — grounded on the IG **Segment NK1 to RelatedPerson** ConceptMap
+ * NK1 → FHIR `RelatedPerson`, grounded on the IG **Segment NK1 to RelatedPerson** ConceptMap
  * (`hl7.fhir.uv.v2mappings`, STU1), verified firsthand:
  *
  * | NK1 field | FHIR target | via |
@@ -8,7 +8,7 @@
  * | NK1-3 Relationship (CWE) | `RelatedPerson.relationship` | {@link toFhirCodeableConcept} |
  * | NK1-4 Address (XAD) | `RelatedPerson.address` | {@link toFhirAddress} |
  *
- * `RelatedPerson.patient` is FHIR-required (1..1); the message structure supplies it — it is wired to
+ * `RelatedPerson.patient` is FHIR-required (1..1); the message structure supplies it: it is wired to
  * the bundle's Patient, so a RelatedPerson is produced only when a Patient was. Deferred and flagged,
  * not silently mapped: NK1-5/6 telecom (no XTN→ContactPoint converter yet), NK1-15 gender, NK1-16
  * birthDate, NK1-20 communication language (not surfaced by the `@cosyte/hl7` next-of-kin view).

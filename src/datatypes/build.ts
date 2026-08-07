@@ -1,6 +1,6 @@
 /**
  * Small builders over the `@cosyte/fhir` generic element model, so each converter reads as the
- * datatype it produces rather than as node plumbing. All of them **omit absent/empty parts** — a
+ * datatype it produces rather than as node plumbing. All of them **omit absent/empty parts**: a
  * FHIR datatype node never carries an empty-string leaf or an empty list.
  *
  * @packageDocumentation

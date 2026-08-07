@@ -1,10 +1,10 @@
 /**
- * `toFhir` — the message-level entry point: assemble a parsed HL7 v2 message into a FHIR R4
+ * `toFhir`, the message-level entry point: assemble a parsed HL7 v2 message into a FHIR R4
  * **message Bundle** (a `MessageHeader` first, then the focal resources), grounded on the IG message
  * and segment maps. The **ADT** family becomes **Patient + Encounter** (+ `RelatedPerson`
  * from NK1); the **ORU^R01** results graph becomes `DiagnosticReport` + `Observation`; the
- * order-entry graph — **ORM_O01 / OML_O21** ORC/OBR → `ServiceRequest` and **RXO** (+ RXR) →
- * `MedicationRequest`; and the thin IG singles — **VXU_V04** RXA/RXR/ORC → `Immunization`,
+ * order-entry graph gives **ORM_O01 / OML_O21** ORC/OBR → `ServiceRequest` and **RXO** (+ RXR) →
+ * `MedicationRequest`; and the thin IG singles give **VXU_V04** RXA/RXR/ORC → `Immunization`,
  * **SIU_S12** SCH/AIS/PID → `Appointment`, and **MDM_T02** TXA/OBX → `DocumentReference`.
  *
  * The fail-safe rule holds at the message level. Two message-level fail-safes join the datatype ones:
@@ -12,15 +12,15 @@
  * - **Segment-assembled, not fabricated.** For an ADT trigger the IG maps ({@link IG_MAPPED_ADT_TRIGGERS}),
  *   the graph is message-map-grounded. For any other trigger there is no IG *message* map, so the
  *   graph is assembled from the reusable IG *segment* maps and flagged
- *   {@link ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED} — never a fabricated message map.
+ *   {@link ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED}, never a fabricated message map.
  * - **Conservative emit gate.** Every produced resource is run through `@cosyte/fhir.validateResource`
- *   before it can join the bundle — `Patient` against the built-in schema in `strict` mode, and the
+ *   before it can join the bundle: `Patient` against the built-in schema in `strict` mode, and the
  *   other types against the minimal required-cardinality {@link EMIT_SCHEMAS} in `lenient` mode (so a
  *   missing required element errors and withholds, while unmodeled sibling elements do not
  *   false-reject). A resource with any structural error is **withheld** from the bundle and flagged
  *   {@link ISSUE_CODES.TRANSFORM_RESOURCE_INVALID} rather than shipped as silently-invalid FHIR. When
  *   the Patient is withheld, the Encounter's `subject` and any RelatedPerson are dropped rather than
- *   left dangling — references always resolve within the bundle.
+ *   left dangling: references always resolve within the bundle.
  *
  * @packageDocumentation
  */
@@ -69,8 +69,8 @@ export interface TransformResult {
 }
 
 /**
- * The ADT trigger events the IG ships a **message** map for. Other triggers still transform — from the
- * reusable segment maps — but are flagged {@link ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED}.
+ * The ADT trigger events the IG ships a **message** map for. Other triggers still transform, from the
+ * reusable segment maps, but are flagged {@link ISSUE_CODES.TRANSFORM_SEGMENT_ASSEMBLED}.
  */
 export const IG_MAPPED_ADT_TRIGGERS: ReadonlySet<string> = new Set([
   "A01",
@@ -127,7 +127,7 @@ interface Entry {
  * The conservative-emit gate: validate a produced resource against `@cosyte/fhir` before it can join
  * the bundle. Returns `true` when it is safe to emit, or pushes a
  * {@link ISSUE_CODES.TRANSFORM_RESOURCE_INVALID} issue and returns `false` when it has any structural
- * error (the resource is then **withheld** — never shipped invalid).
+ * error (the resource is then **withheld**, never shipped invalid).
  *
  * `@cosyte/fhir` models only `Patient` natively, so `Patient` is validated `strict` (its value domains
  * and unknown elements both caught). The other emitted types are validated `lenient` against the
@@ -277,7 +277,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
       }
     }
   } else if (nextOfKin.length > 0) {
-    // No Patient to anchor RelatedPerson.patient — dropped rather than emitted with a dangling ref.
+    // No Patient to anchor RelatedPerson.patient: dropped rather than emitted with a dangling ref.
     issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "NK1", "RelatedPerson.patient"));
   }
 
@@ -289,7 +289,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   if (code === "ORU") {
     const { groups, orphanObxCount } = collectReportGroups(msg);
     if (orphanObxCount > 0) {
-      // OBX with no preceding OBR — no report to anchor it; surfaced rather than silently dropped.
+      // OBX with no preceding OBR, no report to anchor it; surfaced rather than silently dropped.
       issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "OBX", "DiagnosticReport.result"));
     }
     for (const group of groups) {
@@ -333,12 +333,12 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   // Order messages (ORM/OML, and segment-assembled OMP/OMG/RDE/…) → the ServiceRequest /
   // MedicationRequest graph (Phase 4). Each ORC-anchored order becomes one request: an OBR order
   // detail → ServiceRequest, an RXO pharmacy detail → MedicationRequest, both subject-wired to the
-  // Patient. ORU is excluded — there its OBR anchors a DiagnosticReport, not a ServiceRequest.
+  // Patient. ORU is excluded: there its OBR anchors a DiagnosticReport, not a ServiceRequest.
   const orderResourceFullUrls: string[] = [];
   if (code !== "ORU" && code !== "VXU" && code !== "SIU" && code !== "MDM") {
     const { groups, rxeCount } = collectOrderGroups(msg);
     if (rxeCount > 0) {
-      // RXE has no IG segment map (nor RDE message map) — surfaced, never assembled from a guess.
+      // RXE has no IG segment map (nor RDE message map): surfaced, never assembled from a guess.
       issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "RXE", "MedicationRequest"));
     }
     for (const group of groups) {

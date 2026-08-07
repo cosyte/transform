@@ -109,7 +109,7 @@ describe("MDM_T02 → DocumentReference (Phase 5)", () => {
     expect(codes(result)).toContain(ISSUE_CODES.TRANSFORM_RESOURCE_INVALID); // then withheld (no content)
   });
 
-  it("flags TXA-17 (docStatus) as unmapped and leaves docStatus absent — no IG value map exists", () => {
+  it("flags TXA-17 (docStatus) as unmapped and leaves docStatus absent: no IG value map exists", () => {
     const result = toFhirSeq([
       MSH,
       PID,

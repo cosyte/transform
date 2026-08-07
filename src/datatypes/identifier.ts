@@ -1,16 +1,16 @@
 /**
- * CX → FHIR `Identifier` — the patient-identity-integrity path.
+ * CX → FHIR `Identifier`: the patient-identity-integrity path.
  *
  * Grounded on the IG datatype ConceptMap **CX → Identifier**: `CX.1` → `Identifier.value`, `CX.4`
  * (assigning authority HD) → `Identifier.system` *when the authority resolves in a registry* (else
- * the IG maps it to `Identifier.assigner` — a message-level Organization reference this library does
+ * the IG maps it to `Identifier.assigner`: a message-level Organization reference this library does
  * not build), and `CX.5` (Table 0203) → `Identifier.type`.
  *
  * The load-bearing fail-safe: the assigning authority is resolved through the
  * {@link NamingSystemRegistry}, which **never synthesizes a system URI from HD.1 (the bare namespace)
- * alone** — two hospitals reusing "MR"/"HOSPMRN" would otherwise collide and merge two patients. On
+ * alone**. Two hospitals reusing "MR"/"HOSPMRN" would otherwise collide and merge two patients. On
  * an unresolved authority the identifier is emitted with its **value and no system**, plus a typed
- * {@link ISSUE_CODES.TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED} issue — never a guessed system.
+ * {@link ISSUE_CODES.TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED} issue, never a guessed system.
  *
  * @packageDocumentation
  */
@@ -86,14 +86,14 @@ export function toFhirIdentifier(cx: CX, ctx: TransformContext = {}): ConvertRes
   ]);
 
   // CX.7 / CX.8 (effective / expiration date) map to Identifier.period in the IG, but a faithful
-  // period needs the dateTime timezone policy — deferred to a later phase and flagged, not silent.
+  // period needs the dateTime timezone policy: deferred to a later phase and flagged, not silent.
   if (cx.effectiveDate !== undefined && cx.effectiveDate !== "") {
     issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "CX.7", "Identifier.period"));
   }
   if (cx.expirationDate !== undefined && cx.expirationDate !== "") {
     issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "CX.8", "Identifier.period"));
   }
-  // CX.9 / CX.10 (jurisdiction / agency) have no place on Identifier — flag the loss (§2 non-goals).
+  // CX.9 / CX.10 (jurisdiction / agency) have no place on Identifier: flag the loss (§2 non-goals).
   if (cx.assigningJurisdiction !== undefined && cx.assigningJurisdiction !== "") {
     issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "CX.9"));
   }

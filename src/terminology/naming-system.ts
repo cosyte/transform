@@ -1,13 +1,13 @@
 /**
- * The NamingSystem registry — how an HL7 v2 identity/coding namespace becomes a FHIR canonical URI.
+ * The NamingSystem registry: how an HL7 v2 identity/coding namespace becomes a FHIR canonical URI.
  *
  * Two resolutions live here, and both are **fail-safe by refusal**:
  *
  * 1. **Assigning authority (HD) → `Identifier.system`.** The IG's CX→Identifier map says CX.4 maps to
- *    `Identifier.system` *only when the authority is in an identifier registry* — the URI comes from a
+ *    `Identifier.system` *only when the authority is in an identifier registry*: the URI comes from a
  *    NamingSystem lookup, **not** string concatenation. There is no deterministic algorithm from an
  *    HD to a URI, so this resolver **never synthesizes a system from HD.1 (the bare namespace
- *    mnemonic) alone** — doing so would let two hospitals reusing "MR"/"HOSPMRN" collide and merge two
+ *    mnemonic) alone**: doing so would let two hospitals reusing "MR"/"HOSPMRN" collide and merge two
  *    patients. The *only* auto-derivations are the unambiguous ones: `urn:oid:<oid>` when HD.2 is a
  *    valid OID with HD.3 = `ISO`, and `urn:uuid:<uuid>` when HD.3 = `UUID`. Everything else must be an
  *    explicit, caller-seeded registry entry, or it resolves to `undefined` and the caller emits a
@@ -16,7 +16,7 @@
  * 2. **v2 coding-system mnemonic → canonical URI.** CWE.3/CWE.6 carry a v2 Table 0396 mnemonic
  *    (`LN`, `SCT`, …); FHIR needs the canonical URI (`http://loinc.org`, …). {@link DEFAULT_V2_CODE_SYSTEMS}
  *    seeds a small, license-clean set of the universally-fixed FHIR-core systems; an unrecognized
- *    mnemonic resolves to `undefined` (the caller preserves the raw code and flags it — a URI is
+ *    mnemonic resolves to `undefined` (the caller preserves the raw code and flags it: a URI is
  *    never invented). The full HL7 THO crosswalk is not bundled.
  *
  * @packageDocumentation
@@ -25,7 +25,7 @@
 import type { HD } from "@cosyte/hl7";
 
 /**
- * The HL7 v2 Table 0203 identifier-type code system canonical URI — used to build `Identifier.type`.
+ * The HL7 v2 Table 0203 identifier-type code system canonical URI: used to build `Identifier.type`.
  * (FHIR R4 terminologies-systems.html)
  */
 export const V2_0203_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0203";
@@ -34,7 +34,7 @@ export const V2_0203_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0203";
  * A small, license-clean seed of v2 Table 0396 coding-system mnemonic → canonical URI, for the
  * FHIR-core-fixed systems whose URIs are universally cited (FHIR R4 terminologies-systems.html).
  * The full HL7 THO NamingSystem crosswalk is not bundled; callers extend this via
- * {@link createNamingSystem}. **No terminology *content* is bundled — only identity URIs.**
+ * {@link createNamingSystem}. **No terminology *content* is bundled: only identity URIs.**
  */
 export const DEFAULT_V2_CODE_SYSTEMS: Readonly<Record<string, string>> = Object.freeze({
   LN: "http://loinc.org",
@@ -111,7 +111,7 @@ export function createNamingSystem(seed: NamingSystemSeed = {}): NamingSystemReg
       if (hd.namespaceId !== undefined && Object.hasOwn(authorities, hd.namespaceId)) {
         return authorities[hd.namespaceId];
       }
-      // 2. The only safe auto-derivations — from the *universal* ID, never from HD.1.
+      // 2. The only safe auto-derivations, from the *universal* ID, never from HD.1.
       if (hd.universalId !== undefined && hd.universalId !== "") {
         if (hd.universalIdType === "ISO" && isOid(hd.universalId)) {
           return `urn:oid:${hd.universalId}`;

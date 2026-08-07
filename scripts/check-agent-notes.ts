@@ -21,7 +21,7 @@
  *   (1) `documentation/agent-notes.md` is deleted or renamed. `CLAUDE.md` keeps eight
  *       pointers into a file that is not there. Lint, coverage, `attw`, the PHI scan and
  *       the public-surface gate are all unaffected.
- *   (2) A section is emptied — its body edited away while the heading stays. Every pointer
+ *   (2) A section is emptied: its body edited away while the heading stays. Every pointer
  *       still resolves; the measurement it pointed at is gone.
  *   (3) A heading is reworded. The anchor in `CLAUDE.md` silently stops resolving. GitHub
  *       renders a dead fragment as the top of the file, so a reader lands on prose and does
@@ -39,7 +39,7 @@
  * healthy `122` and read as fine, because a count counts the roots that DID exist. The
  * remedy that works is the one landed in `ncpdp`'s scanner: RECONCILE THE PATHS THIS GATE
  * ACTUALLY OPENED AGAINST AN INDEPENDENT STATEMENT OF THE CORPUS. `git ls-files` is that
- * statement — it reads the index, not the directory entries this gate walks, so the two
+ * statement: it reads the index, not the directory entries this gate walks, so the two
  * cannot fail the same way. See `reconcile()` at the bottom of this file. Every read in
  * this gate goes through `readObserved()`, which records the path, so "what we opened" is
  * structural rather than a promise.
@@ -52,8 +52,8 @@
  * ===========================================================================
  *
  *   0  the contract holds
- *   1  CONTRACT VIOLATIONS FOUND — listed on stderr
- *   2  THE GATE COULD NOT COMPLETE OR COULD NOT OBSERVE — a missing contract file, an
+ *   1  CONTRACT VIOLATIONS FOUND: listed on stderr
+ *   2  THE GATE COULD NOT COMPLETE OR COULD NOT OBSERVE: a missing contract file, an
  *      unreadable one, a broken `git ls-files`, or a reconciliation mismatch
  *
  * The 1/2 split is `scripts/phi-scan.ts`'s convention and it is load-bearing for the same
@@ -61,7 +61,7 @@
  * that NEVER RAN as one that ran and fired. `main()` funnels every throw to `2`.
  *
  * ===========================================================================
- * ██  WHAT THIS GATE DOES NOT COVER — READ BEFORE YOU TRUST IT  █████████████
+ * ██  WHAT THIS GATE DOES NOT COVER: READ BEFORE YOU TRUST IT  █████████████
  * ===========================================================================
  *
  *   * It proves a heading is POINTED AT. It can never prove the one-line imperative in
@@ -71,7 +71,7 @@
  *     the trap phrased as a DELIBERATE OMISSION ("is deliberately left alone", "is never
  *     the default"), which carries no identifier to grep for. Enumerate those BY HAND.
  *   * FILE-POINTER RESOLUTION (rule R6) IS SCANNED IN `CLAUDE.md` ONLY, DELIBERATELY.
- *     `agent-notes.md` is narrative and quotes ILLUSTRATIVE paths that must never resolve —
+ *     `agent-notes.md` is narrative and quotes ILLUSTRATIVE paths that must never resolve:
  *     `src/leak.ts`, `src/linkdir/payload.txt`, `test/fixtures/` are written into throwaway
  *     git repos under `os.tmpdir()` by the PHI-scanner suite and deliberately do not exist
  *     here. Requiring them to resolve would be inventing a contract this repo does not
@@ -80,7 +80,7 @@
  *   * It reads the SOURCE of the instructions. It says nothing about whether an agent
  *     followed them.
  *   * It does not gate `CLAUDE.md`'s byte budget. That ratchet lives in the umbrella's
- *     `.claude/hooks/doc-budget.mjs` and nothing inside this repository can observe it —
+ *     `.claude/hooks/doc-budget.mjs` and nothing inside this repository can observe it:
  *     the same limit `CLAUDE.md` already records for the branch ruleset.
  *   * It does not verify the relocation was VERBATIM. That was a one-time property of the
  *     2026-08-04 move; there is no pre-move text here to diff against.
@@ -126,12 +126,12 @@ const MANIFEST = "package.json";
  *
  * Each is written in `CLAUDE.md` qualified as the meta-repo's ("The source of truth is the
  * meta-repo's `documentation/conventions.md`"), and there is no copy in this repo on
- * purpose — a second copy is what the meta-repo exists to prevent.
+ * purpose: a second copy is what the meta-repo exists to prevent.
  *
  * THIS LIST CANNOT SILENTLY ROT INTO A HIDING PLACE. R7 refuses if an entry EVER resolves
  * in-repo: at that moment the path is ambiguous, the exemption is wrong, and the gate says
  * so instead of quietly exempting a real pointer. That is the self-correcting shape the
- * meta-repo's rule 2 asks for — an exemption without its reason cannot correct itself.
+ * meta-repo's rule 2 asks for: an exemption without its reason cannot correct itself.
  */
 const EXTERNAL_PATHS = new Map<string, string>([
   [
@@ -175,7 +175,7 @@ function readObserved(path: string): string {
 /**
  * `git ls-files -z`, the independent statement of the corpus. It reads git's INDEX; the
  * rest of this gate reads the working tree by name. Two different sources is the whole
- * point — a mistake in one does not reproduce in the other.
+ * point: a mistake in one does not reproduce in the other.
  *
  * An EMPTY answer counts as NO answer. `git ls-files` exits 0 outside a repo and in an
  * empty one, so a zero-length result is indistinguishable from "the corpus is gone" and
@@ -211,24 +211,26 @@ function trackedPaths(): Set<string> {
  *
  * Lowercase; drop everything that is not a letter, a number, a space, `_` or `-`; then
  * spaces to `-`. Note what that does and does not keep: backticks, commas and parentheses
- * are DROPPED, and so is the EN DASH — `## Shipped-phase history (Phases 1–6)` slugs to
+ * are DROPPED, and so is the EN DASH, so `## Shipped-phase history (Phases 1–6)` slugs to
  * `shipped-phase-history-phases-16`, not `...phases-1-6`. Getting that wrong would make
  * this gate red on a pointer that works, which is worse than not having the gate.
  *
  * ▶ EACH SPACE BECOMES ITS OWN HYPHEN. RUNS ARE NOT COLLAPSED, AND THAT IS THE WHOLE
- * DIFFERENCE BETWEEN THIS AND A PLAUSIBLE-LOOKING SLUGGER. `## Branch protection — and the
- * limits` has a space either side of an em dash; the dash is dropped and TWO spaces remain,
+ * DIFFERENCE BETWEEN THIS AND A PLAUSIBLE-LOOKING SLUGGER. `## Branch protection – and the
+ * limits` has a space either side of a dropped mark; the mark goes and TWO spaces remain,
  * so GitHub emits `branch-protection--and-the-limits` with a DOUBLE hyphen. A first version
  * of this function collapsed the run, and a refuter measured both harms against GitHub's own
  * renderer (`POST /markdown`) and against `github-slugger`: it passed a pointer that is DEAD
- * when clicked, and it reddened a pointer that WORKS. This repo's house punctuation is
- * exactly that em-dash-with-spaces style, so it was one heading away. Do not "tidy" the run.
+ * when clicked, and it reddened a pointer that WORKS. This was one heading away when the
+ * house punctuation was a spaced em dash; the brand sweep retired that character, and it is
+ * still one heading away, because EVERY dropped mark with a space either side does the same
+ * thing. Do not "tidy" the run.
  *
  * ▶ THERE IS DELIBERATELY NO HTML-TAG STRIP HERE, AND ITS REMOVAL WAS NOT COSMETIC. A
  * `.replace(/<[^>]*>/g, "")` stood in this chain and CodeQL flagged it HIGH as an incomplete
  * multi-character sanitisation, correctly: a single pass leaves `<scr<script>ipt>` behind.
- * Two reasons it went rather than grew a loop. It was never a sanitiser — nothing here
- * reaches an HTML sink — so hardening it would have been defending a sink that does not
+ * Two reasons it went rather than grew a loop. It was never a sanitiser, nothing here
+ * reaches an HTML sink, so hardening it would have been defending a sink that does not
  * exist. And `github-slugger`, the algorithm this function is checked against, strips no tags
  * at all, so the line was a DEVIATION from the thing it was imitating. Measured before
  * removal: no heading in either contract file contains `<` or `>`, so every anchor is
@@ -319,7 +321,7 @@ function parseHeadings(text: string): Heading[] {
 }
 
 /**
- * Every `<path>.md#<anchor>` pointer in a document, wherever it is written — inside
+ * Every `<path>.md#<anchor>` pointer in a document, wherever it is written: inside
  * backticks, inside a markdown link target, or bare in a sentence. All three shapes are
  * live in `CLAUDE.md` today, so keying on markdown links alone would see one of eight.
  */
@@ -362,7 +364,7 @@ const UNTRACKED_BY_DESIGN = new Map<string, string>([
  * seen, because the strict charset below rejects the marker characters and trimming them
  * would re-admit the `@cosyte/*` glob that the charset exists to keep out. Measured: no path
  * in this repo's `CLAUDE.md` is emphasised without also being backticked, so there is no live
- * false green — but do not read this paragraph as "any punctuation".
+ * false green, but do not read this paragraph as "any punctuation".
  *
  * THE RECOGNISER IS MOSTLY DERIVED FROM `git ls-files`, NOT INVENTED. A token counts as an
  * in-repo path if it is a tracked TOP-LEVEL FILENAME (`package.json`, `vitest.config.ts`) or
@@ -449,7 +451,7 @@ function pathPointers(text: string, tracked: Set<string>): string[] {
 }
 
 /**
- * Resolve a path token against the INDEX, never against the filesystem — an untracked file on
+ * Resolve a path token against the INDEX, never against the filesystem: an untracked file on
  * one worker's disk is not a pointer another clone can follow.
  *
  * Three ways to resolve, narrowest first: an exact tracked file; a tracked directory; or a
@@ -612,13 +614,13 @@ function checkContract(tracked: Set<string>): Violation[] {
         rule: "R5",
         where: `${AGENT_NOTES}:${String(h.line)}`,
         detail:
-          `section "${h.text}" (#${h.anchor}) is an ORPHAN — nothing in ${CLAUDE_MD} points at ` +
+          `section "${h.text}" (#${h.anchor}) is an ORPHAN: nothing in ${CLAUDE_MD} points at ` +
           `it, so a worker who only reads the always-read file never learns it exists.`,
       });
     }
   }
 
-  // ── R6 FILE POINTERS RESOLVE. `CLAUDE.md` ONLY — see the header for why `agent-notes.md`
+  // ── R6 FILE POINTERS RESOLVE. `CLAUDE.md` ONLY: see the header for why `agent-notes.md`
   // is deliberately excluded (it quotes illustrative paths that must never resolve).
   for (const p of pathPointers(claude, tracked)) {
     if (EXTERNAL_PATHS.has(p) || UNTRACKED_BY_DESIGN.has(p)) continue;
@@ -631,7 +633,7 @@ function checkContract(tracked: Set<string>): Violation[] {
     }
   }
 
-  // ── R7 NEITHER R6 EXEMPTION LIST IS STALE — the meta-repo paths and the by-design-untracked
+  // ── R7 NEITHER R6 EXEMPTION LIST IS STALE: the meta-repo paths and the by-design-untracked
   // build outputs. An exemption that starts resolving in-repo is an exemption that has begun
   // hiding a real pointer. Refuse instead of exempting.
   for (const [p, reason] of [...EXTERNAL_PATHS, ...UNTRACKED_BY_DESIGN]) {
@@ -650,7 +652,7 @@ function checkContract(tracked: Set<string>): Violation[] {
 }
 
 /**
- * OBSERVATION, NOT EXISTENCE. Runs after the checks and can only ever REFUSE — it never
+ * OBSERVATION, NOT EXISTENCE. Runs after the checks and can only ever REFUSE: it never
  * turns a red run green.
  *
  * ▶ BE PRECISE ABOUT WHICH OF THESE FIRES TODAY, BECAUSE AN EARLIER VERSION OF THIS FUNCTION
@@ -659,16 +661,16 @@ function checkContract(tracked: Set<string>): Violation[] {
  * suite, and measured ZERO firings while the always-read `CLAUDE.md` sold this as the
  * protection. The pre-checks were removed rather than the function. Now:
  *
- *   (a) `observed` is empty — a TRIPWIRE FOR A FUTURE EDIT, not a live check. It becomes
+ *   (a) `observed` is empty: a TRIPWIRE FOR A FUTURE EDIT, not a live check. It becomes
  *       reachable the moment someone makes a read conditional. Kept for that, and labelled
  *       as that rather than counted as protection.
- *   (b) a contract file is tracked but was never opened — same: a tripwire, reachable only
+ *   (b) a contract file is tracked but was never opened. Same: a tripwire, reachable only
  *       once a read is skipped or short-circuited.
- *   (c) something was opened that git does not carry — THIS ONE FIRES TODAY. An untracked
+ *   (c) something was opened that git does not carry: THIS ONE FIRES TODAY. An untracked
  *       `CLAUDE.md`, `agent-notes.md` or `package.json` sitting on one worker's disk reads
  *       perfectly well and is refused here, because a pointer no other clone can follow is
  *       not a contract. Three fixtures in the suite land on it.
- *   (d) `git ls-files` answered emptily — handled in `trackedPaths()`, which refuses there,
+ *   (d) `git ls-files` answered emptily: handled in `trackedPaths()`, which refuses there,
  *       and that is what makes an empty or non-git directory exit 2 rather than green.
  */
 function reconcile(tracked: Set<string>): void {

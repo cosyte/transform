@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * `@cosyte/transform` PHI scanner — the CI / pre-commit half of the PHI commit-gate.
+ * `@cosyte/transform` PHI scanner: the CI / pre-commit half of the PHI commit-gate.
  *
  * Pure Node. Zero runtime deps. `git` is the only subprocess, always via
  * `execFileSync` with array args (never shell-form). Walks the synthetic test
@@ -9,7 +9,7 @@
  * accident.
  *
  * ===========================================================================
- * ██  STARTER — READ BEFORE YOU RELY ON THIS  ███████████████████████████████
+ * ██  STARTER: READ BEFORE YOU RELY ON THIS  ███████████████████████████████
  * ===========================================================================
  *
  *   This file is the SHARED MACHINERY only. As shipped it detects EXACTLY TWO
@@ -20,7 +20,7 @@
  *
  *   That is a FLOOR, not a gate. It does NOT understand Transform. It will NOT
  *   catch a patient name, a date of birth, an MRN / member id, an address, or a
- *   phone number sitting in a structured Transform field — the PHI that a real
+ *   phone number sitting in a structured Transform field: the PHI that a real
  *   Transform message actually carries.
  *
  *   ⚠  A scanner that silently ships SSN/email-only detection is a FALSE-
@@ -31,7 +31,7 @@
  *      TODO section inside `scanTarget` below.
  *
  *   Worked examples of structured, format-aware detection live in the sibling
- *   parsers — read one before you start:
+ *   parsers. Read one before you start:
  *       ../hl7/scripts/phi-scan.ts     (segment → field → component aware)
  *       ../x12/scripts/phi-scan.ts     (ISA-delimited NM1 / DMG / PER aware)
  *       ../dicom/scripts/phi-scan.ts   (binary tag-aware)
@@ -39,7 +39,7 @@
  *       ../ncpdp/scripts/phi-scan.ts   (fixed-field aware)
  *
  *   The mechanism for declaring genuinely-synthetic identifiers is the
- *   allow-list (`scripts/phi-allow-list.txt`) — a positive declaration that a
+ *   allow-list (`scripts/phi-allow-list.txt`): a positive declaration that a
  *   fixture's identifiers are fake. Byte-strict formats cannot carry an inline
  *   `# synthetic: true` header, so the allow-list is the proven substitute
  *   (same approach every sibling uses). A whole-file bypass needs
@@ -66,17 +66,17 @@
  * scanner before this change, over a link under `src/` pointing at a
  * name-bearing synthetic payload:
  *
- *   - all-mode printed "OK — no hits" and exited 0. The walk enumerates
+ *   - all-mode printed "OK: no hits" and exited 0. The walk enumerates
  *     `Dirent.isFile()`, which is an lstat answer, so a symbolic link is neither
  *     a file nor a directory and fell out of the loop whatever it pointed at.
  *     A linked DIRECTORY takes its whole subtree with it for the same reason.
- *   - `--staged` printed "OK — no hits" and exited 0 over the same link staged.
+ *   - `--staged` printed "OK: no hits" and exited 0 over the same link staged.
  *     That route reads content with `git show :<path>`, and git stores a
  *     symbolic link as its TARGET PATH under mode 120000 (`git ls-files --stage`
  *     read `120000` on it), so it is handed the path text, never the target's
  *     bytes.
  *
- * The third mode, a named `<path>`, was not blind — it classified with
+ * The third mode, a named `<path>`, was not blind: it classified with
  * `statSync`, which DEREFERENCES, so it read the target's bytes and reported
  * hits it found there. That is a false-clean-free route and still wrong: the
  * bytes could be outside the repository. It lstats too now.
@@ -86,7 +86,7 @@
  * IS REFUSED IF IT IS NOT A REGULAR FILE. It is NOT "the scanner follows
  * nothing". `lstat` answers for the FINAL path component only, so a named path
  * whose ANCESTOR component is a symlink is still followed and still reads bytes
- * from wherever that ancestor lands — as does a plain absolute or `../`
+ * from wherever that ancestor lands, as does a plain absolute or `../`
  * argument. Both are PRE-EXISTING and unchanged here, and are listed with the
  * other residuals in CHANGELOG.md. Do NOT close them by growing this guard with realpath
  * or containment logic: that is a defect surface of its own, and the two routes
@@ -107,7 +107,7 @@
  * This narrows what those scopes ADMIT; it does not widen the scopes. Note that
  * `test/fixtures/` does not exist in this repo today, so `src/` is the only
  * directory the walk actually descends. The walk has NO extension scope of its
- * own — it skips regular `*.md` as documentation and takes everything else — so
+ * own (it skips regular `*.md` as documentation and takes everything else), so
  * a link at `src/leak.json`, and a linked directory, are refused there too. The
  * `.ts` suffix is the `--staged` route's boundary, not the walk's; do not
  * describe them as one rule.
@@ -118,7 +118,7 @@
  * change while the unfiltered `--raw` printed `:100644 120000 <sha> <sha> T`.
  * Under an `AM` filter the record dies before any mode can be read and the hook
  * passes a mode-120000 blob green. Admitting `T` also covers the reverse
- * typechange — a tracked link replaced by a real file bearing PHI, which is a
+ * typechange: a tracked link replaced by a real file bearing PHI, which is a
  * scan that must now happen rather than a refusal.
  *
  * ▶ AND THE FILTER ALONE WAS NOT ENOUGH: `R`/`C` ARE RETURNED BY NEITHER `AM`
@@ -152,7 +152,7 @@
  *
  * A refusal names the entry's own repo-relative path and an engine-owned token
  * for its kind. IT NEVER REPORTS THE LINK TARGET, which is text off the working
- * tree and can itself carry PHI — a target path of the shape
+ * tree and can itself carry PHI: a target path of the shape
  * `<surname>-<given>-<dob>.txt` is the whole reason. The shape is written out
  * rather than an example, because a diagnostic ABOUT a PHI leak is itself a PHI
  * surface, and that applies to the prose explaining it too.
@@ -172,7 +172,7 @@ const ALLOW_LIST_PATH = join(REPO_ROOT, "scripts", "phi-allow-list.txt");
 const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 
 // Roots walked in "all" mode. test/fixtures gets the full scan; src gets the
-// same conservative shape pass because it is hand-written code, not data —
+// same conservative shape pass because it is hand-written code, not data:
 // JSDoc `@example` snippets must not carry real PHI either.
 const FIXTURE_ROOT = join(REPO_ROOT, "test", "fixtures");
 const SRC_ROOT = join(REPO_ROOT, "src");
@@ -190,18 +190,18 @@ interface Hit {
 
 interface AllowList {
   /**
-   * Uppercase synthetic person-name tokens. UNUSED by the starter floor — the
+   * Uppercase synthetic person-name tokens. UNUSED by the starter floor: the
    * structured name detector you add in the TODO section consumes these.
    */
   names: Set<string>;
   /**
    * Synthetic dates of birth (raw, format-normalized as you choose). UNUSED by
-   * the starter floor — your structured DOB detector consumes these.
+   * the starter floor: your structured DOB detector consumes these.
    */
   dobs: Set<string>;
   /**
    * Synthetic id values (SSN / MRN / member-id shapes). UNUSED by the starter
-   * floor — your structured id detector consumes these.
+   * floor: your structured id detector consumes these.
    */
   ids: Set<string>;
   /** Allowed email domains (anything else is a hit). Used by the starter floor. */
@@ -263,7 +263,7 @@ function parseArgs(argv: string[]): Args {
   }
 
   // An `--allow-fixture` path is a *subtractive* acknowledgement on a broader
-  // scan, never a scan target on its own — so it also seeds the positional path
+  // scan, never a scan target on its own, so it also seeds the positional path
   // set. That makes `--allow-fixture X` mean "scan X, but allow it" (proving the
   // override gate actually subtracts a scanned target) instead of a silent no-op.
   const scanPaths = paths.length > 0 ? paths : [...allowFixtures];
@@ -455,7 +455,7 @@ function gitIgnored(paths: string[]): Set<string> {
   const ignored = new Set<string>();
   if (paths.length === 0) return ignored;
   try {
-    // SECURITY: array-form execFileSync, no shell. Default (Buffer) encoding —
+    // SECURITY: array-form execFileSync, no shell. Default (Buffer) encoding:
     // `encoding: "buffer"` with `input` is rejected by Node.
     const out = execFileSync("git", ["check-ignore", "--stdin", "-z"], {
       input: paths.map(normalizePath).join("\0"),
@@ -465,7 +465,7 @@ function gitIgnored(paths: string[]): Set<string> {
       if (p.length > 0) ignored.add(p);
     }
   } catch {
-    // `git check-ignore` exits 1 when nothing matches — treat as none ignored.
+    // `git check-ignore` exits 1 when nothing matches: treat as none ignored.
   }
   return ignored;
 }
@@ -496,7 +496,7 @@ function buildTargetsForAll(): Target[] {
 /**
  * Named-path mode. `lstat`, NOT `stat`: this route used to classify with
  * `statSync`, which dereferences, so a named link passed the `isFile()` test and
- * `readFileSync` then read the TARGET's bytes — including a target outside the
+ * `readFileSync` then read the TARGET's bytes, including a target outside the
  * repository entirely.
  *
  * It never reported a false clean (it reported hits it found on the far side),
@@ -509,7 +509,7 @@ function buildTargetsForAll(): Target[] {
  * followed and still read, and so is a plain absolute or `../` argument. Both
  * predate this change and neither is narrowed here. The all-mode walk over the
  * same tree DOES refuse that ancestor, so the two routes disagree about one
- * link — stated rather than closed, because closing it means realpath or
+ * link: stated rather than closed, because closing it means realpath or
  * containment logic, which is a guard growing past the defect it fixes. Neither
  * commit-gating route reaches it.
  */
@@ -563,7 +563,7 @@ function gitEntryKind(status: string, mode: string): string {
   return `a git mode-${mode} entry`;
 }
 
-/** `:<srcmode> <dstmode> <srcsha> <dstsha> <status>` — the info half of a `--raw -z` record. */
+/** `:<srcmode> <dstmode> <srcsha> <dstsha> <status>`: the info half of a `--raw -z` record. */
 const RAW_RECORD = /^:(?:\d{6}) (\d{6}) [0-9a-f]+ [0-9a-f]+ ([A-Z]\d*)$/;
 
 function buildTargetsForStaged(): Target[] {
@@ -687,7 +687,7 @@ function buildTargetsForStaged(): Target[] {
 }
 
 // ---------------------------------------------------------------------------
-// Cross-cutting shape checks — the format-agnostic FLOOR
+// Cross-cutting shape checks: the format-agnostic FLOOR
 // ---------------------------------------------------------------------------
 
 function scanCommonShapes(path: string, content: string, allow: AllowList, hits: Hit[]): void {
@@ -727,13 +727,13 @@ function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
   //
   //   The floor above ONLY catches SSN/email shapes. Before you rely on this
   //   scanner as a real safety gate you MUST add structured, field-level
-  //   detection for Transform's PHI — at minimum: person NAMES, DATE OF BIRTH,
-  //   MRN / MEMBER ID, ADDRESS, and PHONE — parsing `text` according to the
+  //   detection for Transform's PHI, at minimum: person NAMES, DATE OF BIRTH,
+  //   MRN / MEMBER ID, ADDRESS, and PHONE. That means parsing `text` according to the
   //   Transform wire format and checking each PHI-bearing field against the
   //   allow-list (`allow.names` / `allow.dobs` / `allow.ids`), pushing a `Hit`
   //   for anything not positively declared synthetic.
   //
-  //   Parse the format properly (delimiters / segments / elements / tags) — do
+  //   Parse the format properly (delimiters / segments / elements / tags). Do
   //   NOT bolt on a blind text regex for names: coded values (`CBC^Complete
   //   Blood Count`, `Boston^MA`) produce false confidence. See the sibling
   //   parsers named in the STARTER banner at the top of this file for worked,
@@ -746,7 +746,7 @@ function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
   //     }
   //
   //   Until this section is implemented, treat a green `pnpm phi-scan` as
-  //   "no SSN/email shapes found" — NOT as "no PHI".
+  //   "no SSN/email shapes found", NOT as "no PHI".
   // ───────────────────────────────────────────────────────────────────────────
 }
 
@@ -756,7 +756,7 @@ function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
 
 function report(hits: Hit[]): void {
   if (hits.length === 0) {
-    process.stdout.write("[phi-scan] OK — no hits\n");
+    process.stdout.write("[phi-scan] OK: no hits\n");
     return;
   }
   const byPath = new Map<string, Hit[]>();

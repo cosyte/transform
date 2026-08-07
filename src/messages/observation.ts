@@ -1,5 +1,5 @@
 /**
- * OBX → FHIR `Observation` — the highest-clinical-stakes segment map,
+ * OBX → FHIR `Observation`: the highest-clinical-stakes segment map,
  * grounded firsthand on the IG **Segment OBX to Observation** ConceptMap plus its two governing table
  * ConceptMaps (`hl7.fhir.uv.v2mappings`, STU1). The rows used here, verified against the published maps
  * (`ConceptMap-segment-obx-to-observation.html`, `-table-hl70078-to-v3-observationinterpretation.html`,
@@ -7,7 +7,7 @@
  *
  * | OBX field | FHIR target | via |
  * |---|---|---|
- * | OBX-2 Value Type | discriminates OBX-5 → `value[x]` | {@link buildValue} — never assume `Quantity` |
+ * | OBX-2 Value Type | discriminates OBX-5 → `value[x]` | {@link buildValue}, never assume `Quantity` |
  * | OBX-3 Observation Identifier (CWE) | `Observation.code` | {@link toFhirCodeableConcept} |
  * | OBX-5 Observation Value | `Observation.value[x]` | per OBX-2 |
  * | OBX-6 Units (CWE) | `valueQuantity.unit`/`.code`/`.system` | {@link quantityFromRawMagnitude} |
@@ -21,17 +21,17 @@
  *   `SN`→structured (`valueQuantity` with a comparator / `valueRange` / `valueRatio`), `ST`/`TX`/`FT`→
  *   `valueString`. A value type with no first-class target here (`NA`, `ED`, `DR`, `TM`, `NR`, unknown)
  *   preserves the raw value as `valueString` and flags {@link ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED}
- *   (the richer FHIR type is deferred) — never a fabricated `Quantity`.
+ *   (the richer FHIR type is deferred), never a fabricated `Quantity`.
  * - **A corrected/cancelled result never emits as `final`.** OBX-11 `C`→`corrected`, `X`→`cancelled`,
  *   `D`/`W`→`entered-in-error` (HL70085). A status code with **no** HL70085 target leaves
  *   `Observation.status` absent (flagged {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}); the required-`status`
- *   emit gate then **withholds** the Observation rather than shipping it — never coerced to `final`.
+ *   emit gate then **withholds** the Observation rather than shipping it, never coerced to `final`.
  * - **An unrecognized abnormal flag is surfaced, never coerced to normal.** Each OBX-8 flag in
  *   {@link HL70078_INTERPRETATION_CODES} becomes an `interpretation` coding (the map is code-preserving);
  *   a flag absent from the table is flagged and dropped, never emitted as `N`/normal.
  *
- * Numeric magnitudes (NM, SN) are read from the **raw OBX-5 field** — not the `@cosyte/hl7`
- * `Observation` view's JS `number` — so a reported lab value's exact lexical precision (`120.50`) is
+ * Numeric magnitudes (NM, SN) are read from the **raw OBX-5 field**, not the `@cosyte/hl7`
+ * `Observation` view's JS `number`, so a reported lab value's exact lexical precision (`120.50`) is
  * carried through the string-backed FHIR `decimal`, never routed through a lossy `number`.
  *
  * @packageDocumentation
@@ -57,7 +57,7 @@ const V3_OBSERVATION_INTERPRETATION_SYSTEM =
  * HL7 v2 Table 0078 (Abnormal Flags) → FHIR v3 ObservationInterpretation (`Observation.interpretation`),
  * per the IG **Table HL70078 to v3 ObservationInterpretation** ConceptMap. Every mapped row is
  * `is equivalent to` an **identically-spelled** v3 code (the map is code-preserving), so this is the set
- * of codes that carry a target — a flag **absent** from this set has no equivalent and is flagged
+ * of codes that carry a target: a flag **absent** from this set has no equivalent and is flagged
  * {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}, never coerced (the IG leaves `AC`/`HM`/`OBX`/`QCF`/`TOX`
  * and any local flag unmapped, and declares no `unmapped` default).
  */
@@ -107,7 +107,7 @@ export const HL70078_INTERPRETATION_CODES: ReadonlySet<string> = new Set([
  * HL7 v2 Table 0085 (Observation Result Status) → FHIR `observation-status` (`Observation.status`),
  * per the IG **Table HL70085 to Observation Status** ConceptMap (each `is equivalent to`). Only these
  * seven source codes carry a target; the codes the IG leaves unmapped (`B`, `I`, `N`, `O`, `R`, `S`,
- * `U`, `V`) are **absent here on purpose** — an OBX-11 with one of them (or any local code) leaves
+ * `U`, `V`) are **absent here on purpose**: an OBX-11 with one of them (or any local code) leaves
  * `Observation.status` absent + flagged, and the required-`status` emit gate withholds the Observation.
  * **`C`→`corrected` and `X`→`cancelled` guarantee a corrected/cancelled result never emits as `final`.**
  */
@@ -137,7 +137,7 @@ function rawComponent(field: Field, index: number): string | undefined {
   return c === undefined || c === "" ? undefined : c;
 }
 
-/** Reconstruct an SN's human string (`>90`, `10-20`, `1:2`) from its raw components — for a fallback. */
+/** Reconstruct an SN's human string (`>90`, `10-20`, `1:2`) from its raw components, for a fallback. */
 function snText(field: Field): string {
   return [0, 1, 2, 3].map((i) => rawComponent(field, i) ?? "").join("");
 }
@@ -269,7 +269,7 @@ function buildValue(
   if (STRING_VALUE_TYPES.has(vt)) return valueStringProp(rawValue);
 
   // A value type with no first-class FHIR value[x] here (NA, ED, RP, DR, TM, NR, ID, unknown): the raw
-  // value is preserved as a string and the richer typed mapping is flagged as deferred — never guessed.
+  // value is preserved as a string and the richer typed mapping is flagged as deferred, never guessed.
   issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "OBX.5", "Observation.value[x]"));
   return valueStringProp(rawValue);
 }
@@ -297,7 +297,7 @@ function buildInterpretation(obx: Segment, issues: TransformIssue[]): FhirNode |
         ]),
       );
     } else {
-      // An unrecognized abnormal flag is surfaced and dropped — NEVER coerced to `N`/normal.
+      // An unrecognized abnormal flag is surfaced and dropped: NEVER coerced to `N`/normal.
       issues.push(
         issue(ISSUE_CODES.TRANSFORM_CODE_UNMAPPED, "OBX.8", "Observation.interpretation"),
       );
@@ -308,9 +308,9 @@ function buildInterpretation(obx: Segment, issues: TransformIssue[]): FhirNode |
 
 /**
  * Build a FHIR `Observation` resource node from one parsed HL7 v2 OBX segment. Returns
- * `{ value: undefined }` when the OBX carries no observation identifier (OBX-3) — an Observation with
+ * `{ value: undefined }` when the OBX carries no observation identifier (OBX-3): an Observation with
  * no `code` cannot be emitted. `Observation.status` is left absent (and the resource later withheld by
- * the emit gate) when OBX-11 is missing or has no HL70085 target — never guessed.
+ * the emit gate) when OBX-11 is missing or has no HL70085 target, never guessed.
  *
  * @param obx - The OBX `@cosyte/hl7` `Segment`.
  * @param subjectFullUrl - The `urn:uuid:` fullUrl of the bundle's Patient, wired to `Observation.subject`.

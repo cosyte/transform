@@ -1,10 +1,10 @@
 /**
- * The value-free {@link TransformIssue} — the single diagnostic shape the whole library emits.
+ * The value-free {@link TransformIssue}: the single diagnostic shape the whole library emits.
  *
  * Every issue is **`OperationOutcome`-shaped and PHI-safe by construction**: it carries the *v2
- * location* (segment / field / component index — never a value) and the *FHIR path* it concerns,
+ * location* (segment / field / component index, never a value) and the *FHIR path* it concerns,
  * plus a **static, per-code** severity and human-readable message drawn from {@link ISSUE_REGISTRY}.
- * Nothing in an issue is interpolated from patient data — the factory takes only positional metadata,
+ * Nothing in an issue is interpolated from patient data: the factory takes only positional metadata,
  * so there is no code path by which a name, DOB, MRN, or result value can reach a log line (the
  * discipline `@cosyte/fhir` already proved with its value-free `OperationOutcome`).
  *
@@ -13,7 +13,7 @@
 
 import { ISSUE_CODES, type IssueCode } from "./codes.js";
 
-/** The severity a {@link TransformIssue} carries — an `OperationOutcome.issue.severity` value. */
+/** The severity a {@link TransformIssue} carries: an `OperationOutcome.issue.severity` value. */
 export type TransformSeverity = "error" | "warning" | "information";
 
 /**
@@ -31,7 +31,7 @@ export interface TransformIssue {
   readonly code: IssueCode;
   /** The `OperationOutcome`-style severity, fixed per code. */
   readonly severity: TransformSeverity;
-  /** The v2 source location — a segment / field / component **index**, never a value. */
+  /** The v2 source location: a segment / field / component **index**, never a value. */
   readonly v2Location: string;
   /** The FHIR path this issue concerns (e.g. `Identifier.system`), when applicable. */
   readonly fhirPath?: string;
@@ -44,13 +44,13 @@ interface IssueMeta {
   readonly severity: TransformSeverity;
   /** The FHIR `OperationOutcome.issue.code` (R4 `issue-type` value set) this maps to. */
   readonly fhirIssueType: string;
-  /** A static, value-free message. Contains no interpolated data — safe to log verbatim. */
+  /** A static, value-free message. Contains no interpolated data: safe to log verbatim. */
   readonly message: string;
 }
 
 /**
  * The per-code registry: severity, FHIR `issue-type`, and a static message. Frozen and exhaustive
- * over {@link ISSUE_CODES} (enforced by the `Record<IssueCode, …>` type — a new code will not
+ * over {@link ISSUE_CODES} (enforced by the `Record<IssueCode, …>` type: a new code will not
  * compile until it has an entry).
  */
 export const ISSUE_REGISTRY: Readonly<Record<IssueCode, IssueMeta>> = Object.freeze({
@@ -136,7 +136,7 @@ export const ISSUE_REGISTRY: Readonly<Record<IssueCode, IssueMeta>> = Object.fre
  * {@link ISSUE_REGISTRY}; the caller supplies only positional metadata, so an issue can carry no PHI.
  *
  * @param code - The stable {@link IssueCode}.
- * @param v2Location - The v2 source location (segment / field / component index) — never a value.
+ * @param v2Location - The v2 source location (segment / field / component index), never a value.
  * @param fhirPath - The FHIR path the issue concerns, when applicable.
  * @example
  * ```ts
@@ -157,7 +157,7 @@ export function issue(code: IssueCode, v2Location: string, fhirPath?: string): T
 }
 
 /**
- * The FHIR `issue-type` code for an {@link IssueCode} — used by the `OperationOutcome` renderer.
+ * The FHIR `issue-type` code for an {@link IssueCode}: used by the `OperationOutcome` renderer.
  *
  * @param code - The stable {@link IssueCode}.
  * @example

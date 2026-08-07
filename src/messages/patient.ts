@@ -1,5 +1,5 @@
 /**
- * PID → FHIR `Patient` — grounded on the IG **Segment PID to Patient** ConceptMap
+ * PID → FHIR `Patient`, grounded on the IG **Segment PID to Patient** ConceptMap
  * (`hl7.fhir.uv.v2mappings`, STU1). The field→element rows used here, verified firsthand against the
  * published map:
  *
@@ -13,8 +13,8 @@
  *
  * Fail-safe throughout: each datatype conversion carries its own value-free issues, an unmapped
  * administrative-sex code leaves `gender` absent (never guessed), and a birth *time* (PID-7 with a
- * time-of-day) is dropped to `date` precision with a flag — the US Core `patient-birthTime` extension
- * is a profile concern this library does not cover. Deferred and flagged, not silently mapped:
+ * time-of-day) is dropped to `date` precision with a flag, because the US Core `patient-birthTime`
+ * extension is a profile concern this library does not cover. Deferred and flagged, not silently mapped:
  * PID-13/14 telecom (no XTN→ContactPoint converter), and PID-10/15/22/29/30 (US Core race/ethnicity
  * extensions, communication language, deceased).
  *
@@ -36,9 +36,9 @@ import type { TransformContext } from "../terminology/context.js";
 /**
  * HL7 v2 Table 0001 (Administrative Sex) → FHIR `administrative-gender`, exactly per the IG
  * **Table HL70001 to Administrative Gender** ConceptMap (every row "is equivalent to"). `A`
- * (Ambiguous) and `N` (Not applicable) both narrow to `other` — the map's stated equivalence, carried
+ * (Ambiguous) and `N` (Not applicable) both narrow to `other`: the map's stated equivalence, carried
  * as-is. A code absent here (the map defines no `unmapped` default) leaves `gender` absent and is
- * flagged {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED} — never coerced to `unknown`.
+ * flagged {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}, never coerced to `unknown`.
  */
 export const ADMINISTRATIVE_GENDER_MAP: Readonly<Record<string, string>> = Object.freeze({
   F: "female",

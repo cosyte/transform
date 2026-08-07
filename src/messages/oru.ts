@@ -1,12 +1,12 @@
 /**
- * ORU^R01 order/result grouping — the message-map structure the DiagnosticReport/Observation graph is
+ * ORU^R01 order/result grouping: the message-map structure the DiagnosticReport/Observation graph is
  * assembled over, grounded on the IG **ORU_R01 message map**
  * (`ConceptMap-message-oru-r01-to-bundle.html`).
  *
  * An ORU message is a sequence of order groups, each an **OBR** followed by its **OBX** results. This
- * walks the segments in document order and buckets each OBX under the most recent OBR — the same
+ * walks the segments in document order and buckets each OBX under the most recent OBR: the same
  * positional grouping `@cosyte/hl7`'s `orders()` performs, done here so the raw OBR/OBX `Segment`s are
- * available (the report/result fields the lean `Order` view omits — OBR-7/22/24/25 — and the exact
+ * available (the report/result fields the lean `Order` view omits, namely OBR-7/22/24/25, and the exact
  * lexical OBX-5 magnitude the `Observation` view rounds to a JS `number`). An OBX that precedes any OBR
  * has no report to anchor it and is surfaced by {@link ReportGrouping.orphanObxCount} rather than
  * silently dropped.

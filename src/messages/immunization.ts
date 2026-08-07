@@ -1,5 +1,5 @@
 /**
- * VXU_V04 → FHIR `Immunization` — the thin IG single for immunization administration,
+ * VXU_V04 → FHIR `Immunization`: the thin IG single for immunization administration,
  * grounded firsthand on the IG **VXU_V04 message map** and the **RXA/RXR/ORC → Immunization**
  * segment maps (`hl7.fhir.uv.v2mappings`, STU1; `ConceptMap-message-vxu-v04-to-bundle.json`,
  * `ConceptMap-segment-rxa-to-immunization.json`, `ConceptMap-segment-rxr-to-immunization.json`,
@@ -10,7 +10,7 @@
  *
  * | v2 field | FHIR target | via |
  * |---|---|---|
- * | RXA-5 Administered Code (CE) | `vaccineCode` (required 1..1) | {@link toFhirCodeableConcept} (structural — no IG value map) |
+ * | RXA-5 Administered Code (CE) | `vaccineCode` (required 1..1) | {@link toFhirCodeableConcept} (structural, no IG value map) |
  * | RXA-3 Date/Time Start of Administration (DTM) | `occurrenceDateTime` (required, occurrence[x]) | {@link toFhirDateTime} |
  * | RXA-20 Completion Status + RXA-21 Action Code | `status` (required 1..1) | {@link buildStatus} (HL70322 + IG assignments) |
  * | RXA-6 Administered Amount + RXA-7 Units | `doseQuantity` | {@link quantityFromRawMagnitude} |
@@ -33,18 +33,18 @@
  *   event-status ConceptMap, whose targets `completed`/`not-done` are all valid `immunization-status`
  *   members). A **valued** RXA-20 the HL70322 map has no target for is flagged
  *   {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}, `status` left absent, and the required-`status` emit gate
- *   **withholds** the Immunization — never guessed, never coerced.
+ *   **withholds** the Immunization, never guessed, never coerced.
  * - **`vaccineCode` (required 1..1) + `occurrence[x]` (required 1..1) + `patient` (required 1..1).** An
  *   absent RXA-5, RXA-3, or bundle Patient leaves the resource missing a required element, so it is
  *   withheld by the emit gate rather than emitted incomplete.
  * - **Dose.** RXA-6/RXA-7 → `doseQuantity` via {@link quantityFromRawMagnitude}: precision-exact magnitude,
- *   non-UCUM unit preserved verbatim with `.code`/`.system` absent + flagged — never a fabricated UCUM code.
+ *   non-UCUM unit preserved verbatim with `.code`/`.system` absent + flagged, never a fabricated UCUM code.
  * - **Route/site value translation.** RXR-1 route → {@link ROUTE_VALUE_MAP} (HL70162) and
  *   RXR-2 site → {@link SITE_VALUE_MAP} (HL70550) are value-translated additively (derived target coding
  *   added, raw coding preserved); a code outside the table is preserved + flagged, never coerced.
- * - **`vaccineCode` is NOT value-translated — by grounding, not omission.** RXA-5 has **no** `mappedVia`
+ * - **`vaccineCode` is NOT value-translated: by grounding, not omission.** RXA-5 has **no** `mappedVia`
  *   value ConceptMap in the IG's RXA→Immunization segment map (verified firsthand), so the code (typically
- *   CVX) is carried **structurally** (system recognized, value preserved) — a translation is never
+ *   CVX) is carried **structurally** (system recognized, value preserved): a translation is never
  *   invented for it.
  *
  * Deferred and flagged elsewhere, not silently mapped: RXA-10 performer, RXA-17 manufacturer, RXA-27/28
@@ -93,7 +93,7 @@ export const IMMUNIZATION_STATUS_MAP: Readonly<Record<string, string>> = Object.
 export interface ImmunizationGroup {
   /** The `ORC` segment that opened the order (supplies identifiers + a fallback `recorded`), if any. */
   readonly orc: Segment | undefined;
-  /** The `RXA` administration segment — the Immunization's clinical core (vaccine, dose, status). */
+  /** The `RXA` administration segment: the Immunization's clinical core (vaccine, dose, status). */
   readonly rxa: Segment;
   /** The first `RXR` route/site segment beneath the administration, when present. */
   readonly rxr: Segment | undefined;
@@ -109,7 +109,7 @@ interface MutableImmGroup {
  * Group a VXU message's `ORC`/`RXA`/`RXR` segments into immunization order groups. Per the VXU_V04
  * message map an `ORC` opens the order and the following `RXA` (+ `RXR`) is incorporated; an `RXA`
  * with no preceding open group anchors its own group (a bare administration). Only groups that carry
- * an `RXA` are returned — an `ORC` with no `RXA` has no vaccine to immunize and is dropped.
+ * an `RXA` are returned: an `ORC` with no `RXA` has no vaccine to immunize and is dropped.
  *
  * @param msg - The parsed `@cosyte/hl7` message.
  * @example
@@ -196,7 +196,7 @@ function translatedFrom(
  * Build a FHIR `Immunization` resource node from a VXU order group's `RXA` (+ `RXR`, `ORC`). Returns
  * `{ value: undefined }` when RXA-5 (the vaccine code, required 1..1) is absent. `status`,
  * `occurrenceDateTime`, and `patient` are all required 1..1; when any cannot be grounded the resource is
- * left incomplete and later **withheld** by the conservative-emit gate — never guessed.
+ * left incomplete and later **withheld** by the conservative-emit gate, never guessed.
  *
  * @param rxa - The `RXA` `@cosyte/hl7` `Segment` (the administration).
  * @param rxr - The first `RXR` route/site `Segment` beneath the administration, when present.
@@ -320,7 +320,7 @@ export function buildImmunization(
       props.push({ name: "reasonCode", value: list([indication.value]) });
   }
 
-  // RXR-1 → route (HL70162); RXR-2 → site (HL70550) — both value-translated via their license-clean maps.
+  // RXR-1 → route (HL70162); RXR-2 → site (HL70550), both value-translated via their license-clean maps.
   if (rxr !== undefined) {
     const route = translatedFrom(rxr, 1, ROUTE_VALUE_MAP, ctx, issues);
     if (route !== undefined) props.push({ name: "route", value: route });

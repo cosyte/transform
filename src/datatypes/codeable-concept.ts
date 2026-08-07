@@ -1,8 +1,8 @@
 /**
- * CWE / CE → FHIR `CodeableConcept` — the code-fidelity path.
+ * CWE / CE → FHIR `CodeableConcept`: the code-fidelity path.
  *
  * Grounded on the IG datatype ConceptMap **CWE → CodeableConcept**: `CWE.1`→`coding[0].code`,
- * `CWE.2`→`coding[0].display`, `CWE.3`→`coding[0].system` **(indirect — the vocabulary table gives
+ * `CWE.2`→`coding[0].display`, `CWE.3`→`coding[0].system` **(indirect: the vocabulary table gives
  * the actual URI)**, `CWE.7`→`coding[0].version`, the alternate triplet `CWE.4/5/6`→`coding[1]` (+
  * `CWE.8`→`coding[1].version`), and `CWE.9`→`text`. `CE` is the 6-component subset of `CWE` and maps
  * through the same shape.
@@ -28,7 +28,7 @@ import type { ConvertResult } from "../diagnostics/result.js";
 import type { TransformContext } from "../terminology/context.js";
 import { arr, object, text } from "./build.js";
 
-/** The subset of CWE fields a CE also provides — so `toFhirCodeableConcept` accepts both. */
+/** The subset of CWE fields a CE also provides, so `toFhirCodeableConcept` accepts both. */
 export type CodedElement = Pick<
   CWE,
   | "identifier"
@@ -42,7 +42,7 @@ export type CodedElement = Pick<
   | "originalText"
 >;
 
-/** The four inputs to {@link buildCoding} — one CWE/CE coding triplet (code, display, system, version). */
+/** The four inputs to {@link buildCoding}, one CWE/CE coding triplet (code, display, system, version). */
 export interface CodingParts {
   readonly code: string | undefined;
   readonly display: string | undefined;
@@ -94,7 +94,7 @@ export function buildCoding(
       );
     }
   } else if (parts.code !== undefined && parts.code !== "") {
-    // A code with no coding-system context at all — preserved, but unmapped to any FHIR system.
+    // A code with no coding-system context at all: preserved, but unmapped to any FHIR system.
     issues.push(issue(ISSUE_CODES.TRANSFORM_CODE_UNMAPPED, codeLocation, "Coding.code"));
   }
 

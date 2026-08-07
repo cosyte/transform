@@ -1,29 +1,29 @@
 /**
  * The `$translate`-shaped ConceptMap-application engine + the **license-clean** v2-table → FHIR
  * value maps it applies. This is the layer that value-**translates** a coded v2
- * field — not merely carrying its code structurally, but mapping the source table code to the FHIR
+ * field, not merely carrying its code structurally, but mapping the source table code to the FHIR
  * target coding the IG's segment-map `mappedVia` ConceptMap prescribes.
  *
- * **Grounded firsthand on the raw published IG ConceptMaps** (`hl7.fhir.uv.v2mappings`, STU1 —
+ * **Grounded firsthand on the raw published IG ConceptMaps** (`hl7.fhir.uv.v2mappings`, STU1;
  * `ConceptMap-table-*.json`). Each shipped map below cites the exact IG ConceptMap it transcribes and
  * was verified against that resource's JSON (its `group.element[].target[]` rows and its `unmatched`
  * `(unmapped)` group). The engine is **fail-safe by refusal**: a source code the IG map has **no
- * target** for (its `(unmapped)` group) is never coerced to a plausible neighbor — the caller flags it
+ * target** for (its `(unmapped)` group) is never coerced to a plausible neighbor. The caller flags it
  * and preserves the raw coding, or withholds the value, but a target is **never fabricated**.
  *
  * **License posture.** Only maps whose target CodeSystem is **freely redistributable** are
  * shipped here: the HL7 THO v2 tables (`v2-0162`, `v2-0550`, `v2-0277`, `v2-0161`) and HL7 v3
- * (`v3-RouteOfAdministration`) are HL7's own, license-clean. The IG's `*-to-sct` value maps —
- * **RXR-4 method** (`table-hl70165-to-sct`) and **SCH-7 reason** (`table-hl70276-to-sct`) — translate
+ * (`v3-RouteOfAdministration`) are HL7's own, license-clean. The IG's `*-to-sct` value maps,
+ * **RXR-4 method** (`table-hl70165-to-sct`) and **SCH-7 reason** (`table-hl70276-to-sct`), translate
  * **into SNOMED CT**, which is **license-encumbered and is NOT bundled**; those fields stay
  * structurally carried (BYO ConceptMap), never value-translated here (see their message modules).
  *
  * **Additive, never mutating.** A successful translation preserves the raw source coding
  * (its code, display, version, and any `CWE.4/5/6` alternate triplet) and *adds* the derived target
- * coding — recognition never overwrites or discards what the message said; it augments it with the
+ * coding: recognition never overwrites or discards what the message said; it augments it with the
  * IG-mapped equivalent. And it only fires when the field's primary coding is genuinely from the map's
  * **bound source table** (CWE.3 absent, or naming that table): a field that declares a *foreign*
- * coding system (a local `99…`, SNOMED, …) is carried structurally and flagged — its code is **never**
+ * coding system (a local `99…`, SNOMED, …) is carried structurally and flagged, and its code is **never**
  * asserted to be the standard concept just because the string happens to collide with a table code.
  *
  * @packageDocumentation
@@ -75,11 +75,11 @@ export interface CodedValueMap {
   /** The source table's canonical CodeSystem URI (what the raw v2 code is a member of when mapped). */
   readonly sourceSystem: string;
   /**
-   * The CWE.3 (`nameOfCodingSystem`) mnemonics that denote this map's **bound source table** — the
+   * The CWE.3 (`nameOfCodingSystem`) mnemonics that denote this map's **bound source table**: the
    * HL7 forms (`"HL70162"`, `"0162"`, …). Translation applies **only** when the field's primary
    * coding is from the bound table: CWE.3 absent/empty (a positionally-bound bare code) **or** CWE.3 ∈
    * this set. A CWE that declares a **different** coding system (a local `99…`, or SNOMED) is not a
-   * source-table code, so the map is not applied to it — the raw coding is carried structurally + its
+   * source-table code, so the map is not applied to it: the raw coding is carried structurally + its
    * system flagged, never asserted as the standard concept.
    */
   readonly sourceMnemonics: ReadonlySet<string>;
@@ -113,7 +113,7 @@ function identityTargets(system: string, codes: readonly string[]): Record<strin
 // ── The shipped, license-clean value maps (each verified firsthand against its IG ConceptMap) ────
 
 /**
- * **RXR-1 Route** — IG `ConceptMap/table-hl70162-to-v2-0162`. Two IG groups, transcribed verbatim:
+ * **RXR-1 Route**: IG `ConceptMap/table-hl70162-to-v2-0162`. Two IG groups, transcribed verbatim:
  * a 41-code **identity** group (source `v2-0162` → target `v2-0162`, each `equivalent`) and a 6-code
  * **remap** group into `v3-RouteOfAdministration` (`ID→IDINJ`, `IM→IM`, `IV→IVINJ`, `PO→PO`, `SC→SQ`,
  * `TD→TRNSDERM`, each `equivalent`, with the IG target displays). The two source-code sets are
@@ -194,9 +194,9 @@ export const ROUTE_VALUE_MAP: CodedValueMap = valueMap(
 );
 
 /**
- * **RXR-2 Administration Site** — IG `ConceptMap/table-hl70550-to-v2-0550`. A single **identity**
+ * **RXR-2 Administration Site**: IG `ConceptMap/table-hl70550-to-v2-0550`. A single **identity**
  * group of 443 body-part codes (source `v2-0550` → target `v2-0550`, each `equivalent`), transcribed
- * verbatim from the published STU1 ConceptMap — **including** its as-published data-quality artifacts
+ * verbatim from the published STU1 ConceptMap, **including** its as-published data-quality artifacts
  * (`CHESTÂ`, a lone `Â`, `KIDNÂ`, where a stray U+00C2 leaked from the IG's source
  * encoding). They are preserved for source-fidelity; they are inert (a clean `CHEST`/`KIDN` simply
  * falls through to unmapped). A code not in the table is unmapped → raw coding preserved + flagged.
@@ -653,7 +653,7 @@ export const SITE_VALUE_MAP: CodedValueMap = valueMap(
 );
 
 /**
- * **SCH-8 Appointment Type** — IG `ConceptMap/table-hl70277-to-v2-0277`. A single **identity** group
+ * **SCH-8 Appointment Type**: IG `ConceptMap/table-hl70277-to-v2-0277`. A single **identity** group
  * of the three v2-0277 codes (`Normal`, `Tentative`, `Complete` → themselves, each `equivalent`,
  * source and target both `v2-0277`). Any other code is unmapped → raw coding preserved + flagged.
  */
@@ -665,7 +665,7 @@ export const APPOINTMENT_TYPE_VALUE_MAP: CodedValueMap = valueMap(
 );
 
 /**
- * **RXO-9 Allow Substitutions** — IG `ConceptMap/table-hl70161-to-v2-0161`. A single **identity**
+ * **RXO-9 Allow Substitutions**: IG `ConceptMap/table-hl70161-to-v2-0161`. A single **identity**
  * group of the three v2-0161 codes (`N` NOT authorized, `G` generic, `T` therapeutic → themselves,
  * each `equivalent`, source and target both `v2-0161`), the target for
  * `MedicationRequest.substitution.allowedCodeableConcept`. Any other code is unmapped → the
@@ -698,7 +698,7 @@ function codingFrom(
 
 /**
  * The bound-table target for a coded element's **primary** coding, or `undefined` when the map does
- * not faithfully apply — i.e. the primary declares a coding system that is **not** this map's bound
+ * not faithfully apply, i.e. the primary declares a coding system that is **not** this map's bound
  * table (CWE.3 present and not in {@link CodedValueMap.sourceMnemonics}), the primary code is empty, or
  * the code is in the IG map's `(unmapped)` group. Never asserts a standard translation for a foreign
  * coding system, and never fabricates a target.
@@ -722,7 +722,7 @@ export function translateBound(cwe: CodedElement, map: CodedValueMap): CodedTarg
 }
 
 /**
- * Build a FHIR `CodeableConcept` node for a {@link CodedTarget} — the single translated coding, with
+ * Build a FHIR `CodeableConcept` node for a {@link CodedTarget}: the single translated coding, with
  * an optional free-`text`. Used by translate-or-withhold callers (e.g. substitution) that build the
  * CodeableConcept only on a successful translation.
  *
@@ -745,16 +745,16 @@ export function codeableConceptFromTarget(target: CodedTarget, text?: string): F
 
 /**
  * Value-translate a coded v2 element to a FHIR `CodeableConcept` **via** a license-clean
- * {@link CodedValueMap}, **additively** and fail-safe — never mutating or discarding what the message
+ * {@link CodedValueMap}, **additively** and fail-safe, never mutating or discarding what the message
  * said:
  *
- * - **Primary code recognized as a bound-table code** ({@link translateBound} — CWE.3 absent or names
+ * - **Primary code recognized as a bound-table code** ({@link translateBound}: CWE.3 absent or names
  *   the bound table, and the code is in the IG map's mapped group) → the **primary** coding is emitted
  *   in the recognized source-table system (`map.sourceSystem`, carrying `CWE.7` version) and the
  *   **derived** target coding is *appended* when it differs (a remap such as `SC→SQ`); the **alternate
  *   triplet** (`CWE.4/5/6`, via {@link buildCoding}, with its own system resolution + flags) and the
- *   original `CWE.9` text are preserved. No primary unmapped flag — the value was faithfully recognized.
- * - **Otherwise** — the primary declares a **foreign** coding system (not the bound table), the code is
+ *   original `CWE.9` text are preserved. No primary unmapped flag: the value was faithfully recognized.
+ * - **Otherwise**: the primary declares a **foreign** coding system (not the bound table), the code is
  *   empty, or it is in the IG's `(unmapped)` group → this defers entirely to the **structural**
  *   {@link toFhirCodeableConcept}, which preserves the raw coding (and its `CWE.4/5/6` alternate and
  *   `CWE.7` version) and flags it ({@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED} /
@@ -788,18 +788,18 @@ export function toFhirCodeableConceptVia(
   const issues: TransformIssue[] = [];
   const codings: FhirComplex[] = [];
 
-  // Primary coding — recognized as a bound-table code: emitted in the source-table system (no flag),
+  // Primary coding, recognized as a bound-table code: emitted in the source-table system (no flag),
   // carrying the CWE.2 display and CWE.7 version.
   codings.push(
     codingFrom(map.sourceSystem, cwe.identifier as string, cwe.text, cwe.codingSystemVersionId),
   );
 
-  // Derived (translated) target coding — appended only for a remap (target ≠ the primary coding);
+  // Derived (translated) target coding: appended only for a remap (target ≠ the primary coding);
   // for an identity map the primary already IS the target, so no duplicate is added.
   const isIdentity = target.system === map.sourceSystem && target.code === cwe.identifier;
   if (!isIdentity) codings.push(codingFrom(target.system, target.code, target.display));
 
-  // Alternate triplet (CWE.4/5/6 + CWE.8 version) — preserved via the same structural builder the
+  // Alternate triplet (CWE.4/5/6 + CWE.8 version): preserved via the same structural builder the
   // datatype path uses, so its system resolution and fail-safe flags are identical, never dropped.
   const alternate = buildCoding(
     {

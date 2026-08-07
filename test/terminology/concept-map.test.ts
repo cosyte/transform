@@ -38,7 +38,7 @@ function codings(
 }
 const cwe = (parts: Partial<CWE>): CWE => parts;
 
-describe("CodedValueMap.translate — firsthand-grounded IG value maps", () => {
+describe("CodedValueMap.translate: firsthand-grounded IG value maps", () => {
   it("ROUTE (HL70162): remaps the six common routes into v3-RouteOfAdministration", () => {
     expect(ROUTE_VALUE_MAP.translate("IM")).toEqual({
       system: V3_ROUTE_OF_ADMINISTRATION_SYSTEM,
@@ -78,7 +78,7 @@ describe("CodedValueMap.translate — firsthand-grounded IG value maps", () => {
   });
 });
 
-describe("toFhirCodeableConceptVia — additive, fail-safe application", () => {
+describe("toFhirCodeableConceptVia: additive, fail-safe application", () => {
   it("a remap preserves the raw source coding and ADDS the derived target coding", () => {
     const { value, issues } = toFhirCodeableConceptVia(cwe({ identifier: "IM" }), ROUTE_VALUE_MAP);
     expect(issues).toEqual([]);
@@ -127,8 +127,8 @@ describe("toFhirCodeableConceptVia — additive, fail-safe application", () => {
   });
 });
 
-describe("toFhirCodeableConceptVia — the bound-table (CWE.3) guard + additive preservation", () => {
-  it("does NOT translate a code that declares a FOREIGN coding system (CWE.3) — carries + flags it", () => {
+describe("toFhirCodeableConceptVia: the bound-table (CWE.3) guard + additive preservation", () => {
+  it("does NOT translate a code that declares a FOREIGN coding system (CWE.3): carries + flags it", () => {
     // `IM` in a local system is NOT the standard intramuscular route; never assert v3-RouteOfAdministration.
     const { value, issues } = toFhirCodeableConceptVia(
       cwe({ identifier: "IM", nameOfCodingSystem: "99LOCAL" }),

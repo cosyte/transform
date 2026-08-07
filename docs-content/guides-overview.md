@@ -13,8 +13,8 @@ runnable example passes the doc/code-agreement check.
 ## Resolve an assigning authority
 
 A patient identifier's assigning authority (HD) is resolved through a **NamingSystem registry**. The
-registry auto-derives a system URI only for the two unambiguous cases — a valid OID with
-`universalIdType: "ISO"` (`urn:oid:…`) and a valid UUID (`urn:uuid:…`) — and otherwise consults the
+registry auto-derives a system URI only for the two unambiguous cases: a valid OID with
+`universalIdType: "ISO"` (`urn:oid:…`) and a valid UUID (`urn:uuid:…`), and otherwise consults the
 entries you seed. A bare namespace mnemonic (HD.1) is **never** turned into a URI on its own.
 
 ```ts runnable
@@ -30,7 +30,7 @@ registry.resolveAssigningAuthority({ namespaceId: "HOSPMRN" }); // => "urn:oid:1
 ## Supply a sender's timezone for naked timestamps
 
 By default a v2 timestamp with a time-of-day but no offset is reduced to date precision (FHIR forbids
-time without a zone). If you *know* the sending system's offset, assert it — the value is emitted with
+time without a zone). If you *know* the sending system's offset, assert it, and the value is emitted with
 that offset and flagged as sender-asserted, never inferred:
 
 ```ts

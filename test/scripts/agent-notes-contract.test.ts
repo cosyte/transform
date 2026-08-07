@@ -1,19 +1,19 @@
 /**
- * Unit tests for scripts/check-agent-notes.ts — the agent-instruction contract gate.
+ * Unit tests for scripts/check-agent-notes.ts: the agent-instruction contract gate.
  *
  * WHAT THIS SUITE IS FOR. A contract gate over prose is the exact shape that prints green
  * over a corpus it never opened, so "it exits 0 on this repo" is worth almost nothing on
  * its own. Every rule below is therefore proved by MUTATION: a throwaway repo that the
- * gate must refuse, and — for the rule most likely to rot silently — the same corpus
+ * gate must refuse, and, for the rule most likely to rot silently, the same corpus
  * repaired, which the gate must then accept. Red before, green after, one edit apart.
  *
  * Fixtures are built into throwaway git repos under `os.tmpdir()` and the gate is spawned
  * with `cwd` pointing at them, because the gate roots everything at `process.cwd()`. NEVER
- * write a fixture into the committed corpus to test this — the same rule the PHI-scanner
+ * write a fixture into the committed corpus to test this: the same rule the PHI-scanner
  * suite works under, for the same reason.
  *
- * The gate is invoked via spawnSync (array args, no shell) so the full CLI path — argv,
- * exit code, stderr — is exercised rather than an exported function that CI never calls.
+ * The gate is invoked via spawnSync (array args, no shell) so the full CLI path (argv,
+ * exit code, stderr) is exercised rather than an exported function that CI never calls.
  *
  * SECURITY: every subprocess call here uses spawnSync with array args. No exec, no
  * shell-form.
@@ -77,7 +77,7 @@ function healthy(): void {
   put(
     "CLAUDE.md",
     [
-      "# @cosyte/transform — Project Guide for Claude",
+      "# @cosyte/transform: Project Guide for Claude",
       "",
       "The long form lives in [`documentation/agent-notes.md`](documentation/agent-notes.md).",
       "",
@@ -96,7 +96,7 @@ function healthy(): void {
   put(
     "documentation/agent-notes.md",
     [
-      "# @cosyte/transform — agent notes",
+      "# @cosyte/transform: agent notes",
       "",
       "The long-form narrative.",
       "",
@@ -113,7 +113,7 @@ function healthy(): void {
   put("src/index.ts", "export const x = 1;\n");
 }
 
-describe("scripts/check-agent-notes.ts — the healthy corpus", () => {
+describe("scripts/check-agent-notes.ts: the healthy corpus", () => {
   it("accepts a corpus that satisfies the contract", () => {
     healthy();
     const r = runGate(dir);
@@ -130,7 +130,7 @@ describe("scripts/check-agent-notes.ts — the healthy corpus", () => {
   });
 });
 
-describe("R1 — existence", () => {
+describe("R1: existence", () => {
   it("REFUSES (exit 2) when documentation/agent-notes.md is absent", () => {
     healthy();
     rmSync(join(dir, "documentation", "agent-notes.md"));
@@ -165,13 +165,13 @@ describe("R1 — existence", () => {
   });
 });
 
-describe("R2 — the negative control against the WRONG package", () => {
+describe("R2: the negative control against the WRONG package", () => {
   it("refuses instructions whose title names a different package", () => {
     healthy();
     put(
       "documentation/agent-notes.md",
       [
-        "# @cosyte/astm — agent notes",
+        "# @cosyte/astm: agent notes",
         "",
         "The long-form narrative.",
         "",
@@ -194,8 +194,8 @@ describe("R2 — the negative control against the WRONG package", () => {
   it("refuses an always-read CLAUDE.md retitled to another package", () => {
     healthy();
     const claude = readFileSync(join(dir, "CLAUDE.md"), "utf8").replace(
-      "# @cosyte/transform — Project Guide for Claude",
-      "# @cosyte/ncpdp — Project Guide for Claude",
+      "# @cosyte/transform: Project Guide for Claude",
+      "# @cosyte/ncpdp: Project Guide for Claude",
     );
     put("CLAUDE.md", claude);
     const r = runGate(dir);
@@ -212,13 +212,13 @@ describe("R2 — the negative control against the WRONG package", () => {
   });
 });
 
-describe("R3 — a declared section is empty", () => {
+describe("R3: a declared section is empty", () => {
   it("refuses a heading in agent-notes.md with no body", () => {
     healthy();
     put(
       "documentation/agent-notes.md",
       [
-        "# @cosyte/transform — agent notes",
+        "# @cosyte/transform: agent notes",
         "",
         "The long-form narrative.",
         "",
@@ -253,7 +253,7 @@ describe("R3 — a declared section is empty", () => {
     put(
       "documentation/agent-notes.md",
       [
-        "# @cosyte/transform — agent notes",
+        "# @cosyte/transform: agent notes",
         "",
         "The long-form narrative.",
         "",
@@ -276,7 +276,7 @@ describe("R3 — a declared section is empty", () => {
   });
 });
 
-describe("R4 — a pointer names an anchor that does not resolve", () => {
+describe("R4: a pointer names an anchor that does not resolve", () => {
   it("is RED BEFORE and GREEN AFTER a one-line repair", () => {
     healthy();
 
@@ -326,12 +326,12 @@ describe("R4 — a pointer names an anchor that does not resolve", () => {
     expect(r.stderr).toContain("names a file that is not tracked here");
   });
 
-  it("slugs a heading the way GitHub does — backticks, commas, parens and EN DASH dropped", () => {
+  it("slugs a heading the way GitHub does: backticks, commas, parens and EN DASH dropped", () => {
     healthy();
     put(
       "documentation/agent-notes.md",
       [
-        "# @cosyte/transform — agent notes",
+        "# @cosyte/transform: agent notes",
         "",
         "The long-form narrative.",
         "",
@@ -356,7 +356,7 @@ describe("R4 — a pointer names an anchor that does not resolve", () => {
   });
 });
 
-describe("R5 — an orphan section in the archive", () => {
+describe("R5: an orphan section in the archive", () => {
   it("refuses narrative that nothing in CLAUDE.md points at", () => {
     healthy();
     const notes = `${readFileSync(join(dir, "documentation", "agent-notes.md"), "utf8")}\n## A third guardrail\n\nRelocated here, with nothing left pointing at it.\n`;
@@ -381,7 +381,7 @@ describe("R5 — an orphan section in the archive", () => {
   });
 });
 
-describe("R6 — a file pointer that resolves to nothing", () => {
+describe("R6: a file pointer that resolves to nothing", () => {
   it("refuses a pointer into a directory that does not exist AT ALL", () => {
     // This fixture repo tracks no `scripts/` at all, which is the case a recogniser learned
     // purely from `git ls-files` cannot see: the deletion empties the very index the
@@ -405,7 +405,7 @@ describe("R6 — a file pointer that resolves to nothing", () => {
     expect(r.stderr).toContain("src/gone.ts");
   });
 
-  it("does NOT red on illustrative paths inside agent-notes.md — R6 is CLAUDE.md-only", () => {
+  it("does NOT red on illustrative paths inside agent-notes.md: R6 is CLAUDE.md-only", () => {
     healthy();
     // These three are written into throwaway repos by the PHI-scanner suite and must never
     // exist in the committed corpus. A gate that demanded they resolve would push a worker
@@ -440,21 +440,30 @@ describe("R6 — a file pointer that resolves to nothing", () => {
   });
 });
 
-describe("R4 — GitHub's slug, measured against the punctuation this repo actually writes", () => {
+describe("R4: GitHub's slug, measured against the punctuation this repo actually writes", () => {
   // A first version of slug() collapsed runs of spaces to ONE hyphen. GitHub does not: each
-  // space becomes its own hyphen, so a heading with a spaced em dash produces a DOUBLE hyphen.
-  // A refuter measured both harms against GitHub's own renderer -- a dead pointer passing, and
-  // a working pointer reddening -- and this repo's house punctuation is exactly that style.
-  const emDashCorpus = (anchorInClaude: string): void => {
+  // space becomes its own hyphen, so a heading whose dropped mark has a space on either side
+  // produces a DOUBLE hyphen. A refuter measured both harms against GitHub's own renderer, a
+  // dead pointer passing and a working pointer reddening.
+  //
+  // THE MARK HERE IS AN EN DASH, AND THE SWAP DOES NOT WEAKEN THE TEST. This corpus used a
+  // spaced EM dash until the brand sweep, which banned that character from every tracked file
+  // including this one. `slug()` keeps only letters, numbers, spaces, `_` and `-`, so an en
+  // dash is dropped exactly like an em dash was and the two surrounding spaces still survive
+  // as two hyphens: the behaviour under test is byte-identical. The en dash is punctuation
+  // this repo does still write (`Phases 1-6` is spelled with one), so the describe title above
+  // stays true. Do not "simplify" the fixture to a heading with no dropped mark at all: the
+  // double hyphen is the entire point.
+  const spacedDroppedMarkCorpus = (anchorInClaude: string): void => {
     put("package.json", PKG);
     put(
       "documentation/agent-notes.md",
       [
-        "# @cosyte/transform — agent notes",
+        "# @cosyte/transform: agent notes",
         "",
         "Narrative.",
         "",
-        "## Branch protection — and the limits of this claim",
+        "## Branch protection – and the limits of this claim",
         "",
         "It was measured.",
         "",
@@ -463,7 +472,7 @@ describe("R4 — GitHub's slug, measured against the punctuation this repo actua
     put(
       "CLAUDE.md",
       [
-        "# @cosyte/transform — Project Guide for Claude",
+        "# @cosyte/transform: Project Guide for Claude",
         "",
         "## Status",
         "",
@@ -474,7 +483,7 @@ describe("R4 — GitHub's slug, measured against the punctuation this repo actua
   };
 
   it("accepts the DOUBLE-hyphen anchor GitHub actually emits", () => {
-    emDashCorpus("branch-protection--and-the-limits-of-this-claim");
+    spacedDroppedMarkCorpus("branch-protection--and-the-limits-of-this-claim");
     const r = runGate(dir);
     expect(r.stderr).toBe("");
     expect(r.status).toBe(0);
@@ -489,7 +498,7 @@ describe("R4 — GitHub's slug, measured against the punctuation this repo actua
     put(
       "documentation/agent-notes.md",
       [
-        "# @cosyte/transform — agent notes",
+        "# @cosyte/transform: agent notes",
         "",
         "Narrative.",
         "",
@@ -502,7 +511,7 @@ describe("R4 — GitHub's slug, measured against the punctuation this repo actua
     put(
       "CLAUDE.md",
       [
-        "# @cosyte/transform — Project Guide for Claude",
+        "# @cosyte/transform: Project Guide for Claude",
         "",
         "## Status",
         "",
@@ -516,14 +525,14 @@ describe("R4 — GitHub's slug, measured against the punctuation this repo actua
   });
 
   it("refuses the single-hyphen anchor, which is dead when clicked", () => {
-    emDashCorpus("branch-protection-and-the-limits-of-this-claim");
+    spacedDroppedMarkCorpus("branch-protection-and-the-limits-of-this-claim");
     const r = runGate(dir);
     expect(r.status).toBe(1);
     expect(r.stderr).toContain("[R4]");
   });
 });
 
-describe("R3 — a section gutted to a horizontal rule is empty", () => {
+describe("R3: a section gutted to a horizontal rule is empty", () => {
   it("does not count a thematic break as a body", () => {
     healthy();
     const notes = readFileSync(join(dir, "documentation", "agent-notes.md"), "utf8").replace(
@@ -538,7 +547,7 @@ describe("R3 — a section gutted to a horizontal rule is empty", () => {
   });
 });
 
-describe("R6 — the three ways an author writes a pointer", () => {
+describe("R6: the three ways an author writes a pointer", () => {
   it("catches a path written BARE in prose, not only in backticks or a link", () => {
     healthy();
     const claude = `${readFileSync(join(dir, "CLAUDE.md"), "utf8")}\nThe wrapper lives at scripts/attw.mjs and the config at src/gone/nowhere.ts.\n`;
@@ -569,7 +578,7 @@ describe("R6 — the three ways an author writes a pointer", () => {
     expect(r.status).toBe(0);
   });
 
-  it("exempts ONLY what is on the list — the list is one entry, and that is measured", () => {
+  it("exempts ONLY what is on the list: the list is one entry, and that is measured", () => {
     // `coverage` and `node_modules` were listed too until a refuter measured both dead:
     // emptying the map reds on `dist` alone, because CLAUDE.md names neither of the others.
     // An exemption nothing exercises is a claim nobody checks, so they were deleted, and this
@@ -621,7 +630,7 @@ describe("the reconciliation is REACHABLE, not decorative", () => {
   }
 });
 
-describe("R7 — the external allowlist cannot rot into a hiding place", () => {
+describe("R7: the external allowlist cannot rot into a hiding place", () => {
   it("refuses when a path declared as the meta-repo's starts resolving in-repo", () => {
     healthy();
     // `documentation/conventions.md` is exempted because it lives in the meta-repo. If a copy
@@ -634,10 +643,10 @@ describe("R7 — the external allowlist cannot rot into a hiding place", () => {
   });
 });
 
-describe("EXISTENCE IS NOT OBSERVATION — the control that reds when the gate is pointed at nothing", () => {
+describe("EXISTENCE IS NOT OBSERVATION: the control that reds when the gate is pointed at nothing", () => {
   it("REFUSES (exit 2) in an initialised repo with nothing tracked", () => {
     // The failure this ecosystem has hit hardest: a gate whose declared root had never
-    // existed, so it printed clean on every run it ever made. A count cannot detect it — a
+    // existed, so it printed clean on every run it ever made. A count cannot detect it: a
     // count counts the roots that DID exist. Reconciling against `git ls-files` can.
     const r = runGate(dir);
     expect(r.status).toBe(2);

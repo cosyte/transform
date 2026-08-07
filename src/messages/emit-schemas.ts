@@ -6,7 +6,7 @@
  * `@cosyte/fhir.validateResource` models only `Patient` out of the box; every other resource type
  * degrades to a base-elements schema and validates as `valid` regardless of its own required
  * elements. These schemas restore the R4 required (`min: 1`) elements for the types we produce, and
- * the gate applies them in **lenient** mode — so a *missing required* element is an error (the
+ * the gate applies them in **lenient** mode, so a *missing required* element is an error (the
  * resource is withheld), while the resource's other (unmodeled-here) elements are warnings, never a
  * false rejection. Grounded on the FHIR R4 resource definitions:
  *
@@ -16,16 +16,16 @@
  *   without its mandatory event.
  * - **RelatedPerson**: `patient` (1..1 Reference) is required (defence-in-depth; the assembler only
  *   builds a RelatedPerson when a Patient exists to anchor it).
- * - **DiagnosticReport**: `status` (1..1 code) and `code` (1..1 CodeableConcept) are both required — so
+ * - **DiagnosticReport**: `status` (1..1 code) and `code` (1..1 CodeableConcept) are both required, so
  *   a report from an unmapped/absent OBR-25 result status (no `status`) is withheld, never guessed.
- * - **Observation**: `status` (1..1 code) and `code` (1..1 CodeableConcept) are both required — so a
+ * - **Observation**: `status` (1..1 code) and `code` (1..1 CodeableConcept) are both required, so a
  *   result from an unmapped/absent OBX-11 status (no `status`) is withheld, never emitted as `final`.
  * - **ServiceRequest**: `status` (1..1 code), `intent` (1..1 code), and `subject` (1..1 Reference) are
- *   all required — so an order whose `status` could not be grounded via HL70119 (or whose Patient was
+ *   all required, so an order whose `status` could not be grounded via HL70119 (or whose Patient was
  *   withheld) is withheld, never emitted with a guessed status or a dangling subject.
  * - **MedicationRequest**: `status` (1..1 code), `intent` (1..1 code), `subject` (1..1 Reference), and
  *   `medication[x]` (1..1) are all required; the assembler only ever emits the `medicationCodeableConcept`
- *   form, so it is required here — a pharmacy order with no give code (no `medication[x]`) is withheld.
+ *   form, so it is required here, and a pharmacy order with no give code (no `medication[x]`) is withheld.
  *
  * @packageDocumentation
  */
@@ -86,7 +86,7 @@ export const EMIT_SCHEMAS: readonly ResourceSchema[] = Object.freeze([
   },
   {
     // Immunization: status (1..1 code), vaccineCode (1..1 CodeableConcept), patient (1..1 Reference), and
-    // occurrence[x] (1..1) are all required — the assembler only ever emits the occurrenceDateTime form, so
+    // occurrence[x] (1..1) are all required, and the assembler only ever emits the occurrenceDateTime form, so
     // it is required here. An RXA with no groundable status/vaccine/occurrence, or no bundle Patient, is
     // withheld rather than emitted incomplete.
     type: "Immunization",
@@ -98,7 +98,7 @@ export const EMIT_SCHEMAS: readonly ResourceSchema[] = Object.freeze([
     },
   },
   {
-    // Appointment: status (1..1 code) and participant (1..* BackboneElement) are both required — an
+    // Appointment: status (1..1 code) and participant (1..* BackboneElement) are both required, so an
     // Appointment whose SCH-25 status could not be grounded via HL70278, or that has no resolvable Patient
     // participant, is withheld rather than emitted with a guessed status or no participant.
     type: "Appointment",
@@ -108,7 +108,7 @@ export const EMIT_SCHEMAS: readonly ResourceSchema[] = Object.freeze([
     },
   },
   {
-    // DocumentReference: status (1..1 code) and content (1..* BackboneElement) are both required — a
+    // DocumentReference: status (1..1 code) and content (1..* BackboneElement) are both required, so a
     // reference whose TXA-19 is not "AV" (no groundable status), or that carries no document body from its
     // OBX segments, is withheld rather than emitted with a guessed status or referencing nothing.
     type: "DocumentReference",

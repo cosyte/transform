@@ -1,19 +1,19 @@
 /**
- * Public entry point for `@cosyte/transform` — the HL7 v2 → FHIR R4 transformation library.
+ * Public entry point for `@cosyte/transform`: the HL7 v2 → FHIR R4 transformation library.
  *
  * `@cosyte/transform` is **not** a parser; it is a **consumer** one tier above the parser suite. It
  * takes already-parsed `@cosyte/hl7` composites and produces validated `@cosyte/fhir` model nodes,
  * grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`,
  * STU Edition 1). Its whole promise is narrow and honest: **IG-grounded, fail-safe transformation
- * with typed, value-free diagnostics — never a confident wrong FHIR value.**
+ * with typed, value-free diagnostics, never a confident wrong FHIR value.**
  *
  * This module ships the six safety-critical datatype converters, the immutable
  * `OperationOutcome`-shaped diagnostic channel and the NamingSystem resolver they consult,
- * the message-level assembly — HL7 v2 **ADT → FHIR Patient + Encounter**, the
+ * the message-level assembly (HL7 v2 **ADT → FHIR Patient + Encounter**, the
  * **ORU^R01 → DiagnosticReport + Observation** results graph, the order-entry graph
  * (**ORM_O01 / OML_O21 → ServiceRequest** and **RXO → MedicationRequest**), and the thin IG
  * singles (**VXU_V04 → Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference**),
- * all through `toFhir(msg)` — and the **terminology value-translation** layer: a
+ * all through `toFhir(msg)`), and the **terminology value-translation** layer: a
  * `$translate`-shaped {@link toFhirCodeableConceptVia} engine applying the license-clean IG value
  * ConceptMaps to the previously structural-only coded fields (route/site, appointment type, order
  * priority, substitution). Terminology **depth beyond these maps**, profiles, and the reverse
@@ -83,7 +83,7 @@ export { DIAGNOSTIC_REPORT_STATUS_MAP } from "./messages/diagnostic-report.js";
 // ── Message-level assembly: HL7 v2 ORM/OML → ServiceRequest, RXO → MedicationRequest (Phase 4) ────
 export { REQUEST_STATUS_MAP } from "./messages/service-request.js";
 
-// ── Message-level assembly: the thin IG singles — VXU/SIU/MDM (Phase 5) ──────────────────────────
+// ── Message-level assembly: the thin IG singles, VXU/SIU/MDM (Phase 5) ──────────────────────────
 export {
   IG_MAPPED_IMMUNIZATION_TRIGGERS,
   IG_MAPPED_APPOINTMENT_TRIGGERS,

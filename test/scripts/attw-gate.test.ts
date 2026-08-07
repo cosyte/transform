@@ -1,12 +1,12 @@
 /**
- * Tests for scripts/attw.mjs — the wrapper that makes the `attw` publish gate
+ * Tests for scripts/attw.mjs: the wrapper that makes the `attw` publish gate
  * report its own failure.
  *
  * WHAT THESE PIN, AND WHY EACH ONE IS HERE:
  *
  *  1. THE UPSTREAM BEHAVIOUR THE WRAPPER EXISTS FOR. `attw` prints "This package
  *     does not contain types." and exits **0**. If a future `attw` upgrade fixes
- *     that exit code or rewords the sentence, this test reds — which is the point.
+ *     that exit code or rewords the sentence, this test reds, which is the point.
  *     A guard that silently stops matching is worse than no guard, and this is the
  *     one net in `attw.mjs` that depends on a string.
  *  2. That the wrapper turns that exit 0 into a failure.
@@ -18,15 +18,15 @@
  *     wrapper is transparent: same exit status as `attw` itself, and green. A gate
  *     that only ever fails is not a gate, and a false red here would cost every
  *     later run an hour.
- *  5. THE GATE'S MOST BASIC OBLIGATION — that a real `attw` failure still fails.
+ *  5. THE GATE'S MOST BASIC OBLIGATION: that a real `attw` failure still fails.
  *     Without this, every other test here would pass on a wrapper that swallowed
  *     attw's own exit status, because net 2 reds the untyped fixture regardless.
  *  6. The refusals that keep net 2 readable. Each of these argument and config
  *     routes was measured against this repo's own `attw` binary to make the untyped
- *     sentence unreadable and hand back exit 0 — the exact false green this file
+ *     sentence unreadable and hand back exit 0: the exact false green this file
  *     exists to close.
  *
- * The fixtures are minimal throwaway packages in a temp dir — nothing about this
+ * The fixtures are minimal throwaway packages in a temp dir, nothing about this
  * repo's own build, so the test does not need one and cannot race one. That also
  * keeps it clear of `@cosyte/transform`'s unpublished `@cosyte/fhir` peer
  * (`FHIR-NPM-NAME`): no fixture depends on it, so nothing here is gated on a
@@ -76,11 +76,11 @@ let root: string;
 let typesNotPacked: string;
 /** A package whose `package.json` points at a `dist/` that was never built. */
 let noBuild: string;
-/** A well-formed dual ESM/CJS package — the negative control. */
+/** A well-formed dual ESM/CJS package: the negative control. */
 let wellFormed: string;
 /** A package with a real attw problem: `require` resolves to ESM. */
 let attwFails: string;
-/** Declarations present, JS entry point missing — attw itself is green on this. */
+/** Declarations present, JS entry point missing: attw itself is green on this. */
 let jsMissing: string;
 
 function writePkg(dir: string, pkg: Record<string, unknown>, files: Record<string, string>): void {
@@ -105,8 +105,8 @@ beforeAll(() => {
     { "index.js": "module.exports = {};\n", "index.d.ts": "export declare const a: number;\n" },
   );
 
-  // Mirrors this package's own shape — a dual ESM/CJS `exports` map pointing into
-  // a `dist/` — so the preflight is exercised on the manifest layout it actually
+  // Mirrors this package's own shape: a dual ESM/CJS `exports` map pointing into
+  // a `dist/`, so the preflight is exercised on the manifest layout it actually
   // guards here, not on a simpler one.
   noBuild = join(root, "no-build");
   writePkg(
@@ -308,7 +308,7 @@ describe("the refusals that keep the post-check readable", () => {
           ".attw.json": JSON.stringify({ quiet: true }),
         },
       );
-      // Bare attw takes the config and goes silent — exit 0 over an untyped pack.
+      // Bare attw takes the config and goes silent: exit 0 over an untyped pack.
       const bare = runAttw(dir);
       expect(bare.code).toBe(0);
       expect(bare.out).not.toContain(UNTYPED);

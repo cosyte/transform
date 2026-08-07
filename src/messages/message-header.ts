@@ -1,5 +1,5 @@
 /**
- * MSH → FHIR `MessageHeader` — grounded on the IG **Segment MSH to MessageHeader** ConceptMap
+ * MSH → FHIR `MessageHeader`, grounded on the IG **Segment MSH to MessageHeader** ConceptMap
  * (`hl7.fhir.uv.v2mappings`, STU1), scoped to the R4 elements that can be produced faithfully:
  *
  * | MSH field | FHIR target | note |
@@ -9,7 +9,7 @@
  *
  * R4 requires `MessageHeader.source.endpoint` (1..1, a URL). An MSH-3 application *namespace* is not a
  * URL, so rather than fabricate one, the endpoint is emitted with a `data-absent-reason` extension
- * (value `unknown`) and flagged {@link ISSUE_CODES.TRANSFORM_REQUIRED_ELEMENT_UNKNOWN} — the
+ * (value `unknown`) and flagged {@link ISSUE_CODES.TRANSFORM_REQUIRED_ELEMENT_UNKNOWN}: the
  * spec-clean way to satisfy a required primitive whose value is genuinely unknown. `MessageHeader.focus`
  * wires the header to the message's focal resources (Patient, Encounter). MSH-10 (message control id)
  * is carried on `Bundle.identifier` by the assembler (R4 `MessageHeader` has no identifier element);
@@ -26,7 +26,7 @@ import { issue, type TransformIssue } from "../diagnostics/issue.js";
 import type { ConvertResult } from "../diagnostics/result.js";
 import { coding, dataAbsent, reference } from "./reference.js";
 
-/** HL7 v2 Table 0003 (Event Type) canonical system — the `MessageHeader.eventCoding` code system. */
+/** HL7 v2 Table 0003 (Event Type) canonical system: the `MessageHeader.eventCoding` code system. */
 const V2_0003_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0003";
 
 /**

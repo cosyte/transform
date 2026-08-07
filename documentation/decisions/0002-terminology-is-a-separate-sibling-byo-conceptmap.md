@@ -1,4 +1,4 @@
-# 0002 — Terminology is a separate `@cosyte/terminology` sibling; translation is BYO-ConceptMap
+# 0002: Terminology is a separate `@cosyte/terminology` sibling; translation is BYO-ConceptMap
 
 - **Status:** Accepted (2026-07-21)
 - **Scope:** `@cosyte/transform`
@@ -20,8 +20,8 @@ licensing and architecture questions bite:
 - **FHIR already isolates terminology as a swappable service** (`$translate`/`$validate-code`/
   `$expand` over a `ConceptMap`), separate from transformation.
 
-The open question (roadmap §10 Q7): does the terminology **machinery** — the NamingSystem resolver,
-the `$translate`-shaped ConceptMap engine, the UCUM validator — live inside `transform`, or in its own
+The open question (roadmap §10 Q7): does the terminology **machinery** (the NamingSystem resolver,
+the `$translate`-shaped ConceptMap engine, the UCUM validator) live inside `transform`, or in its own
 package? And whichever way, what do we ship as **content**?
 
 ## Decision
@@ -32,9 +32,9 @@ package? And whichever way, what do we ship as **content**?
    FHIR `ConceptMap`. We ship only **license-clean** maps (HL7's own v2→FHIR tables, THO NamingSystems,
    LOINC/RxNorm-core/ICD-10-CM/UCUM under their terms); the **encumbered** maps (into SNOMED/CPT, or a
    site's local codes) are supplied by the consumer, who holds the licenses. On an unmapped code the
-   fail-safe holds — preserved + flagged, never coerced (roadmap §4.3).
+   fail-safe holds: preserved + flagged, never coerced (roadmap §4.3).
 
-2. **The terminology *machinery* is a separate sibling, `@cosyte/terminology`** — a planned package
+2. **The terminology *machinery* is a separate sibling, `@cosyte/terminology`**: a planned package
    that will own the NamingSystem resolver, the `$translate`-shaped ConceptMap engine, and UCUM
    validation, mirroring the FHIR architecture that keeps terminology a swappable service. `transform`
    **consumes** it as a sibling (Phase 6), and **does not build it here.** Whether `@cosyte/terminology`

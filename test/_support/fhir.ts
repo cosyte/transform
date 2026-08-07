@@ -1,6 +1,6 @@
 /**
  * Test support: embed a produced datatype node into a host FHIR resource and run it through
- * `@cosyte/fhir`'s `validateResource` — the transform's **emit gate**. A produced value that would
+ * `@cosyte/fhir`'s `validateResource`, the transform's **emit gate**. A produced value that would
  * be structurally invalid FHIR must surface as a validation error here, never ship silently.
  *
  * The host is a small custom-schema "TransformProbe" resource carrying one slot per datatype, so the

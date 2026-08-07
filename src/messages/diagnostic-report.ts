@@ -1,5 +1,5 @@
 /**
- * OBR → FHIR `DiagnosticReport` — the ORU results-report anchor, grounded firsthand
+ * OBR → FHIR `DiagnosticReport`, the ORU results-report anchor, grounded firsthand
  * on the IG **Segment OBR to DiagnosticReport** ConceptMap and its **Table HL70123 to Diagnostic Report
  * Status** ConceptMap (`hl7.fhir.uv.v2mappings`, STU1;
  * `ConceptMap-segment-obr-to-diagnosticreport.html`,
@@ -11,15 +11,15 @@
  * | OBR-3 Filler Order Number | `identifier` (type `FILL`) | EI.1 → `Identifier.value`, v2-0203 type |
  * | OBR-4 Universal Service Identifier (CWE) | `DiagnosticReport.code` | {@link toFhirCodeableConcept} |
  * | OBR-7 Observation Date/Time | `effectiveDateTime` / `effectivePeriod.start` | {@link toFhirDateTime} |
- * | OBR-8 Observation End Date/Time | `effectivePeriod.end` (start moves to the period when valued) | — |
+ * | OBR-8 Observation End Date/Time | `effectivePeriod.end` (start moves to the period when valued) | {@link toFhirDateTime} |
  * | OBR-22 Results Rpt/Status Chng Date/Time | `DiagnosticReport.issued` (an `instant`) | {@link toFhirDateTime} |
  * | OBR-24 Diagnostic Serv Sect ID | `DiagnosticReport.category` | v2-0074 coding |
  * | OBR-25 Result Status | `DiagnosticReport.status` | {@link DIAGNOSTIC_REPORT_STATUS_MAP} (HL70123) |
  * | (OBX children) | `DiagnosticReport.result` | reference wiring from the assembler |
  *
  * **Fail-safes.** `DiagnosticReport.status` is required (R4 1..1) and the IG itself notes an unvalued
- * OBR-25 is an error; so an absent OBR-25 — or an OBR-25 code the HL70123 map does not carry (`A`, `M`,
- * `N`, `Y`, `Z`) — leaves `status` absent + flagged {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}, and the
+ * OBR-25 is an error; so an absent OBR-25, or an OBR-25 code the HL70123 map does not carry (`A`, `M`,
+ * `N`, `Y`, `Z`), leaves `status` absent + flagged {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}, and the
  * required-`status` emit gate withholds the report rather than emitting an invalid one or guessing
  * `final`. `OBR-25 = C`→`corrected` / `X`→`cancelled` are modelled exactly. OBR-22 becomes `issued`
  * only when it is a fully-zoned instant; a date-only/naked OBR-22 is dropped + flagged (never a
@@ -40,14 +40,14 @@ import type { ConvertResult } from "../diagnostics/result.js";
 import type { TransformContext } from "../terminology/context.js";
 import { orderIdentifier, reference } from "./reference.js";
 
-/** The HL7 v2 Table 0074 (Diagnostic Service Section ID) canonical system — `DiagnosticReport.category`. */
+/** The HL7 v2 Table 0074 (Diagnostic Service Section ID) canonical system: `DiagnosticReport.category`. */
 const V2_0074_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0074";
 
 /**
  * HL7 v2 Table 0123 (Result Status) → FHIR `diagnostic-report-status` (`DiagnosticReport.status`), per
  * the IG **Table HL70123 [Queries] to Diagnostic Report Status** ConceptMap (each `is equivalent to`).
  * Only these **eight** source codes carry a target; the IG leaves `A`, `M`, `N`, `Y`, `Z` unmapped
- * (verified firsthand against the published v1.0.0 ConceptMap — `N` "Procedure completed, results
+ * (verified firsthand against the published v1.0.0 ConceptMap: `N` "Procedure completed, results
  * pending" is in the `(not mapped)` group, and the map declares no `unmapped` default), so an OBR-25
  * with one of them leaves `status` absent + flagged and the report is withheld. In particular a
  * results-**pending** `N` is **never** emitted as the post-final `appended`. **`C`→`corrected` and
@@ -68,7 +68,7 @@ export const DIAGNOSTIC_REPORT_STATUS_MAP: Readonly<Record<string, string>> = Ob
  * Build a FHIR `DiagnosticReport` resource node from one parsed HL7 v2 OBR segment and the fullUrls of
  * the `Observation`s produced under it. Returns `{ value: undefined }` when OBR-4 (the report `code`,
  * required 1..1) is absent. `DiagnosticReport.status` is left absent (and the report withheld by the
- * emit gate) when OBR-25 is missing or has no HL70123 target — never guessed.
+ * emit gate) when OBR-25 is missing or has no HL70123 target, never guessed.
  *
  * @param obr - The OBR `@cosyte/hl7` `Segment`.
  * @param resultFullUrls - The `urn:uuid:` fullUrls of this report's emitted `Observation`s → `.result`.

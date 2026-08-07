@@ -7,11 +7,11 @@
  * - `XAD.7 IN {BA, BI, C, B, H, O}` → `Address.use` (via the IG **HL70190 → address-use** map);
  * - `XAD.7 IN {M, SH}` → `Address.type` (via the IG **HL70190 → address-type** map);
  * - a vacation address (`V` in Table 0190; the datatype map references `HV`) → an ISO-21090 extension
- *   the IG defines — **not emitted**, and flagged rather than invented;
+ *   the IG defines, **not emitted**, and flagged rather than invented;
  * - any other code → `use`/`type` left absent, flagged {@link ISSUE_CODES.TRANSFORM_ADDRESS_USE_UNMAPPED}.
  *
  * FHIR deliberately separates `use` (home/work/temp) from `type` (postal/physical), so one v2 code
- * cannot always populate both axes — round-trip is not stable, and the drop is surfaced, never hidden.
+ * cannot always populate both axes: round-trip is not stable, and the drop is surfaced, never hidden.
  * `XAD.8` (other geographic designation) has no FHIR target and is flagged dropped.
  *
  * @packageDocumentation
@@ -72,7 +72,7 @@ export function toFhirAddress(xad: XAD): ConvertResult<FhirComplex> {
     }
   }
 
-  // XAD.8 (other geographic designation) has no FHIR target — flag the drop.
+  // XAD.8 (other geographic designation) has no FHIR target: flag the drop.
   if (xad.otherGeographicDesignation !== undefined && xad.otherGeographicDesignation !== "") {
     issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "XAD.8"));
   }

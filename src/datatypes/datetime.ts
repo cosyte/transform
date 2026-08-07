@@ -1,5 +1,5 @@
 /**
- * DTM / TS → FHIR `dateTime` — the single most dangerous conversion.
+ * DTM / TS → FHIR `dateTime`: the single most dangerous conversion.
  *
  * Grounded on the IG datatype ConceptMap **DTM → dateTime** (`DTM.1` *is equivalent to* the FHIR
  * `dateTime.$value`, with the instruction to "convert v2 date time format to FHIR date time format")
@@ -8,14 +8,14 @@
  * offset** whenever a time is present. Two fail-safe consequences follow:
  *
  * - **Naked timestamp (no offset).** A `20260721143000` cannot become a valid zoned FHIR `dateTime`
- *   without inventing an offset — assuming UTC would silently shift the clinical instant by hours. So
+ *   without inventing an offset: assuming UTC would silently shift the clinical instant by hours. So
  *   the value is **reduced to date precision** (`2026-07-21`) and {@link ISSUE_CODES.TRANSFORM_TIMESTAMP_NO_TIMEZONE}
- *   is raised — unless the caller asserts the sender's offset via `options.assumeTimezoneOffsetMinutes`.
+ *   is raised, unless the caller asserts the sender's offset via `options.assumeTimezoneOffsetMinutes`.
  * - **Partial-precision time (hour/minute only).** FHIR cannot represent `hh` or `hh:mm` without
  *   seconds, and padding `:00` would fabricate precision, so such a value is likewise reduced to date
- *   precision and flagged — never padded.
+ *   precision and flagged, never padded.
  *
- * Date-only precisions (`2026`, `2026-07`, `2026-07-21`) are preserved exactly — never zero-filled —
+ * Date-only precisions (`2026`, `2026-07`, `2026-07-21`) are preserved exactly, never zero-filled,
  * and need no offset (FHIR permits a bare date).
  *
  * @packageDocumentation

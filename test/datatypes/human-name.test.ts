@@ -18,7 +18,7 @@ function propStrings(node: FhirComplex, name: string): string[] {
   );
 }
 
-describe("toFhirHumanName — component mapping (IG XPN→HumanName)", () => {
+describe("toFhirHumanName: component mapping (IG XPN→HumanName)", () => {
   it("maps family, given[0], given[1], prefix, and the three suffix sources", () => {
     const { value, issues } = toFhirHumanName({
       familyName: "Public",
@@ -48,7 +48,7 @@ describe("toFhirHumanName — component mapping (IG XPN→HumanName)", () => {
   });
 });
 
-describe("toFhirHumanName — fail-safe on unmapped name-use and dropped period", () => {
+describe("toFhirHumanName: fail-safe on unmapped name-use and dropped period", () => {
   it("leaves use absent and flags an unmapped name-type code (e.g. B = Birth name)", () => {
     const { value, issues } = toFhirHumanName({ familyName: "X", nameTypeCode: "B" });
     expect(propString(value as FhirComplex, "use")).toBeUndefined();

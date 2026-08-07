@@ -7,7 +7,7 @@ sidebar_position: 1
 # Quickstart
 
 The **datatype converters** each take a parsed `@cosyte/hl7` composite and return a `{ value, issues }`
-pair — the FHIR datatype node it could faithfully produce, plus the value-free diagnostics it raised.
+pair: the FHIR datatype node it could faithfully produce, plus the value-free diagnostics it raised.
 The **message-level** entry `toFhir(msg)` assembles a whole HL7 v2 message into a FHIR `Bundle` over
 those same converters: an **ADT** admit becomes a **Patient + Encounter** graph, and an
 **ORU^R01** lab result becomes a **DiagnosticReport + Observation** graph.
@@ -33,7 +33,7 @@ because every part mapped cleanly.
 ## The fail-safe rule in action
 
 When a mapping is ambiguous, the converter **refuses to guess** and tells you why. A patient
-identifier whose assigning authority can't be resolved is emitted with its value and **no system** —
+identifier whose assigning authority can't be resolved is emitted with its value and **no system**,
 never a synthesized one that could merge two patients:
 
 ```ts runnable
@@ -52,7 +52,7 @@ and the same call resolves `Identifier.system` with no diagnostic.
 
 ## Assemble a message
 
-Parse an `ADT^A01` with `@cosyte/hl7`, then hand it to `toFhir` — you get back a FHIR R4 **message
+Parse an `ADT^A01` with `@cosyte/hl7`, then hand it to `toFhir`: you get back a FHIR R4 **message
 `Bundle`** (a `MessageHeader`, then the `Patient` and `Encounter` it describes) plus the value-free
 issues. Every segment→resource map is grounded on the published HL7 v2-to-FHIR IG.
 
@@ -70,7 +70,7 @@ const { bundle, issues } = toFhir(msg, {
 ```
 
 The same fail-safe rule holds at the message level: an unmapped patient class, a naked timestamp, or
-an unresolvable identifier authority becomes a typed issue — never a fabricated FHIR value. A message
+an unresolvable identifier authority becomes a typed issue, never a fabricated FHIR value. A message
 whose trigger the IG has **no message map** for is still assembled from the reusable segment maps and
 flagged `TRANSFORM_SEGMENT_ASSEMBLED`, never invented. The Table-0001/0004 maps the assembly applies
 are exported for inspection:
@@ -85,8 +85,8 @@ ENCOUNTER_CLASS_V3_MAP["I"].code; // => "IMP"
 ## Lab results (ORU^R01)
 
 An `ORU^R01` assembles into a **`DiagnosticReport`** per OBR with its **`Observation`** results.
-`OBX-2` discriminates the value type — `NM` → `valueQuantity`, `CWE` → `valueCodeableConcept`, `SN` →
-a structured range/ratio/comparator quantity, `ST`/`TX` → `valueString` — so a result is **never**
+`OBX-2` discriminates the value type: `NM` → `valueQuantity`, `CWE` → `valueCodeableConcept`, `SN` →
+a structured range/ratio/comparator quantity, `ST`/`TX` → `valueString`, so a result is **never**
 forced into a `Quantity` it isn't. The result-status maps are the clinical-safety heart of the graph
 and are exported for inspection: a **corrected** or **cancelled** result is modelled exactly and
 **never emitted as `final`**, and a status the IG map has no target for leaves `status` absent (the
@@ -102,5 +102,5 @@ DIAGNOSTIC_REPORT_STATUS_MAP["F"]; // => "final"
 
 ## Next
 
-- [Core concepts](./concepts-archetype) — the fail-safe rule, the diagnostic channel, the six converters.
-- **API reference** — every export, generated from source.
+- [Core concepts](./concepts-archetype): the fail-safe rule, the diagnostic channel, the six converters.
+- **API reference**: every export, generated from source.

@@ -1,5 +1,5 @@
 /**
- * MDM_T02 → FHIR `DocumentReference` — the thin IG single for clinical documents,
+ * MDM_T02 → FHIR `DocumentReference`: the thin IG single for clinical documents,
  * grounded firsthand on the IG **MDM_T02 message map** and the **TXA/OBX → DocumentReference** segment
  * maps (`hl7.fhir.uv.v2mappings`, STU1; `ConceptMap-message-mdm-t02-to-bundle.json`,
  * `ConceptMap-segment-txa-to-documentreference.json`, `ConceptMap-segment-obx-to-documentreference.json`).
@@ -9,7 +9,7 @@
  * | v2 field | FHIR target | via |
  * |---|---|---|
  * | TXA-19 Document Availability Status | `status` (required 1..1) | `AV` → `current` only (see below) |
- * | TXA-2 Document Type (CWE) | `type` | {@link toFhirCodeableConcept} (structural — no IG value map) |
+ * | TXA-2 Document Type (CWE) | `type` | {@link toFhirCodeableConcept} (structural, no IG value map) |
  * | TXA-6 Origination Date/Time (DTM) | `date` (an `instant`) | {@link toFhirDateTime}, fully-zoned only |
  * | TXA-12 Unique Document Number | `masterIdentifier` | EI.1 → `Identifier.value` |
  * | TXA-16 Unique Document File Name | `identifier` | ST → `Identifier.value` |
@@ -18,22 +18,22 @@
  * | (message-map wiring) | `subject` | the bundle's Patient |
  *
  * **Fail-safes (never a confident wrong document record).**
- * - **`status` (required 1..1) — grounded only for `AV`.** The IG conditions TXA-19 → `status` on
+ * - **`status` (required 1..1): grounded only for `AV`.** The IG conditions TXA-19 → `status` on
  *   `IF TXA-19 = "AV"` and ships **no** value ConceptMap (there is no HL70273 → document-reference-status
  *   table in the IG). "AV" (Available) has exactly one faithful target in the required
  *   `document-reference-status` binding (`current` | `superseded` | `entered-in-error`): **`current`**, so
- *   `AV → current` is emitted. Every other TXA-19 value — `CA`/`OB`/`UN` (whose IG target is a
- *   `status.extension` construct that is not valid R4) and any local code — is **unmapped**
+ *   `AV → current` is emitted. Every other TXA-19 value, meaning `CA`/`OB`/`UN` (whose IG target is
+ *   a `status.extension` construct that is not valid R4) and any local code, is **unmapped**
  *   ({@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}); `status` is left absent and the required-`status` emit
  *   gate **withholds** the DocumentReference. Never guessed.
  * - **`content` (required 1..*).** Built from the `OBX` document body via {@link buildContent}. When no
- *   OBX yields a groundable attachment the DocumentReference has no content and is withheld + flagged —
+ *   OBX yields a groundable attachment the DocumentReference has no content and is withheld + flagged:
  *   a document reference that references nothing is never emitted.
- * - **`docStatus` — unmapped, left absent.** TXA-17 → `docStatus` has **no** IG value ConceptMap
+ * - **`docStatus`: unmapped, left absent.** TXA-17 → `docStatus` has **no** IG value ConceptMap
  *   (HL70271 → composition-status is genuinely ambiguous), so a valued TXA-17 is flagged
- *   {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED} and `docStatus` (0..1) is left absent — never guessed.
+ *   {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED} and `docStatus` (0..1) is left absent, never guessed.
  * - **`content.attachment.contentType`.** Taken from the IG's OBX-2 assignment (`application/text` for
- *   TX, `text/hl7v2` for FT — see {@link BODY_CONTENT_TYPE}), **not** from TXA-3 — the TXA-3 → contentType
+ *   TX, `text/hl7v2` for FT; see {@link BODY_CONTENT_TYPE}), **not** from TXA-3: the TXA-3 → contentType
  *   row carries HL70191 codes that are not MIME types, so TXA-3 is flagged dropped rather than emitted as
  *   an invalid `contentType`. The document body itself is **carried, never interpreted** (TX/FT text is
  *   base64-encoded verbatim into `content.attachment.data`).
@@ -72,8 +72,8 @@ const BODY_CONTENT_TYPE: Readonly<Record<string, string>> = Object.freeze({
  * **OBX → DocumentReference** map: `TX` → `content.attachment.data` (the text base64-encoded) + the
  * IG-assigned `application/text` contentType; `FT` → the same, with `text/hl7v2`; `RP` →
  * `content.attachment.url` (the reference pointer). The IG also maps `ED` → `content.attachment`, but
- * that requires decoding the ED encapsulated-data composite (a later concern), so `ED` — and any
- * non-document OBX-2 — is flagged {@link ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED} and deferred, never
+ * that requires decoding the ED encapsulated-data composite (a later concern), so `ED` (and any
+ * non-document OBX-2) is flagged {@link ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED} and deferred, never
  * fabricated. The document body itself is carried verbatim, never interpreted.
  */
 function buildContent(
@@ -125,7 +125,7 @@ function buildContent(
  * Build a FHIR `DocumentReference` resource node from an MDM message's `TXA` segment and its body `OBX`
  * segments. Returns `{ value: undefined }` when there is no `TXA`. `status` (from TXA-19 = "AV") and
  * `content` (from the OBX body) are both required 1..1 / 1..*; when either cannot be grounded the
- * resource is left incomplete and later **withheld** by the conservative-emit gate — never guessed.
+ * resource is left incomplete and later **withheld** by the conservative-emit gate, never guessed.
  *
  * @param txa - The `TXA` `@cosyte/hl7` `Segment` (the document metadata anchor).
  * @param obxs - The document-body `OBX` segments, in document order.
@@ -168,7 +168,7 @@ export function buildDocumentReference(
 
   // TXA-2 → type: carried **structurally** (system recognized, value preserved). The IG's
   // TXA→DocumentReference segment map ships **no** `mappedVia` value ConceptMap for TXA-2 (verified
-  // firsthand — only TXA-18 securityLabel carries one), so a value translation is never invented for it
+  // firsthand: only TXA-18 securityLabel carries one), so a value translation is never invented for it
   // (ADR 0018 applied to mappings); the document-type code (typically LOINC) is emitted as-is.
   if (txa.field(2).value !== "") {
     const type = toFhirCodeableConcept(txa.field(2).asCwe(), ctx);

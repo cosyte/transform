@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# vendor-refresh.sh — regenerate the vendored @cosyte sibling tarballs.
+# vendor-refresh.sh: regenerate the vendored @cosyte sibling tarballs.
 #
 # @cosyte/transform depends on two cosyte siblings, @cosyte/hl7 and @cosyte/fhir.
 # THIS COMMENT USED TO CALL BOTH OF THEM UNPUBLISHED AND THAT WAS FALSE:
@@ -27,8 +27,8 @@
 #   @cosyte/fhir → 7a099b24e399b91d780be8110c529bc570756cfe  (v0.0.0)
 #
 # After a refresh: `pnpm install`, then `pnpm test` + `pnpm build` to confirm the
-# new sibling surface still satisfies transform. Bumping a pin is a deliberate act
-# — a sibling API change can break the mappings; re-run the conformance gate.
+# new sibling surface still satisfies transform. Bumping a pin is a deliberate act:
+# a sibling API change can break the mappings; re-run the conformance gate.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

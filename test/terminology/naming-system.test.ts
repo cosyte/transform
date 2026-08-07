@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createNamingSystem, DEFAULT_V2_CODE_SYSTEMS } from "../../src/index.js";
 
-describe("createNamingSystem — code-system resolution", () => {
+describe("createNamingSystem: code-system resolution", () => {
   const registry = createNamingSystem();
 
   it("resolves the seeded FHIR-core mnemonics to their canonical URIs", () => {
@@ -31,7 +31,7 @@ describe("createNamingSystem — code-system resolution", () => {
   });
 });
 
-describe("createNamingSystem — assigning-authority (HD) resolution", () => {
+describe("createNamingSystem: assigning-authority (HD) resolution", () => {
   const registry = createNamingSystem();
 
   it("auto-derives urn:oid: only for a valid OID with universalIdType ISO", () => {
