@@ -8,12 +8,15 @@ creates an audit trail. Prefer extending `scripts/phi-allow-list.txt` (a
 token-level, reviewed declaration) over a whole-file bypass, which silences
 _every_ check for that file.
 
-> **This is the STARTER template.** `scripts/phi-scan.ts` ships with the shared
-> machinery and a cross-cutting SSN/email floor ONLY. Before you rely on
-> `pnpm phi-scan` as a real PHI gate for this standard, add structured,
-> field-level detection (names, DOB, MRN / member id, address, phone) in the
-> fenced TODO section of `scripts/phi-scan.ts`: see the sibling parsers
-> (`hl7` / `dicom` / `x12` / `ccda` / `ncpdp`) for worked examples.
+> **What the scanner detects, so a bypass is judged against the real gate rather
+> than a template.** Two passes run on every target, on all three routes: the
+> cross-cutting SSN/email floor, and an HL7 v2 structured pass over PID / NK1 /
+> GT1 / IN1 checking names, date of birth, MRN / member id / SSN, address and
+> phone against `scripts/phi-allow-list.txt`. Segment literals are found inline,
+> because this package ships no standalone `.hl7` file: every message in its
+> corpus is a `.ts` string literal. What it still does NOT see is written out in
+> the banner at the top of `scripts/phi-scan.ts`, and a bypass here silences all
+> of it for that path.
 
 ## Format
 

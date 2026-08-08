@@ -9,29 +9,47 @@
  * accident.
  *
  * ===========================================================================
- * ██  STARTER: READ BEFORE YOU RELY ON THIS  ███████████████████████████████
+ * ██  WHAT THIS DETECTS, AND WHAT IT STILL DOES NOT  ███████████████████████
  * ===========================================================================
  *
- *   This file is the SHARED MACHINERY only. As shipped it detects EXACTLY TWO
- *   cross-cutting PHI shapes that apply to ANY format:
+ *   TWO passes run on EVERY target, on ALL THREE ROUTES. The second is "in
+ *   addition to" the first, never "instead of" it:
  *
- *       (1) a dashed Social Security Number   (\d{3}-\d{2}-\d{4})
- *       (2) an email at a non-test domain
+ *   (1) THE CROSS-CUTTING FLOOR, which applies to any format:
+ *         - a dashed Social Security Number   (\d{3}-\d{2}-\d{4})
+ *         - an email at a non-allow-listed domain or address
  *
- *   That is a FLOOR, not a gate. It does NOT understand Transform. It will NOT
- *   catch a patient name, a date of birth, an MRN / member id, an address, or a
- *   phone number sitting in a structured Transform field: the PHI that a real
- *   Transform message actually carries.
+ *   (2) THE HL7 v2 STRUCTURED PASS, which is what this package's corpus
+ *       actually carries. `@cosyte/transform` ships NO standalone `.hl7`
+ *       fixture files at all: every message in the corpus is an inline `.ts`
+ *       STRING LITERAL, so this pass finds segment literals ANYWHERE in a
+ *       target's text rather than assuming the file IS the message. It parses
+ *       PID / NK1 / GT1 / IN1 by field and component and checks each
+ *       PHI-bearing field against the allow-list:
+ *         - person NAMES (XPN family / given / middle)
+ *         - DATE OF BIRTH (TS, leading 8 digits)
+ *         - MRN / member id / SSN (CX repetitions and bare id fields)
+ *         - ADDRESS (XAD street / other designation / city / postal code)
+ *         - PHONE (XTN components carrying 4 or more digits)
  *
- *   ⚠  A scanner that silently ships SSN/email-only detection is a FALSE-
- *      CONFIDENCE RISK: it reports green on fixtures stuffed with real names and
- *      DOBs. Before you trust `pnpm phi-scan` as a safety gate for Transform,
- *      YOU MUST add structured, field-level detection for THIS standard's PHI
- *      (names, DOB, MRN / member id, address, phone) in the clearly-fenced
- *      TODO section inside `scanTarget` below.
+ *   ⚠  ENUMERATING MORE FILES BUYS THE FLOOR AND NOTHING ELSE. The floor finds
+ *      ZERO in this repository's HL7 fixtures: they carry no dashed SSN and no
+ *      email. Widening the walk without (2) would have opened 8 files full of
+ *      names, DOBs and MRNs and reported every one of them clean. That is the
+ *      false confidence this banner exists to refuse.
+ *
+ *   ⚠  STILL NOT DETECTED, stated rather than implied:
+ *        - a value injected by TEMPLATE INTERPOLATION (`${…}`) into a segment
+ *          literal. A static text scan cannot see what a placeholder resolves
+ *          to; such a component is skipped rather than guessed at.
+ *        - PROVIDER names in PV1 / ORC / OBR XCN fields. Those identify a
+ *          clinician, not a patient, and the XCN layout differs from XPN;
+ *          declared out of scope rather than half-implemented.
+ *        - a segment written with a NON-DEFAULT field separator. The pass keys
+ *          on `SEG|`, the encoding this corpus and the v2 default both use.
  *
  *   Worked examples of structured, format-aware detection live in the sibling
- *   parsers. Read one before you start:
+ *   parsers:
  *       ../hl7/scripts/phi-scan.ts     (segment → field → component aware)
  *       ../x12/scripts/phi-scan.ts     (ISA-delimited NM1 / DMG / PER aware)
  *       ../dicom/scripts/phi-scan.ts   (binary tag-aware)
@@ -44,6 +62,12 @@
  *   `# synthetic: true` header, so the allow-list is the proven substitute
  *   (same approach every sibling uses). A whole-file bypass needs
  *   `--allow-fixture <path>` AND a logged entry in `phi-scan-overrides.md`.
+ *
+ *   ▶ AN ALLOW-LIST ENTRY IS GLOBAL AND ROUTE-BLIND. It clears that literal on
+ *     the commit-blocking `--staged` route too, and on `<path>`. Adding one is
+ *     therefore a subtraction from every route at once, and the one entry here
+ *     that subtracts a detection this scanner had BEFORE this change is called
+ *     out by name in `scripts/phi-allow-list.txt`.
  * ===========================================================================
  *
  * Modes:
@@ -100,17 +124,55 @@
  * the only true thing available: there is an entry here the scan cannot account
  * for, so the scan is not clean.
  *
- * "In scope" is each route's own existing boundary, not a new one: the walk
- * still excludes a gitignored entry (the same rule that already excludes a
- * gitignored file, so links do not get a second, stricter boundary of their
- * own), and `--staged` still only looks at `test/fixtures/**` and `src/**.ts`.
- * This narrows what those scopes ADMIT; it does not widen the scopes. Note that
- * `test/fixtures/` does not exist in this repo today, so `src/` is the only
- * directory the walk actually descends. The walk has NO extension scope of its
- * own (it skips regular `*.md` as documentation and takes everything else), so
- * a link at `src/leak.json`, and a linked directory, are refused there too. The
- * `.ts` suffix is the `--staged` route's boundary, not the walk's; do not
- * describe them as one rule.
+ * "In scope" is each route's own boundary: the walk still excludes a gitignored
+ * entry (the same rule that already excludes a gitignored file, so links do not
+ * get a second, stricter boundary of their own). The refusal narrows what those
+ * scopes ADMIT; it does not widen the scopes. The walk has NO extension scope of
+ * its own, so a link at `src/leak.json`, and a linked directory, are refused
+ * there too.
+ *
+ * ---------------------------------------------------------------------------
+ * THE SCAN SCOPE IS THE TRACKED CORPUS, AND IT IS RECONCILED AGAINST `git
+ * ls-files` ON EVERY RUN. Both enumerating routes used to cover `test/fixtures/`
+ * plus `src/`, and MEASURED ON THIS REPOSITORY AT `daf75c3`, THAT WAS 31 OF 102
+ * TRACKED FILES: 71 were read by NEITHER ROUTE, 27 of them under `test/`,
+ * 8 of those carrying inline HL7 `PID|` literals with names, DOBs and MRNs.
+ *
+ * ▶ AND THE SHARPEST HALF: `test/fixtures/` HAS NEVER EXISTED IN THIS
+ * REPOSITORY, ON ANY COMMIT (`git log --all -- 'test/fixtures*'` is empty). The
+ * walk's `existsSync` guard returned immediately for it on every run this
+ * scanner has ever made, and the run still printed "OK: no hits" and exited 0.
+ * A DECLARED ROOT THAT WAS NEVER OPENED IS INDISTINGUISHABLE FROM A CLEAN ONE.
+ *
+ * ▶ A COUNT DOES NOT DETECT THAT, AND NEITHER DOES AN EXISTENCE CHECK. "145
+ * files scanned" counts the roots that DID exist, and refusing a MISSING root
+ * still leaves an EMPTIED one reporting clean. The only thing that observes it
+ * is reconciling what the walk actually OPENED against what git actually
+ * TRACKS, which `reconcileWithGit` does in all-mode. Every tracked path the walk
+ * did not open REFUSES (exit 2) and is named.
+ *
+ * ▶ WHAT THE RECONCILIATION DOES NOT CLOSE, AND NO REPO IN THIS ECOSYSTEM HAS:
+ * IT COMPARES PATH SETS, NOT THE BYTES GIT CARRIES AT THOSE PATHS. A root
+ * swapped for a directory that mirrors the tracked NAMES still reconciles, over
+ * decoy contents. Widening the roots makes that narrower rather than closed: a
+ * decoy must now mirror 100 names, not 7. It is also VACUOUS ON AN EMPTY INDEX,
+ * which is why the suite's throwaway repos still exercise the other guards.
+ *
+ * ▶ A WALK ROOT THAT IS NOT A DIRECTORY REFUSES BEFORE THE WALK. `existsSync`
+ * FOLLOWS a link, so a DANGLING root read false and `walk` returned without
+ * enumerating anything: measured here, `ln -s /nowhere test/fixtures` printed
+ * "OK: no hits" and exited 0. A root that is a symlink to a real directory was
+ * FOLLOWED, reading bytes git does not carry. Both now refuse with 2 via an
+ * `lstat` per declared root. A root that is simply ABSENT is not an error (a
+ * tree may legitimately not have one); the reconciliation is what notices if
+ * anything tracked lived under it.
+ *
+ * EXIT CODE FOR A REGULAR-FILE ROOT, DERIVED FROM THIS SCRIPT'S OWN CONTRACT AND
+ * NOT PORTED FROM A SIBLING: **2**. Measured before this change, `existsSync`
+ * answered true and `readdirSync` threw `ENOTDIR` into the `walk` catch, which
+ * raises an `InvocationError` and returns 2 from `main`. It is 2 for the new
+ * `lstat` preflight too, so the code did not move.
+ * ---------------------------------------------------------------------------
  *
  * THE STAGED ROUTE READS `--raw`, AND ITS `--diff-filter` ADMITS `T`. Replacing
  * a TRACKED regular file with a link is neither an add nor a modify: measured
@@ -171,11 +233,66 @@ const REPO_ROOT = process.cwd();
 const ALLOW_LIST_PATH = join(REPO_ROOT, "scripts", "phi-allow-list.txt");
 const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
 
-// Roots walked in "all" mode. test/fixtures gets the full scan; src gets the
-// same conservative shape pass because it is hand-written code, not data:
-// JSDoc `@example` snippets must not carry real PHI either.
-const FIXTURE_ROOT = join(REPO_ROOT, "test", "fixtures");
-const SRC_ROOT = join(REPO_ROOT, "src");
+/**
+ * Directories walked in "all" mode, plus the repo-root regular files, which are
+ * enumerated separately by `walkTopLevel` (a root file has no directory to
+ * declare). Together these cover the whole tracked corpus, which is what
+ * `reconcileWithGit` then proves on every run.
+ *
+ * ▶ ROOTS MUST STAY DISJOINT. `test` covers `test/fixtures` rather than sitting
+ * beside it: declaring both would report every nested file twice.
+ *
+ * ▶ WIDEN BY UNION, NEVER BY REPLACEMENT. Each entry here is "in addition to";
+ * the previous list (`test/fixtures` + `src`) is a strict SUBSET of this one, so
+ * nothing the walk opened before can stop being opened.
+ *
+ * ▶ `vendor/` IS DELIBERATELY ABSENT. It holds two `pnpm pack` gzip tarballs of
+ * sibling packages, and see `RECONCILE_EXEMPT` for why a text scan over gzip
+ * bytes is neither a detection nor a clearance.
+ */
+const WALK_ROOT_NAMES = [
+  ".changeset",
+  ".github",
+  "docs-content",
+  "documentation",
+  "scripts",
+  "src",
+  "test",
+] as const;
+
+const WALK_ROOTS = WALK_ROOT_NAMES.map((name) => join(REPO_ROOT, name));
+
+/**
+ * The tracked paths `reconcileWithGit` excuses, as LITERAL PATHS.
+ *
+ * ▶ THREE RULES, AND EACH WAS PAID FOR ELSEWHERE IN THIS ECOSYSTEM:
+ *   1. A literal path, NEVER a predicate. A predicate reads as a tidy rule and
+ *      then applies to files nobody enumerated when they wrote it.
+ *   2. It reaches the ALL route only. `--staged` is the commit-blocking
+ *      pre-commit gate and exempts nothing; `<path>` scans exactly what it is
+ *      handed, so `pnpm phi-scan vendor/<tarball>` still reads those bytes and
+ *      still reports what it finds. NO DETECTION EITHER ROUTE HAD IS
+ *      SUBTRACTED.
+ *   3. It is enumerated here in source, so adding one is a reviewed act and a
+ *      diff, never a silently-widening glob.
+ *
+ * WHY THESE TWO: they are gzip archives. Their bytes are not the text they
+ * carry, so scanning them is neither a detection nor a clearance: a name inside
+ * one is compressed and unreadable to any text pass, and a clean result over
+ * them would be evidence of nothing. Both are `pnpm pack` outputs of sibling
+ * `@cosyte/*` repositories, each gated by its own PHI scanner at its own source.
+ * Measured here before this change, the fhir tarball produced exactly one hit:
+ * seven bytes of DEFLATE output that happen to match the email shape, and that
+ * change with every repack. It is written as a shape rather than quoted,
+ * because this file is inside the scan's own corpus and a quoted violator here
+ * would red the gate on every run.
+ *
+ * ▶ IF `pnpm vendor:refresh` EVER RENAMES A TARBALL, THIS LIST GOES STALE AND
+ * THE GATE REFUSES (exit 2) NAMING THE NEW PATH. That is the safe direction and
+ * it is deliberate: the remedy is to update this list, never to loosen it into a
+ * `vendor/**` pattern. The names are pinned in `scripts/vendor-refresh.sh`.
+ */
+const RECONCILE_EXEMPT = new Set(["vendor/cosyte-fhir-0.0.0.tgz", "vendor/cosyte-hl7-0.0.0.tgz"]);
 
 // ---------------------------------------------------------------------------
 // Types
@@ -189,23 +306,35 @@ interface Hit {
 }
 
 interface AllowList {
-  /**
-   * Uppercase synthetic person-name tokens. UNUSED by the starter floor: the
-   * structured name detector you add in the TODO section consumes these.
-   */
+  /** Uppercase synthetic person-name tokens, consumed by the XPN name check. */
   names: Set<string>;
-  /**
-   * Synthetic dates of birth (raw, format-normalized as you choose). UNUSED by
-   * the starter floor: your structured DOB detector consumes these.
-   */
+  /** Synthetic dates of birth, normalized to the leading 8 digits of a v2 TS. */
   dobs: Set<string>;
-  /**
-   * Synthetic id values (SSN / MRN / member-id shapes). UNUSED by the starter
-   * floor: your structured id detector consumes these.
-   */
+  /** Uppercase synthetic id values (SSN / MRN / member-id shapes). */
   ids: Set<string>;
-  /** Allowed email domains (anything else is a hit). Used by the starter floor. */
+  /** Uppercase synthetic address components (street, city, postal code). */
+  addresses: Set<string>;
+  /** Synthetic phone values, compared on their digits only. */
+  phones: Set<string>;
+  /** Allowed email domains: every address at one of these passes. */
   emailDomains: Set<string>;
+  /**
+   * Allowed email ADDRESSES, keyed `<repo-relative path>\0<lowercased address>`.
+   *
+   * ▶ TWO LITERALS, AND THE PATH HALF IS THE POINT. An `EMAILDOMAIN` entry
+   * excuses a whole domain everywhere; an unscoped address entry excuses one
+   * mailbox everywhere. This excuses ONE mailbox in ONE file, which is the
+   * narrowest instrument this allow-list has. The same address in any other
+   * file, and any other address in the same file, both still report.
+   *
+   * It is still route-blind within that file, which is a property of the
+   * allow-list rather than of this tag: an entry clears its literal on the walk,
+   * on `<path>`, and on the commit-blocking `--staged`. That cost is stated in
+   * `scripts/phi-allow-list.txt` beside the entry and pinned by tests. The
+   * entries themselves live in that file; quoting one here would put a live
+   * address in a file the scan reads.
+   */
+  emails: Set<string>;
 }
 
 interface Args {
@@ -283,6 +412,15 @@ function parseArgs(argv: string[]): Args {
 // Allow-list + override log
 // ---------------------------------------------------------------------------
 
+/**
+ * The key an `EMAIL` allow-list entry is stored and looked up under. A path and
+ * an address, joined by a byte neither can contain, so a path ending in the
+ * address's first characters cannot be confused for a different entry.
+ */
+function emailKey(path: string, address: string): string {
+  return `${path}\u0000${address.toLowerCase()}`;
+}
+
 function loadAllowList(): AllowList {
   if (!existsSync(ALLOW_LIST_PATH)) {
     throw new InvocationError(`allow-list not found at ${ALLOW_LIST_PATH}`);
@@ -291,7 +429,10 @@ function loadAllowList(): AllowList {
   const names = new Set<string>();
   const dobs = new Set<string>();
   const ids = new Set<string>();
+  const addresses = new Set<string>();
+  const phones = new Set<string>();
   const emailDomains = new Set<string>();
+  const emails = new Set<string>();
   for (const lineRaw of raw.split(/\r?\n/)) {
     const line = lineRaw.trim();
     if (line.length === 0 || line.startsWith("#")) continue;
@@ -310,14 +451,41 @@ function loadAllowList(): AllowList {
       case "ID":
         ids.add(value.toUpperCase());
         break;
+      case "ADDRESS":
+        addresses.add(value.toUpperCase());
+        break;
+      case "PHONE":
+        phones.add(digitsOf(value));
+        break;
       case "EMAILDOMAIN":
         emailDomains.add(value.toLowerCase());
         break;
+      case "EMAIL": {
+        // `EMAIL <repo-relative path> <address>`. Both halves are required: an
+        // entry with no path is REFUSED rather than read as a global clearance,
+        // because the looser reading is the one that silently excuses a mailbox
+        // in a file nobody had in mind when they wrote the line.
+        const gap = value.indexOf(" ");
+        if (gap < 0) {
+          throw new InvocationError(
+            `allow-list: an EMAIL entry needs a path and an address ("EMAIL <path> <address>"), got: ${value}`,
+          );
+        }
+        const scope = value.slice(0, gap).trim();
+        const address = value.slice(gap + 1).trim();
+        if (scope.length === 0 || address.length === 0) {
+          throw new InvocationError(
+            `allow-list: an EMAIL entry needs a path and an address ("EMAIL <path> <address>"), got: ${value}`,
+          );
+        }
+        emails.add(emailKey(normalizePath(scope), address));
+        break;
+      }
       default:
         break;
     }
   }
-  return { names, dobs, ids, emailDomains };
+  return { names, dobs, ids, addresses, phones, emailDomains, emails };
 }
 
 function normalizePath(p: string): string {
@@ -421,17 +589,152 @@ function walk(dir: string, out: string[], unscannable: Unscannable[]): void {
     if (e.isDirectory()) {
       walk(full, out, unscannable);
     } else if (e.isFile()) {
-      // README/markdown docs may legitimately describe violator values; they
-      // are documentation, not fixtures.
-      if (e.name.toLowerCase().endsWith(".md")) continue;
+      // ▶ THE `*.md` SKIP THAT USED TO SIT HERE IS GONE, AND ITS REMOVAL IS
+      // PURELY ADDITIVE. It dropped 16 tracked markdown files before a byte of
+      // any of them was read, on the argument that documentation may
+      // legitimately describe violator values. Two things were wrong with that.
+      // First, it was an ENUMERATION-time judgement standing in for a
+      // CONTENT-time one: the allow-list already exists to say "this literal is
+      // synthetic", by value and under review, which a filename cannot. Second,
+      // it was never true of the other routes: `pnpm phi-scan notes.md` ran the
+      // same content passes at base and reported what it found, so the skip made
+      // the two routes disagree about the same bytes. Measured over this repo's
+      // tracked corpus, opening all 16 produced ZERO new hits.
       out.push(full);
     } else {
-      // Deliberately NOT subject to the `.md` exemption above. That exemption is
-      // a judgement about a file whose bytes the walk could have read; a link's
-      // name is no evidence at all about what is on the other side.
       unscannable.push({ path: normalizePath(full), kind: entryKind(e) });
     }
   }
+}
+
+/**
+ * Enumerate the REGULAR FILES sitting directly at the repository root. They have
+ * no directory of their own to declare as a walk root, and there are 14 of them
+ * tracked here (`package.json`, `README.md`, every config file), so leaving them
+ * out would leave the reconciliation permanently red for no reason.
+ *
+ * Directories are skipped rather than descended: the declared roots above own
+ * that, and descending from here would double-report every file under them.
+ * Non-regular entries are collected exactly as they are inside a root.
+ */
+function walkTopLevel(out: string[], unscannable: Unscannable[]): void {
+  let entries;
+  try {
+    entries = readdirSync(REPO_ROOT, { withFileTypes: true });
+  } catch (err) {
+    const code = err instanceof Error && "code" in err ? String(err.code) : "unknown";
+    throw new InvocationError(
+      `refusing the scan: could not read the repository root (${code}). ` +
+        `The walk cannot vouch for entries it was never able to enumerate.`,
+    );
+  }
+  for (const e of entries) {
+    if (e.isDirectory()) continue;
+    // ▶ `.git` IS A REGULAR FILE IN A SUBMODULE WORKING TREE, not a directory,
+    // and this repository IS consumed as one. Measured here: without this line
+    // the walk opened `.git` and read the `gitdir:` pointer inside it. That is
+    // git's own metadata, not corpus, it is never tracked, and in a plain clone
+    // it is a directory the branch above already skips, so admitting it made the
+    // scan's behaviour differ between a clone and a submodule for no gain. A
+    // LITERAL name, never a dot-file predicate: `.gitignore`, `.npmrc` and
+    // `.gitattributes` are corpus and stay in scope.
+    if (e.name === ".git") continue;
+    const full = join(REPO_ROOT, e.name);
+    if (e.isFile()) out.push(full);
+    else unscannable.push({ path: normalizePath(full), kind: entryKind(e) });
+  }
+}
+
+/**
+ * `lstat` each declared root BEFORE walking it, and refuse anything that is not
+ * a directory.
+ *
+ * ▶ THE CASE THIS EXISTS FOR IS A DANGLING LINK, AND `existsSync` IS WHY IT WAS
+ * INVISIBLE: `existsSync` FOLLOWS, so it answers FALSE for a link pointing at
+ * nothing, `walk` returned on its first line, and the run printed "OK: no hits"
+ * and exited 0 with the whole corpus off the disk. Measured on this scanner.
+ * A root that is a symlink to a REAL directory was the other half: it was
+ * followed, so the scan read bytes from wherever the link landed and called them
+ * the corpus.
+ *
+ * A root that is simply ABSENT is NOT refused here. A tree may legitimately not
+ * have one, and refusing existence is not the same as observing content:
+ * `reconcileWithGit` is what notices that something tracked lived under it.
+ */
+function refuseNonDirectoryRoots(roots: string[]): void {
+  const bad: Unscannable[] = [];
+  for (const root of roots) {
+    let st;
+    try {
+      st = lstatSync(root);
+    } catch {
+      continue; // absent, not an error: the reconciliation owns this case
+    }
+    if (st.isDirectory()) continue;
+    bad.push({
+      path: normalizePath(root),
+      kind: st.isFile() ? "a regular file where a directory is declared" : entryKind(st),
+    });
+  }
+  refuseUnscannable(
+    bad,
+    "A declared scan root that is not a directory is a root the walk cannot open, and an " +
+      "unopened root reads exactly like a clean one.",
+    "Restore the directory, or remove the root from WALK_ROOT_NAMES in this script.",
+  );
+}
+
+/**
+ * Reconcile what the all-mode walk actually OPENED against what git actually
+ * TRACKS, and refuse (exit 2) over every tracked path that was not opened.
+ *
+ * ▶ EXISTENCE IS NOT OBSERVATION, AND A COUNT CANNOT SUBSTITUTE FOR THIS. A file
+ * count counts the roots that DID exist, so a healthy-looking total says nothing
+ * about a root that was never opened. Refusing a MISSING root only covers half
+ * the failure too, because an EMPTIED one opens nothing and reports clean.
+ * Comparing the opened set to `git ls-files` is the only check that observes
+ * either, and it also catches a stale `WALK_ROOT_NAMES` after a directory is
+ * added.
+ *
+ * ▶ WHAT IT DOES NOT DO, STATED RATHER THAN IMPLIED: it compares PATH SETS, not
+ * the bytes git carries at those paths. A root replaced by a directory that
+ * mirrors the tracked NAMES reconciles cleanly over decoy contents. It is also
+ * VACUOUS ON AN EMPTY INDEX: with nothing tracked there is nothing to reconcile
+ * against, so this proves nothing in a fresh tree, and the walk's own refusals
+ * are what still hold there.
+ *
+ * ▶ NEVER RE-ADD A `tracked.has(...)` PRE-CHECK IN FRONT OF A READ. That inverts
+ * the direction of the evidence: it would make the walk agree with git by
+ * construction, at zero firings, while this comment sold it as protection.
+ */
+function reconcileWithGit(opened: Set<string>): void {
+  let out: string;
+  try {
+    // SECURITY: array-form execFileSync, no shell.
+    out = execFileSync("git", ["ls-files", "-z"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (err) {
+    throw new InvocationError(
+      `refusing the scan: could not list tracked files (${err instanceof Error ? err.message : String(err)}). ` +
+        `Without git's index there is nothing to reconcile the walk against.`,
+    );
+  }
+  const missing = out
+    .split("\0")
+    .filter((p) => p.length > 0)
+    .filter((p) => !opened.has(p) && !RECONCILE_EXEMPT.has(p));
+  if (missing.length === 0) return;
+  const lines = missing.map((p) => `  - ${p}`).join("\n");
+  const noun = missing.length === 1 ? "tracked file was" : "tracked files were";
+  throw new InvocationError(
+    `refusing the scan: ${String(missing.length)} ${noun} never opened by the walk:\n${lines}\n` +
+      `A declared root that is missing, emptied or replaced looks exactly like a clean one, so ` +
+      `the walk is reconciled against git's index rather than trusted. ` +
+      `Add the directory to WALK_ROOT_NAMES in this script, or (if the path genuinely cannot be ` +
+      `scanned) add that literal path to RECONCILE_EXEMPT with the reason written down.`,
+  );
 }
 
 /**
@@ -473,8 +776,10 @@ function gitIgnored(paths: string[]): Set<string> {
 function buildTargetsForAll(): Target[] {
   const files: string[] = [];
   const unscannable: Unscannable[] = [];
-  walk(FIXTURE_ROOT, files, unscannable);
-  walk(SRC_ROOT, files, unscannable);
+
+  refuseNonDirectoryRoots(WALK_ROOTS);
+  for (const root of WALK_ROOTS) walk(root, files, unscannable);
+  walkTopLevel(files, unscannable);
 
   // One `git check-ignore` over both lists. An ignored entry is already out of
   // scope for the file route, so applying the same rule to a link keeps a single
@@ -488,9 +793,16 @@ function buildTargetsForAll(): Target[] {
       "corpus) untrack it and add it to .gitignore.",
   );
 
-  return files
-    .filter((abs) => !ignored.has(normalizePath(abs)))
-    .map((abs) => ({ path: normalizePath(abs), read: () => readFileSync(abs) }));
+  const opened = files.map(normalizePath).filter((p) => !ignored.has(p));
+
+  // The reconciliation runs on the OPENED set, after every filter above, so a
+  // tracked file dropped by any of them is named rather than assumed.
+  reconcileWithGit(new Set(opened));
+
+  return opened.map((rel) => ({
+    path: rel,
+    read: () => readFileSync(join(REPO_ROOT, rel)),
+  }));
 }
 
 /**
@@ -545,6 +857,30 @@ function buildTargetsForPaths(paths: string[]): Target[] {
   );
 
   return targets;
+}
+
+/**
+ * The `--staged` route's path scope, and it is a STRICT SUPERSET of the one it
+ * replaces.
+ *
+ * BEFORE: `test/fixtures/**` OR `src/**.ts`. Both are contained here
+ * (`test/fixtures/x` is under the `test` root; `src/x.ts` is under the `src`
+ * root, and the `.ts` suffix requirement is DROPPED rather than kept, so
+ * `src/leak.json` is admitted too), which is what makes this widening additive:
+ * nothing the pre-commit hook blocked before can stop being blocked.
+ *
+ * ▶ THIS ROUTE EXEMPTS NOTHING. `RECONCILE_EXEMPT` is an all-route concept and
+ * is deliberately not consulted here: `--staged` IS the commit gate, and a
+ * corpus exemption that reaches it SUBTRACTS a detection at exactly the moment
+ * the gate is meant to fire. `vendor/` is simply outside this scope, as it was
+ * before, so no staged detection changes there either.
+ *
+ * A repo-root file (no `/` in its path) is admitted, matching `walkTopLevel`.
+ */
+function stagedRouteAdmits(path: string): boolean {
+  if (!path.includes("/")) return true;
+  const top = path.slice(0, path.indexOf("/"));
+  return (WALK_ROOT_NAMES as readonly string[]).includes(top);
 }
 
 /** git's file modes for a regular blob. Every other mode is not a file to read. */
@@ -661,10 +997,7 @@ function buildTargetsForStaged(): Target[] {
     i += 2;
   }
 
-  const inScope = staged.filter(
-    (s) =>
-      s.path.startsWith("test/fixtures/") || (s.path.startsWith("src/") && s.path.endsWith(".ts")),
-  );
+  const inScope = staged.filter((s) => stagedRouteAdmits(s.path));
 
   refuseUnscannable(
     inScope
@@ -695,12 +1028,236 @@ function scanCommonShapes(path: string, content: string, allow: AllowList, hits:
   for (const m of content.matchAll(/\b\d{3}-\d{2}-\d{4}\b/g)) {
     hits.push({ path, segment: "(ssn)", value: m[0], reason: "dashed SSN pattern" });
   }
-  // Emails whose domain is not an allow-listed reserved / test domain.
+  // Emails whose domain is not an allow-listed reserved / test domain, and whose
+  // full address is not itself allow-listed. The address check is the narrower
+  // of the two by construction and exists so a single known mailbox can be
+  // declared without excusing its whole domain.
   for (const m of content.matchAll(/\b[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})\b/g)) {
     const domain = (m[1] ?? "").toLowerCase();
-    if (!allow.emailDomains.has(domain)) {
-      hits.push({ path, segment: "(email)", value: m[0], reason: "email with non-test domain" });
+    if (allow.emailDomains.has(domain)) continue;
+    if (allow.emails.has(emailKey(path, m[0]))) continue;
+    hits.push({ path, segment: "(email)", value: m[0], reason: "email with non-test domain" });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The HL7 v2 structured pass: field- and component-level PHI
+// ---------------------------------------------------------------------------
+//
+// ▶ THIS PASS DOES NOT ASSUME THE FILE IS THE MESSAGE, AND THAT IS THE WHOLE
+// POINT HERE. `@cosyte/transform` ships no standalone `.hl7` fixture at all:
+// every message in its corpus is a `.ts` STRING LITERAL, usually one segment per
+// array element. A recogniser written the usual way, parsing a target as a
+// document, would find nothing in any of them. So segment literals are located
+// ANYWHERE in the text and each is read from its segment id to the end of the
+// line or to the closing quote of the literal it sits in, whichever comes first.
+//
+// ▶ AND THE FLOOR FINDS NOTHING IN THAT CORPUS, WHICH IS WHY THIS PASS SHIPS
+// WITH THE WIDER WALK RATHER THAN AFTER IT. Measured over the 8 tracked files
+// carrying `PID|`: zero dashed SSNs and zero emails between them. What they
+// carry is names, DOBs, MRNs, one undashed SSN in an `SS`-typed identifier, one
+// street address and two phone numbers, and the floor is blind to every one.
+
+/** PHI-bearing fields per segment, by v2 field number (`PID-5` is index 5). */
+const NAME_FIELDS: Record<string, number[]> = {
+  PID: [5, 6, 9],
+  NK1: [2, 30],
+  GT1: [3],
+  IN1: [16],
+};
+const DOB_FIELDS: Record<string, number[]> = {
+  PID: [7],
+  NK1: [16],
+  GT1: [8],
+  IN1: [18],
+};
+const ID_FIELDS: Record<string, number[]> = {
+  PID: [3, 19, 20],
+  NK1: [33],
+  GT1: [12, 19],
+  IN1: [36],
+};
+const ADDRESS_FIELDS: Record<string, number[]> = {
+  PID: [11],
+  NK1: [4],
+  GT1: [5],
+  IN1: [19],
+};
+const PHONE_FIELDS: Record<string, number[]> = {
+  PID: [13, 14],
+  NK1: [5, 6],
+  GT1: [6, 7],
+  IN1: [17],
+};
+
+const PHI_SEGMENTS = Object.keys(NAME_FIELDS);
+
+/**
+ * Locate a segment literal by its `SEG|` opening. The leading boundary keeps
+ * `PID-3` in prose and `xPID|` in an identifier from matching; only a real
+ * segment id immediately followed by the default field separator qualifies.
+ */
+const SEGMENT_OPENING = new RegExp(`(?:^|[^A-Za-z0-9])(${PHI_SEGMENTS.join("|")})\\|`, "g");
+
+/** Digits only, so `555-1234`, `(555) 1234` and `5551234` compare equal. */
+function digitsOf(value: string): string {
+  return value.replace(/\D+/g, "");
+}
+
+/**
+ * A component the pass declines to judge because its value is not in the text.
+ * A template placeholder resolves at runtime, and a static scan that guessed at
+ * one would be fabricating either a hit or a clearance.
+ */
+function isInterpolated(component: string): boolean {
+  return component.includes("${");
+}
+
+/** XPN / XCN family-name components carry `&`-separated subcomponents. */
+function firstSubcomponent(component: string): string {
+  const amp = component.indexOf("&");
+  return amp < 0 ? component : component.slice(0, amp);
+}
+
+/**
+ * A component plausible as a written person name. Coded values (`CBC^Complete
+ * Blood Count`), name-type codes (`L`, `ZZ` in XPN-7) and empty components are
+ * excluded by shape rather than by position, because the position rules above
+ * already restrict which components are read at all.
+ */
+function looksLikeNameToken(component: string): boolean {
+  return /^[A-Za-z][A-Za-z'\-. ]+$/.test(component) && component.trim().length > 1;
+}
+
+function fieldsOf(segment: string): string[] {
+  return segment.split("|");
+}
+
+function componentsOf(field: string): string[] {
+  return field.split("^");
+}
+
+/** CX and XPN fields repeat on `~`. */
+function repetitionsOf(field: string): string[] {
+  return field.split("~");
+}
+
+function checkNameField(ctx: SegmentContext, index: number, field: string): void {
+  for (const rep of repetitionsOf(field)) {
+    const comps = componentsOf(rep);
+    // XPN-1 family, XPN-2 given, XPN-3 middle. Nothing past component 3 is a
+    // name: XPN-5 is a prefix, XPN-7 a name-type code.
+    for (const c of [comps[0], comps[1], comps[2]]) {
+      if (c === undefined || c.length === 0 || isInterpolated(c)) continue;
+      const token = firstSubcomponent(c);
+      if (!looksLikeNameToken(token)) continue;
+      if (ctx.allow.names.has(token.toUpperCase())) continue;
+      ctx.hit(index, token, "person name not declared synthetic in the allow-list");
     }
+  }
+}
+
+function checkDobField(ctx: SegmentContext, index: number, field: string): void {
+  if (field.length === 0 || isInterpolated(field)) return;
+  const m = /^(\d{8})/.exec(field.trim());
+  if (m?.[1] === undefined) return;
+  if (ctx.allow.dobs.has(m[1])) return;
+  ctx.hit(index, m[1], "date of birth not declared synthetic in the allow-list");
+}
+
+function checkIdField(ctx: SegmentContext, index: number, field: string): void {
+  for (const rep of repetitionsOf(field)) {
+    if (rep.length === 0 || isInterpolated(rep)) continue;
+    const comps = componentsOf(rep);
+    // CX-1 is the id value; CX-4 is the assigning authority and CX-5 the
+    // identifier type code, neither of which is an identifier.
+    const value = (comps[0] ?? rep).trim();
+    if (value.length === 0 || isInterpolated(value)) continue;
+    if (ctx.allow.ids.has(value.toUpperCase())) continue;
+    const typeCode = (comps[4] ?? "").trim().toUpperCase();
+    const reason =
+      typeCode === "SS" || /^\d{9}$/.test(value)
+        ? "social security number not declared synthetic in the allow-list"
+        : "patient / member identifier not declared synthetic in the allow-list";
+    ctx.hit(index, value, reason);
+  }
+}
+
+function checkAddressField(ctx: SegmentContext, index: number, field: string): void {
+  for (const rep of repetitionsOf(field)) {
+    const comps = componentsOf(rep);
+    // XAD-1 street, XAD-2 other designation, XAD-3 city, XAD-5 postal code.
+    // XAD-4 (state) and XAD-6 (country) are not identifying on their own.
+    for (const c of [comps[0], comps[1], comps[2], comps[4]]) {
+      if (c === undefined || c.trim().length === 0 || isInterpolated(c)) continue;
+      const value = firstSubcomponent(c).trim();
+      if (value.length === 0) continue;
+      if (ctx.allow.addresses.has(value.toUpperCase())) continue;
+      ctx.hit(index, value, "address component not declared synthetic in the allow-list");
+    }
+  }
+}
+
+function checkPhoneField(ctx: SegmentContext, index: number, field: string): void {
+  for (const rep of repetitionsOf(field)) {
+    for (const c of componentsOf(rep)) {
+      if (c.length === 0 || isInterpolated(c)) continue;
+      const digits = digitsOf(c);
+      if (digits.length < 4) continue;
+      if (ctx.allow.phones.has(digits)) continue;
+      ctx.hit(index, c.trim(), "telephone number not declared synthetic in the allow-list");
+    }
+  }
+}
+
+interface SegmentContext {
+  allow: AllowList;
+  hit: (fieldIndex: number, value: string, reason: string) => void;
+}
+
+/**
+ * Extract every PHI-bearing segment literal from `content` and check it field by
+ * field.
+ *
+ * The literal ends at the first CR, LF, double quote or backtick. Those are the
+ * segment terminator of a real v2 message and the closing delimiters of the two
+ * TypeScript literal forms this corpus uses. A single quote is deliberately NOT
+ * a terminator: it appears inside real family names (`O'Brien`), and ending
+ * there would scan LESS, which is the wrong direction for a gate.
+ */
+function scanHl7Segments(path: string, content: string, allow: AllowList, hits: Hit[]): void {
+  for (const opening of content.matchAll(SEGMENT_OPENING)) {
+    const id = opening[1];
+    if (id === undefined) continue;
+    const start = (opening.index ?? 0) + opening[0].length - id.length - 1;
+    const rest = content.slice(start);
+    const end = rest.search(/[\r\n"`]/);
+    const segment = end < 0 ? rest : rest.slice(0, end);
+    const fields = fieldsOf(segment);
+
+    const ctx: SegmentContext = {
+      allow,
+      hit: (fieldIndex, value, reason) => {
+        hits.push({ path, segment: `${id}-${String(fieldIndex)}`, value, reason });
+      },
+    };
+
+    const run = (
+      table: Record<string, number[]>,
+      check: (c: SegmentContext, i: number, f: string) => void,
+    ): void => {
+      for (const index of table[id] ?? []) {
+        const field = fields[index];
+        if (field === undefined || field.length === 0) continue;
+        check(ctx, index, field);
+      }
+    };
+
+    run(NAME_FIELDS, checkNameField);
+    run(DOB_FIELDS, checkDobField);
+    run(ID_FIELDS, checkIdField);
+    run(ADDRESS_FIELDS, checkAddressField);
+    run(PHONE_FIELDS, checkPhoneField);
   }
 }
 
@@ -719,35 +1276,14 @@ function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
   }
   const text = buf.toString("utf8");
 
-  // The format-agnostic floor: dashed SSN + non-test email. This runs on every
-  // target and is all the starter detects.
+  // ▶ TWO PASSES, AND THE SECOND IS "IN ADDITION TO" THE FIRST, NEVER "INSTEAD
+  // OF" IT. Every target gets both, on every route. The floor is format-blind
+  // and catches shapes the structured pass never looks for (an SSN in prose, an
+  // email in a doc comment); the structured pass catches the field-level PHI a
+  // real v2 message carries, none of which has an SSN or email shape. Making
+  // either exclusive of the other would open a leak wider than it closed.
   scanCommonShapes(target.path, text, allow, hits);
-
-  // ── TODO: add Transform-specific structured field-level PHI detection here ──
-  //
-  //   The floor above ONLY catches SSN/email shapes. Before you rely on this
-  //   scanner as a real safety gate you MUST add structured, field-level
-  //   detection for Transform's PHI, at minimum: person NAMES, DATE OF BIRTH,
-  //   MRN / MEMBER ID, ADDRESS, and PHONE. That means parsing `text` according to the
-  //   Transform wire format and checking each PHI-bearing field against the
-  //   allow-list (`allow.names` / `allow.dobs` / `allow.ids`), pushing a `Hit`
-  //   for anything not positively declared synthetic.
-  //
-  //   Parse the format properly (delimiters / segments / elements / tags). Do
-  //   NOT bolt on a blind text regex for names: coded values (`CBC^Complete
-  //   Blood Count`, `Boston^MA`) produce false confidence. See the sibling
-  //   parsers named in the STARTER banner at the top of this file for worked,
-  //   spec-aware examples you can adapt:
-  //
-  //     const d = detectTransformDelimiters(text);          // if applicable
-  //     for (const record of splitTransform(text, d)) {
-  //       // check name / dob / id / address / phone fields against `allow`
-  //       // hits.push({ path: target.path, segment: "<field>", value, reason });
-  //     }
-  //
-  //   Until this section is implemented, treat a green `pnpm phi-scan` as
-  //   "no SSN/email shapes found", NOT as "no PHI".
-  // ───────────────────────────────────────────────────────────────────────────
+  scanHl7Segments(target.path, text, allow, hits);
 }
 
 // ---------------------------------------------------------------------------

@@ -336,9 +336,124 @@ the destination mode is visible; `--name-only` cannot see it.
 Name the entry's own repo-relative path plus a token from the closed `entryKind`/`gitModeKind`
 sets, nothing else. **This applies to the prose too**: a diagnostic about a PHI leak is itself a PHI
 surface, which is why the docblock writes the dangerous target as a _shape_ and not an example.
-**The walk has NO extension scope of its own**: it skips regular `*.md` as documentation and takes
-everything else, so a link at `src/leak.json` and a linked directory are refused there too.
-`src/**.ts` is the **`--staged`** route's boundary; do not describe the two as one rule.
+**The walk has NO extension scope of its own**, so a link at `src/leak.json` and a linked directory
+are refused there too. It used to skip a regular `*.md` before reading a byte of it; **that
+exemption is gone** and the removal is purely additive (see the scope section below). `src/**.ts`
+was the **`--staged`** route's boundary, not the walk's, and that suffix bound is gone too.
+
+### The scan scope is the tracked corpus, and it is reconciled against git
+
+**▶ THE HEADLINE, MEASURED ON THIS REPOSITORY AT `daf75c3` RATHER THAN PORTED FROM A SIBLING.** Both
+enumerating routes covered `test/fixtures/` plus `src/`, and that was **31 of 102 tracked files: 71
+read by NEITHER route, 27 of them under `test/`, 8 of those carrying inline HL7 `PID|` literals**
+with names, DOBs and MRNs in them. Head state: **102 tracked / 100 opened / 2 in neither**, both of
+those declared literal exemptions, and **0 under `test/`**.
+
+**▶ AND THE SHARPEST HALF, WHICH IS THIS REPOSITORY'S OWN AND NOT A SIBLING'S: `test/fixtures/` HAS
+NEVER EXISTED HERE, ON ANY COMMIT.** `git log --all -- 'test/fixtures*'` is empty. The walk's
+`existsSync` guard returned on its first line for that root on **every run this scanner has ever
+made**, and every one of those runs printed `OK: no hits` and exited 0. **A declared root that was
+never opened is indistinguishable from a clean one.**
+
+**▶ A COUNT DOES NOT DETECT THAT, AND NEITHER DOES AN EXISTENCE CHECK.** A file count counts the
+roots that DID exist, so a healthy total says nothing about a root nobody opened; and refusing a
+MISSING root leaves the other half, because an EMPTIED one opens nothing and still reports clean.
+The only thing that observes either is `reconcileWithGit`, which compares what the walk actually
+OPENED against `git ls-files` and refuses (exit 2), naming every tracked path that was not opened.
+**Never re-add a `tracked.has()` pre-check in front of a read**: that makes the walk agree with git
+by construction, at zero firings, exactly as it did in the contract gate.
+
+**▶ WHAT THE RECONCILIATION DOES NOT CLOSE, AND NO REPO IN THIS ECOSYSTEM HAS: IT COMPARES PATH
+SETS, NOT THE BYTES GIT CARRIES AT THOSE PATHS.** A root swapped for a directory mirroring the
+tracked NAMES still reconciles, over decoy contents. Widening makes that narrower rather than
+closed: a decoy must now mirror 100 names, not 7. It is also **vacuous on an empty index**, which is
+the state every throwaway repo in the suite is in, so the walk's own refusals are what hold there.
+
+**▶ A WALK ROOT THAT IS NOT A DIRECTORY NOW REFUSES BEFORE THE WALK, AND `existsSync` IS WHY IT WAS
+INVISIBLE. `existsSync` FOLLOWS**, so a DANGLING root read false, `walk` returned immediately, and
+the run reported clean with the corpus off the disk: measured here, `OK: no hits` / exit **0**. A
+root that was a symlink to a real directory was the other half, and it was **followed**, so the scan
+read bytes git does not carry and called them the corpus. Both refuse with **2** now, via an `lstat`
+per declared root. An **absent** root is deliberately not an error: a tree may legitimately lack
+one, and the reconciliation is what notices anything tracked lived under it.
+
+**▶ THE EXIT CODE FOR A REGULAR-FILE ROOT IS `2` HERE, DERIVED FROM THIS SCRIPT'S OWN CONTRACT AND
+NOT PORTED.** Measured before the change: `existsSync` answered true, `readdirSync` threw `ENOTDIR`
+into `walk`'s catch, which raises an `InvocationError` and returns 2 from `main`. The new `lstat`
+preflight answers first and returns the same 2, so the code did not move. **Siblings differ and
+porting one is the bug this item exists to stop.**
+
+**▶ ROOTS MUST STAY DISJOINT, AND WIDENING IS BY UNION.** `test` covers `test/fixtures` rather than
+sitting beside it: declaring both reports every nested file twice. The previous list is a strict
+SUBSET of the new one, and the `--staged` scope's previous predicate is a strict subset of its new
+one (the `.ts` suffix requirement is dropped, not kept), so nothing either route saw can stop being
+seen. **Proved by grid rather than argued: 169 cells over 15 paths, 4 payloads and all 3 routes,
+each run against the base scanner and the head scanner. 37 base `1` cells still `1`, 74 cells
+`0 -> 1`, and exactly ONE `1 -> 0`,** which is the next paragraph.
+
+**▶ THE ONE SUBTRACTION, NAMED RATHER THAN LEFT TO BE FOUND: `pnpm phi-scan package.json` exited 1
+on the npm publisher contact in its `author` field and now exits 0.** That mailbox is public,
+organisational and not PHI; it is **named in `scripts/phi-allow-list.txt` rather than scrubbed**,
+because deleting it to get green would destroy the evidence the audit looked at it. It is declared
+with the `EMAIL` tag, which takes **two literals, a path and an address**, so it is the narrowest
+instrument this allow-list has: the same address in any other file still reports, and any other
+address in that file still reports. **An allow-list entry is still ROUTE-BLIND** (it clears on the
+commit-blocking `--staged` too) and that reach is pinned from both directions by tests rather than
+asserted. Without the entry the choice was a worse hole (exempting the whole file) or an unusable
+gate (every commit touching `package.json` blocked).
+
+**▶ THE ALL-ROUTE EXEMPTION LIST IS TWO LITERAL PATHS AND IT NEVER REACHES A BLOCKING ROUTE.** The
+two vendored `pnpm pack` tarballs are gzip archives: their bytes are not the text they carry, so a
+text pass over them is neither a detection nor a clearance, and both are gated at their own source
+repositories. Measured before the change, the fhir tarball produced exactly one hit, seven bytes of
+DEFLATE output matching the email shape, which changes with every repack. **A literal path, never a
+predicate; the all route only; `<path>` still reads them.** If `pnpm vendor:refresh` renames one the
+gate refuses naming the new path, which is the safe direction and is deliberate.
+
+**▶ `.git` IS A REGULAR FILE IN A SUBMODULE WORKING TREE**, not a directory, and this repository is
+consumed as one. It is skipped by literal name: it is git's own metadata, never tracked, and in a
+plain clone it is a directory the walk already skipped, so admitting it made the scan behave
+differently in a clone and a submodule for nothing.
+
+### The HL7 v2 structured pass, and why enumeration alone would have been false confidence
+
+**▶ ENUMERATING MORE FILES BUYS THE SSN/EMAIL FLOOR AND NOTHING ELSE.** Measured over the 8 tracked
+files carrying `PID|` here: **zero dashed SSNs and zero emails between them.** Widening the walk
+without a recogniser would have opened 8 files full of names, DOBs, MRNs, one undashed SSN, a street
+address and two phone numbers, and reported every one of them **clean**. The two halves ship
+together and each is **"in addition to"**, never "instead of": both passes run on every target on
+all three routes.
+
+**▶ AND THE SHAPE THAT MAKES THIS PACKAGE DIFFER FROM ITS PARSER SIBLINGS: THERE IS NO STANDALONE
+`.hl7` FIXTURE IN THIS REPOSITORY AT ALL.** Every message in the corpus is a `.ts` **string
+literal**, usually one segment per array element. A recogniser written the usual way, treating the
+file as the document, would have found nothing in any of them. So the pass locates segment literals
+**anywhere in a target's text** and reads each from its segment id to the first CR, LF, double quote
+or backtick. A single quote is deliberately NOT a terminator: it occurs in real family names, and
+stopping there would scan less.
+
+It parses **PID / NK1 / GT1 / IN1** by field and component and checks names (XPN 1/2/3), DOB (the
+leading 8 digits of a TS), ids (CX-1 across `~` repetitions, with an `SS` type code or a bare
+9-digit value named as an SSN), addresses (XAD 1/2/3/5) and phones (XTN components with 4+ digits).
+**Four things it does NOT do, stated rather than implied:** a value injected by template
+interpolation is skipped rather than guessed at; PROVIDER names in PV1/ORC/OBR XCN fields are out of
+scope (a clinician is not the patient, and XCN is a different layout); a single-character middle
+initial is below the name-token floor; and a segment written with a non-default field separator is
+not recognised.
+
+**Nothing patient-identifying was found in the 69 files the widening newly opened**, every one of
+them hand-read. The fixture values are placeholders and are **named in the allow-list rather than
+scrubbed**: `Jane Q. Public` and `Jane Doe`, the mnemonics keyed to their suites (`Appt^Amy`,
+`Doc^Dana`, `Imm^Ian`, `Kin^Next`), `MRN1`/`MRN2`/`MRN12345`, an SSN-shaped `999887777` in area
+number 999 which the Social Security Administration has never issued, placeholder street lines, and
+two numbers in the reserved 555 range. The one org-traceable string is the publisher mailbox above.
+
+**▶ THE SCANNER'S OWN TEST FILE IS NOW INSIDE THE CORPUS, AND ITS VIOLATOR PAYLOADS ARE ASSEMBLED
+FROM PARTS AT RUNTIME.** A live literal there would red the repository's own gate on every run, and
+both alternatives are worse: allow-listing it blinds the floor globally and route-blind, and
+exempting the file by path leaves the largest violator-bearing file in the tree unscanned.
+Assembling keeps every runtime value byte-identical, so no assertion lost bite. **The residual:
+nothing gates the convention itself** beyond the gate reddening if someone writes a literal back.
 **▶ THE RENAME RESIDUAL IS CLOSED, AND THE FRAMING IT WAS FILED UNDER WAS FALSE.** It was
 disclosed here as "admitting `R`/`C` needs the two-path record shape, a scope decision". **There is
 no scope decision and no record shape work**: the remedy is `--no-renames` on the `git diff
@@ -367,16 +482,19 @@ down as canonical**: across both-modified, add/add, modify/delete, delete/modify
 symlink/symlink the status is always `U` and the dst mode always `000000`, while the SRC mode
 (`100644`/`120000`/`000000`) and the set of stages present (1/2/3, 1/2, 2/3, 1/3) both vary.
 **Three residuals remain disclosed, not closed.** Do not silently re-close any, and do not let a
-future edit read as though they were. (1) This scanner has **no refuse-a-scan-that-observed-nothing
-rule**, so an empty enumeration reports clean. (2) The ancestor-component and absolute/`../` reads
-above, on the named-path mode only. (3) **A scan ROOT'S OWN PATH staged as a non-regular entry is
-outside the `--staged` route's scope**, because that scope tests `test/fixtures/` and `src/` as
-path PREFIXES and an index entry at exactly `src` matches neither. Measured identically on both
+future edit read as though they were. (1) This scanner still has **no refuse-a-scan-that-observed-
+nothing rule** on the routes themselves: an empty enumeration reports clean. The all route now has
+a partial answer, `reconcileWithGit`, which refuses when the walk opened less than git tracks; that
+does **not** cover `--staged` or `<path>`, and it is **vacuous on an empty index**, so the sentence
+is narrowed rather than retired. (2) The ancestor-component and absolute/`../` reads above, on the
+named-path mode only. (3) **A scan ROOT'S OWN PATH staged as a non-regular entry is outside the
+`--staged` route's scope**, because that scope tests the root NAMES as path prefixes and an index
+entry at exactly `src` matches neither prefix nor a repo-root file. Measured identically on both
 trees: `ln -s elsewhere src && git add -A` stages `:000000 120000 0000000 <sha> A src` and
-`--staged` reports clean / exit **0**, while the all-mode walk over the same tree exits 1 on the
-payload behind it. `dicom`'s copy of this function carries exactly that guard
-(`s.path === "test/fixtures" || s.path.startsWith("test/fixtures/")`) and **it did not come across
-in the port**. Found by this slice's refuter, pre-existing, and its own item.
+`--staged` reports clean / exit **0**. The all-mode walk now answers that tree two ways rather than
+one: the `lstat` preflight refuses the root outright, and the reconciliation refuses over whatever
+was tracked beneath it. `dicom`'s copy of this function carries a guard for the staged half and
+**it did not come across in the port**. Pre-existing, and its own item.
 **Exit **2** now means every failure to complete, not just a bad invocation.** A throw raised
 before or outside `main`'s inner `try` blocks (`loadAllowList()` on a missing
 `scripts/phi-allow-list.txt`, `readdirSync` on an unreadable directory under a walk root) left the
@@ -386,10 +504,16 @@ of the file is the outermost net and `walk` names an unreadable directory itself
 throw still prints its stack, because a gate that swallows its own bugs is harder to fix.
 Pinned in `test/scripts/phi-scan.test.ts` against **throwaway git repos under `os.tmpdir()`**: the
 scanner roots everything at `process.cwd()`, so never write a link or a violator into this corpus
-to test it. **The enumerate-then-read race is deliberately still open here** and is a separate
-item: measured on this tree, a real `pnpm build` puts **no** transient under either walk root, and
-both temp-using suites `mkdtemp` into `os.tmpdir()`, so it is unreachable by scope, _until a walk
-root widens_, which reintroduces it verbatim.
+to test it. **The enumerate-then-read race is deliberately still open here**, and the condition that
+sentence named as hypothetical has now happened: it said the race was unreachable by scope _until a
+walk root widens_, and the roots have widened to the whole tracked corpus. **Re-measured rather than
+re-asserted**: `pnpm build` writes only to `dist/` and `coverage/`, both gitignored and neither a
+root; the temp-using suites still `mkdtemp` into `os.tmpdir()`; and `dist-artifacts/`, which
+`pack:docs` writes, is gitignored too. What DID come into scope is `.changeset/`, where
+`pnpm changeset` and `changeset version` create and delete files, so a scan racing a release step
+can now enumerate an entry that is gone before it is read. That path exits **2** through
+`scanTarget`'s read guard rather than reporting clean, which is the safe direction, but it is a real
+new reachability and is recorded as one rather than left to be discovered.
 
 ## No internal project bookkeeping on a public surface, in full
 
