@@ -346,8 +346,14 @@ was the **`--staged`** route's boundary, not the walk's, and that suffix bound i
 **▶ THE HEADLINE, MEASURED ON THIS REPOSITORY AT `daf75c3` RATHER THAN PORTED FROM A SIBLING.** Both
 enumerating routes covered `test/fixtures/` plus `src/`, and that was **31 of 102 tracked files: 71
 read by NEITHER route, 27 of them under `test/`, 8 of those carrying inline HL7 `PID|` literals**
-with names, DOBs and MRNs in them. Head state: **102 tracked / 100 opened / 2 in neither**, both of
-those declared literal exemptions, and **0 under `test/`**.
+with names, DOBs and MRNs in them.
+
+**▶ STATE BOTH DENOMINATORS, AND RE-DERIVE THEM AFTER THE CHANGESET IS WRITTEN.** They are not the
+same number, because this change adds a tracked file of its own and an earlier draft counted itself
+out of date: base `daf75c3` is **102 tracked / 31 opened / 71 in neither / 27 of those under
+`test/`**; head is **103 tracked / 101 opened / 2 in neither / 0 under `test/`**, and both of the two
+are declared literal exemptions. **70 files were newly opened, of which 69 existed at base and were
+hand-read**; the seventieth is this change's own changeset.
 
 **▶ AND THE SHARPEST HALF, WHICH IS THIS REPOSITORY'S OWN AND NOT A SIBLING'S: `test/fixtures/` HAS
 NEVER EXISTED HERE, ON ANY COMMIT.** `git log --all -- 'test/fixtures*'` is empty. The walk's
@@ -435,14 +441,40 @@ stopping there would scan less.
 It parses **PID / NK1 / GT1 / IN1** by field and component and checks names (XPN 1/2/3), DOB (the
 leading 8 digits of a TS), ids (CX-1 across `~` repetitions, with an `SS` type code or a bare
 9-digit value named as an SSN), addresses (XAD 1/2/3/5) and phones (XTN components with 4+ digits).
-**Four things it does NOT do, stated rather than implied:** a value injected by template
-interpolation is skipped rather than guessed at; PROVIDER names in PV1/ORC/OBR XCN fields are out of
-scope (a clinician is not the patient, and XCN is a different layout); a single-character middle
-initial is below the name-token floor; and a segment written with a non-default field separator is
-not recognised.
 
-**Nothing patient-identifying was found in the 69 files the widening newly opened**, every one of
-them hand-read. The fixture values are placeholders and are **named in the allow-list rather than
+**▶ EVERY FIELD NUMBER IS CITED TO HL7 v2.5.1 BY CHAPTER AND CLAUSE IN THE SOURCE, AND THE REASON IS
+A MEASURED DEFECT: an uncited table produced `IN1-17` as a telephone field.** IN1-17 is *Insured's
+Relationship To Patient*, so a SNOMED relationship code was reported as a phone number, and the
+remedy that diagnostic steered a developer toward was a global `PHONE` clearance of that digit
+string. **IN1 carries no insured telephone at all**; IN1-7 is the payer's. Found by the refuter.
+
+**▶ TWO SILENT MISSES THE REFUTER FOUND WERE FIXED RATHER THAN DISCLOSED, BECAUSE BOTH REPORTED
+CLEAN OVER CONTENT THE GATE CLAIMS TO CATCH.** (1) The name-token class was `[A-Za-z]`, so `Garcia`
+hit and the same name written with its accent exited 0, as did every name in a non-Latin script: a
+gate blind to exactly the names least likely to be synthetic. It is a Unicode letter class now,
+which still excludes digits so a coded value stays out. (2) A whole message pasted into ONE literal
+with **escaped** `\r` separators was never located, because the character before `PID|` is the
+letter `r` of the escape: measured, an ADT carrying a name, a DOB, an MRN, an address and two phones
+scanned clean at exit 0 while the same message one segment per array element produced 8 hits. The
+escaped separator is now both a boundary AND a terminator, and the terminator half is load-bearing:
+without it the whole message is read as one segment and the next-of-kin's relationship code is
+reported as the patient's PID-11 address.
+
+**The list of what it still does NOT do lives in the banner at the top of `scripts/phi-scan.ts`,
+and `.github/workflows/ci.yml` and `phi-scan-overrides.md` both defer to it**, so an omission there
+is the gate claiming to be wider than it is. It covers template interpolation, PV1/ORC/OBR XCN
+provider names, non-default separators, one-character name components, the PID fields outside the
+mapped set, and binary or compressed targets. **A refuter measured an earlier version of that list
+incomplete in the false-confidence direction; add to it before you add to the code.**
+
+**▶ AND ONE PRE-EXISTING RESIDUAL THE REFUTER NAMED: UNTRACKED content under an undeclared top-level
+directory is invisible to BOTH enumerating routes.** The reconciliation covers the tracked half
+only, by construction. Head is strictly better than base here, and the gap is pinned by a test that
+asserts it, so a future edit closing it reds that case rather than letting the disclosure outlive
+the defect.
+
+**Nothing patient-identifying was found in the 69 pre-existing files the widening newly opened**,
+every one of them hand-read. The fixture values are placeholders and are **named in the allow-list rather than
 scrubbed**: `Jane Q. Public` and `Jane Doe`, the mnemonics keyed to their suites (`Appt^Amy`,
 `Doc^Dana`, `Imm^Ian`, `Kin^Next`), `MRN1`/`MRN2`/`MRN12345`, an SSN-shaped `999887777` in area
 number 999 which the Social Security Administration has never issued, placeholder street lines, and

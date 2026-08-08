@@ -1201,3 +1201,102 @@ describe("phi-scan: the EMAIL allow-list entry, and exactly how far it reaches",
     expect(r.stderr).toContain("EMAIL entry needs a path");
   });
 });
+
+// ---------------------------------------------------------------------------
+// The three silent misses a refuter measured, and the residual it named
+// ---------------------------------------------------------------------------
+//
+// Each of the first three reported a CLEAN result over content this gate claims
+// to catch, so each is pinned RED-before / GREEN-after rather than described.
+
+describe("phi-scan: the HL7 pass sees names it cannot spell, and messages in one literal", () => {
+  const family = ["Kowal", "ski"].join("");
+  const given = ["Barb", "ara"].join("");
+
+  it("catches a NAME COMPONENT OUTSIDE ASCII, which an [A-Za-z] class reported clean", () => {
+    // A gate blind to exactly the names least likely to be synthetic is worse
+    // than no gate. Both a precomposed accent and a non-Latin script.
+    const accented = ["Garc", "ía"].join("");
+    const vietnamese = ["Nguy", "ễn"].join("");
+    const r = scan("nonascii.ts", `const m = "PID|1||||${accented}^${vietnamese}";\n`);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain(accented);
+    expect(r.stderr).toContain(vietnamese);
+    // Non-vacuity: a DIGIT string in the same component is still not a name.
+    const coded = scan("coded-name.ts", `const m = "PID|1||||125677006^^^^^^ZZ";\n`);
+    expect(coded.code, `stderr: ${coded.stderr}`).toBe(0);
+  });
+
+  it("catches a whole message in ONE literal with ESCAPED separators, and numbers its fields right", () => {
+    // The other way a `.ts` file carries a v2 message here, and the shape
+    // `parseHL7(raw)` consumes. Before the fix this exited 0: the character
+    // before `PID|` is the letter `r` of the escape, which the boundary class
+    // rejected. The escaped separator is a TERMINATOR too, or every field after
+    // the first one lands at the wrong index.
+    // Every value here is assembled, per the banner at the top of this file:
+    // this is the one case whose payload IS a live segment literal, so writing
+    // any of it out would red the repository's own gate on every run.
+    const street = ["9", "Elm", "Rd"].join(" ");
+    const city = ["Day", "ton"].join("");
+    const zip = ["454", "02"].join("");
+    const mrn = ["765", "4321"].join("");
+    const dob = ["1963", "12", "07"].join("");
+    const kin = ["Pet", "er"].join("");
+    const phone = ["937", "5550187"].join("");
+    const kinPhone = ["937", "5550188"].join("");
+    const addr = `${street}^^${city}^OH^${zip}`;
+    const msh = "MSH|^~\\&|A|B|C|D|20260101||ADT^A01|M1|P|2.5.1";
+    const pid = `PID|1||${mrn}^^^HOSP^MR||${family}^${given}||${dob}|F|||${addr}||${phone}`;
+    const nk1 = `NK1|1|${family}^${kin}|SPO|${addr}|${kinPhone}`;
+    const r = scan("escaped.ts", `const msg = "${msh}\\r${pid}\\r${nk1}";\n`);
+
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    expect(r.stderr).toContain("PID-5");
+    expect(r.stderr).toContain("PID-7");
+    expect(r.stderr).toContain("PID-11");
+    expect(r.stderr).toContain("PID-13");
+    expect(r.stderr).toContain("NK1-2");
+    expect(r.stderr).toContain("NK1-4");
+    // The field numbering is the half that breaks silently: without bounding on
+    // the escape, the next-of-kin's relationship code is reported as PID-11.
+    expect(r.stderr).not.toContain('segment=PID-11 value="SPO"');
+  });
+
+  it("does NOT read IN1-17 as a telephone field: v2.5.1 defines it as a relationship code", () => {
+    // A wrong field number is a fabricated diagnostic, and the remedy it steers
+    // a developer toward is a global PHONE clearance of a SNOMED code. IN1
+    // carries no insured telephone at all; IN1-7 is the payer's.
+    const r = scan(
+      "in1-17.ts",
+      'const s = "IN1|1|PLAN|CO123|BlueCross|||||||||||||125677006^Relative^SCT";\n',
+    );
+    expect(r.stderr).not.toContain("IN1-17");
+    expect(r.stderr).not.toContain("telephone");
+  });
+
+  it("REFUSES a walk root whose lstat fails for a reason other than absence", () => {
+    // Swallowing every lstat error as "absent" is the same shape as the
+    // missing-root false clean this preflight exists to close. `ENOTDIR` here:
+    // a root path whose own PARENT is a regular file.
+    const root = makeRepo();
+    rmSync(join(root, "docs-content"), { recursive: true, force: true });
+    writeFileSync(join(root, "docs-content"), "not a directory\n");
+    const r = runIn(root, []);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("docs-content");
+  });
+
+  it("RESIDUAL, pinned as a residual: UNTRACKED content outside every root is invisible", () => {
+    // Disclosed rather than closed. The reconciliation covers the TRACKED half
+    // (a tracked stray refuses, pinned above); an untracked one under an
+    // undeclared top-level directory is seen by neither enumerating route. This
+    // case asserts the gap so a future edit that closes it reds here and the
+    // disclosure gets updated rather than silently outliving the defect.
+    const root = makeRepo();
+    mkdirSync(join(root, "notes"));
+    writeFileSync(join(root, "notes", "leak.ts"), SYNTHETIC_PHI);
+    expect(runIn(root, []).code).toBe(0);
+    // And it is not invisible to the route that is handed it.
+    expect(runIn(root, ["notes/leak.ts"]).code).toBe(1);
+  });
+});

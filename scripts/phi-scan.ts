@@ -38,15 +38,34 @@
  *      names, DOBs and MRNs and reported every one of them clean. That is the
  *      false confidence this banner exists to refuse.
  *
- *   ⚠  STILL NOT DETECTED, stated rather than implied:
+ *   ⚠  STILL NOT DETECTED. **THIS LIST IS THE AUTHORITATIVE STATEMENT OF THIS
+ *      GATE'S LIMITS AND TWO OTHER FILES DEFER TO IT**, so an omission here is
+ *      not a documentation slip, it is the gate claiming to be wider than it is.
+ *      A refuter measured an earlier version of this list INCOMPLETE in the
+ *      false-confidence direction. Add to it before you add to the code:
  *        - a value injected by TEMPLATE INTERPOLATION (`${…}`) into a segment
  *          literal. A static text scan cannot see what a placeholder resolves
  *          to; such a component is skipped rather than guessed at.
  *        - PROVIDER names in PV1 / ORC / OBR XCN fields. Those identify a
  *          clinician, not a patient, and the XCN layout differs from XPN;
  *          declared out of scope rather than half-implemented.
- *        - a segment written with a NON-DEFAULT field separator. The pass keys
- *          on `SEG|`, the encoding this corpus and the v2 default both use.
+ *        - a segment written with a NON-DEFAULT field separator, or with a
+ *          non-default component separator. The pass keys on `SEG|` and splits
+ *          on `^` / `~` / `&`, which is the v2 default and what this corpus uses;
+ *          MSH-1/MSH-2 are not consulted.
+ *        - a NAME COMPONENT THAT IS ONE CHARACTER, so a middle initial is below
+ *          the token floor. Raising it competes with the one- and two-letter
+ *          CODE values that share those component positions.
+ *        - a person name carried somewhere OTHER than a v2 segment literal, and
+ *          the whole of PID-2 (external id), PID-4 (alternate id), PID-18
+ *          (account number) and the patient-visit segments.
+ *        - anything inside a BINARY or compressed target: the passes decode as
+ *          UTF-8 text and a name inside a gzip stream survives that unreadable.
+ *
+ *      ▶ TWO ENTRIES THAT USED TO BE ON THIS LIST WERE FIXED RATHER THAN
+ *      DISCLOSED, because both were reachable and both reported CLEAN: a name
+ *      component outside ASCII (`García`, `Nguyễn`), and a whole message pasted
+ *      into ONE literal with ESCAPED `\r` separators. Do not re-narrow either.
  *
  *   Worked examples of structured, format-aware detection live in the sibling
  *   parsers:
@@ -590,7 +609,7 @@ function walk(dir: string, out: string[], unscannable: Unscannable[]): void {
       walk(full, out, unscannable);
     } else if (e.isFile()) {
       // ▶ THE `*.md` SKIP THAT USED TO SIT HERE IS GONE, AND ITS REMOVAL IS
-      // PURELY ADDITIVE. It dropped 16 tracked markdown files before a byte of
+      // PURELY ADDITIVE. It dropped 14 tracked markdown files before a byte of
       // any of them was read, on the argument that documentation may
       // legitimately describe violator values. Two things were wrong with that.
       // First, it was an ENUMERATION-time judgement standing in for a
@@ -599,7 +618,7 @@ function walk(dir: string, out: string[], unscannable: Unscannable[]): void {
       // it was never true of the other routes: `pnpm phi-scan notes.md` ran the
       // same content passes at base and reported what it found, so the skip made
       // the two routes disagree about the same bytes. Measured over this repo's
-      // tracked corpus, opening all 16 produced ZERO new hits.
+      // tracked corpus at `daf75c3`, opening all 14 produced ZERO new hits.
       out.push(full);
     } else {
       unscannable.push({ path: normalizePath(full), kind: entryKind(e) });
@@ -667,8 +686,15 @@ function refuseNonDirectoryRoots(roots: string[]): void {
     let st;
     try {
       st = lstatSync(root);
-    } catch {
-      continue; // absent, not an error: the reconciliation owns this case
+    } catch (err) {
+      // ONLY a genuine absence is excused. Any other `lstat` failure (`EACCES`
+      // on the parent, `ELOOP`, `ENAMETOOLONG`) is a root the walk cannot
+      // account for, and swallowing all of them as "absent" would be the same
+      // shape as the missing-root false clean this preflight exists to close.
+      const code = err instanceof Error && "code" in err ? String(err.code) : "unknown";
+      if (code === "ENOENT") continue;
+      bad.push({ path: normalizePath(root), kind: `unreadable (${code})` });
+      continue;
     }
     if (st.isDirectory()) continue;
     bad.push({
@@ -731,9 +757,13 @@ function reconcileWithGit(opened: Set<string>): void {
   throw new InvocationError(
     `refusing the scan: ${String(missing.length)} ${noun} never opened by the walk:\n${lines}\n` +
       `A declared root that is missing, emptied or replaced looks exactly like a clean one, so ` +
-      `the walk is reconciled against git's index rather than trusted. ` +
-      `Add the directory to WALK_ROOT_NAMES in this script, or (if the path genuinely cannot be ` +
-      `scanned) add that literal path to RECONCILE_EXEMPT with the reason written down.`,
+      `the walk is reconciled against git's index rather than trusted.\n` +
+      `Read the paths before reaching for a remedy, because the commonest cause is not a scope ` +
+      `problem at all: a tracked file DELETED from the working tree but not from the index reports ` +
+      `here, and the fix is to restore it or to stage the deletion. Only if the path is genuinely ` +
+      `outside every scan root should you add its directory to WALK_ROOT_NAMES, and only if it ` +
+      `genuinely cannot be scanned should you add that literal path to RECONCILE_EXEMPT with the ` +
+      `reason written down. Widening RECONCILE_EXEMPT is the last resort, never the first.`,
   );
 }
 
@@ -1058,6 +1088,17 @@ function scanCommonShapes(path: string, content: string, allow: AllowList, hits:
 // carry is names, DOBs, MRNs, one undashed SSN in an `SS`-typed identifier, one
 // street address and two phone numbers, and the floor is blind to every one.
 
+// ▶ EVERY FIELD NUMBER BELOW IS FROM HL7 v2.5.1, AND THE CLAUSE IS CITED BECAUSE
+// AN UNCITED TABLE IS WHAT PRODUCES A WRONG ONE. PID is Chapter 3 §3.4.2, NK1
+// Chapter 3 §3.4.5, PV1 Chapter 3 §3.4.3, GT1 Chapter 6 §6.5.4 and IN1 Chapter 6
+// §6.5.6. Measured cost of not citing them: a first draft of this table mapped
+// **IN1-17 as a telephone field**. IN1-17 is *Insured's Relationship To Patient*
+// (CE, table 0063), so a SNOMED relationship code was reported as a phone
+// number, and the remedy that diagnostic steered a developer toward was a global
+// `PHONE` clearance of that digit string. **IN1 carries no insured telephone at
+// all**: IN1-7 is the PAYER's number, an organisation's, so `IN1` is absent from
+// `PHONE_FIELDS` deliberately rather than by omission.
+
 /** PHI-bearing fields per segment, by v2 field number (`PID-5` is index 5). */
 const NAME_FIELDS: Record<string, number[]> = {
   PID: [5, 6, 9],
@@ -1087,7 +1128,7 @@ const PHONE_FIELDS: Record<string, number[]> = {
   PID: [13, 14],
   NK1: [5, 6],
   GT1: [6, 7],
-  IN1: [17],
+  // IN1 is absent on purpose: see the citation note above.
 };
 
 const PHI_SEGMENTS = Object.keys(NAME_FIELDS);
@@ -1096,8 +1137,22 @@ const PHI_SEGMENTS = Object.keys(NAME_FIELDS);
  * Locate a segment literal by its `SEG|` opening. The leading boundary keeps
  * `PID-3` in prose and `xPID|` in an identifier from matching; only a real
  * segment id immediately followed by the default field separator qualifies.
+ *
+ * ▶ THE `\\r` / `\\n` ALTERNATIVE IS NOT DECORATION, AND IT WAS A MEASURED
+ * SILENT MISS. A v2 message pasted into a TypeScript literal in one piece writes
+ * its segment terminator as the ESCAPE `\\r`, so the character immediately before
+ * `PID|` is the letter `r`, which `[^A-Za-z0-9]` rejects. Measured before this
+ * alternative was added: a whole ADT in one literal, carrying a name, a DOB, an
+ * MRN, an address and two phone numbers across PID and NK1, scanned
+ * `OK: no hits` at exit 0, while the identical message written one segment per
+ * array element produced 8 hits. That is the OTHER way a `.ts` file carries a
+ * message here, and it is exactly the shape `parseHL7(raw)` consumes. Purely
+ * additive: it only adds places a segment can start.
  */
-const SEGMENT_OPENING = new RegExp(`(?:^|[^A-Za-z0-9])(${PHI_SEGMENTS.join("|")})\\|`, "g");
+const SEGMENT_OPENING = new RegExp(
+  `(?:^|\\\\[rn]|[^A-Za-z0-9])(${PHI_SEGMENTS.join("|")})\\|`,
+  "g",
+);
 
 /** Digits only, so `555-1234`, `(555) 1234` and `5551234` compare equal. */
 function digitsOf(value: string): string {
@@ -1126,7 +1181,14 @@ function firstSubcomponent(component: string): string {
  * already restrict which components are read at all.
  */
 function looksLikeNameToken(component: string): boolean {
-  return /^[A-Za-z][A-Za-z'\-. ]+$/.test(component) && component.trim().length > 1;
+  // ▶ UNICODE LETTERS, NOT `[A-Za-z]`, AND THAT WAS A MEASURED SILENT MISS. An
+  // ASCII-only class reports a name it cannot spell as CLEAN rather than as
+  // unrecognised, so `Garcia` hit while the same name written with its accent
+  // exited 0, as did every name in a non-Latin script. A gate that is blind to
+  // exactly the names least likely to be synthetic is worse than no gate.
+  // `\p{L}` excludes digits, so a coded value stays out; combining marks are
+  // admitted so a decomposed accent does not split a token.
+  return /^\p{L}[\p{L}\p{M}'\-. ]+$/u.test(component) && component.trim().length > 1;
 }
 
 function fieldsOf(segment: string): string[] {
@@ -1231,7 +1293,13 @@ function scanHl7Segments(path: string, content: string, allow: AllowList, hits: 
     if (id === undefined) continue;
     const start = (opening.index ?? 0) + opening[0].length - id.length - 1;
     const rest = content.slice(start);
-    const end = rest.search(/[\r\n"`]/);
+    // The ESCAPED separators are terminators as well as boundaries. Without them
+    // a whole message in one literal is read as ONE segment, and every field
+    // after the first embedded `\r` lands at the wrong index: measured, a PID
+    // followed by an escaped separator and an NK1 reported the next-of-kin's
+    // relationship code as the patient's ADDRESS. Bounding on them makes each
+    // segment's field numbering its own again.
+    const end = rest.search(/\\[rn]|[\r\n"`]/);
     const segment = end < 0 ? rest : rest.slice(0, end);
     const fields = fieldsOf(segment);
 
