@@ -1319,77 +1319,131 @@ describe("phi-scan: the coverage claim is POSITIVE, and this is what makes it ch
     return parts.join("|");
   };
 
-  it("reads EVERY ONE of the 28 fields the banner names, and NONE that it does not", () => {
-    // ▶ ALL 28, NOT A SAMPLE, AND THAT IS THE FINDING. An earlier draft named
+  it("reads EVERY ONE of the 35 fields the banner names, and NONE that it does not", () => {
+    // ▶ ALL 35, NOT A SAMPLE, AND THAT IS THE FINDING. An earlier draft named
     //   eight and its comment claimed a field added to the table without being
     //   added to the banner would red here. Measured: adding PID-4 and PID-18 to
     //   the table left the suite 75/75 GREEN. Worse is the NARROWING direction,
     //   where the code drops a field and the banner goes on claiming it: 15 of
-    //   the 28 fired in no test at all, so that shipped green too. Enumerating
-    //   every named field is what makes the claim durable in both directions.
+    //   the (then) 28 fired in no test at all, so that shipped green too.
+    //   Enumerating every named field is what makes the claim durable in both
+    //   directions.
+    //
+    // ▶ EACH ROW CARRIES THE v2.5.1 ITEM NUMBER THE FIELD NUMBER WAS CORROBORATED
+    //   BY, and that is the point of this list rather than a note on it. Every
+    //   number here is checked against a published copy of HL7 v2.5.1 (the
+    //   segment attribute tables of Chapter 3 for PID/NK1 and Chapter 6 for
+    //   GT1/IN1), cross-checked against a second version-pinned publication, and
+    //   cited in `scripts/phi-scan.ts`. An item number is the standard's own
+    //   stable identifier for an element, so a future reader re-checking a row is
+    //   checking the SAME element rather than a same-numbered one. Fifteen of
+    //   these had never been checked against any published source: the whole GT1
+    //   row, PID-6/9/19/20, NK1-30/33 and IN1-18/19. None of the fifteen was
+    //   wrong. One CITATION was (GT1 is clause 6.5.5, not 6.5.4).
     const name = `${family}^${given}`;
-    const covered: [string, string, Record<number, string>][] = [
-      ["PID", "PID-3", { 3: "A77321^^^HOSP^MR" }],
-      ["PID", "PID-5", { 5: name }],
-      ["PID", "PID-6", { 6: name }],
-      ["PID", "PID-7", { 7: "19631207" }],
-      ["PID", "PID-9", { 9: name }],
-      ["PID", "PID-11", { 11: "9 Elm Rd^^Dayton^OH^45402" }],
-      ["PID", "PID-13", { 13: "9375550187" }],
-      ["PID", "PID-14", { 14: "9375550186" }],
-      ["PID", "PID-19", { 19: "555443210" }],
-      ["PID", "PID-20", { 20: "DL77321" }],
-      ["NK1", "NK1-2", { 2: name }],
-      ["NK1", "NK1-4", { 4: "9 Elm Rd^^Dayton^OH^45402" }],
-      ["NK1", "NK1-5", { 5: "9375550188" }],
-      ["NK1", "NK1-6", { 6: "9375550189" }],
-      ["NK1", "NK1-16", { 16: "19631207" }],
-      ["NK1", "NK1-30", { 30: name }],
-      ["NK1", "NK1-33", { 33: "A77321" }],
-      ["GT1", "GT1-3", { 3: name }],
-      ["GT1", "GT1-5", { 5: "9 Elm Rd^^Dayton^OH^45402" }],
-      ["GT1", "GT1-6", { 6: "9375550190" }],
-      ["GT1", "GT1-7", { 7: "9375550191" }],
-      ["GT1", "GT1-8", { 8: "19631207" }],
-      ["GT1", "GT1-12", { 12: "555443210" }],
-      ["GT1", "GT1-19", { 19: "EMP77321" }],
-      ["IN1", "IN1-16", { 16: name }],
-      ["IN1", "IN1-18", { 18: "19631207" }],
-      ["IN1", "IN1-19", { 19: "9 Elm Rd^^Dayton^OH^45402" }],
-      ["IN1", "IN1-36", { 36: "POL77321" }],
+    const covered: [string, string, string, Record<number, string>][] = [
+      ["PID", "PID-3", "00106", { 3: "A77321^^^HOSP^MR" }],
+      ["PID", "PID-5", "00108", { 5: name }],
+      ["PID", "PID-6", "00109", { 6: name }],
+      ["PID", "PID-7", "00110", { 7: "19631207" }],
+      ["PID", "PID-9", "00112", { 9: name }],
+      ["PID", "PID-11", "00114", { 11: "9 Elm Rd^^Dayton^OH^45402" }],
+      ["PID", "PID-13", "00116", { 13: "9375550187" }],
+      ["PID", "PID-14", "00117", { 14: "9375550186" }],
+      ["PID", "PID-19", "00122", { 19: "555443210" }],
+      ["PID", "PID-20", "00123", { 20: "DL77321" }],
+      ["NK1", "NK1-2", "00191", { 2: name }],
+      ["NK1", "NK1-4", "00193", { 4: "9 Elm Rd^^Dayton^OH^45402" }],
+      ["NK1", "NK1-5", "00194", { 5: "9375550188" }],
+      ["NK1", "NK1-6", "00195", { 6: "9375550189" }],
+      ["NK1", "NK1-16", "00110", { 16: "19631207" }],
+      // The seven below were DISCLOSED AS UNREAD by a refuter and asserted clean
+      // by this very case. The same published tables that corroborated the rest
+      // ground them, so they are read now: a UNION with the previous list, never
+      // a replacement. Every row that reported before this change still reports.
+      ["NK1", "NK1-26", "00109", { 26: name }],
+      ["NK1", "NK1-30", "00748", { 30: name }],
+      ["NK1", "NK1-31", "00749", { 31: "9375550188" }],
+      ["NK1", "NK1-32", "00750", { 32: "9 Elm Rd^^Dayton^OH^45402" }],
+      ["NK1", "NK1-33", "00751", { 33: "A77321" }],
+      ["NK1", "NK1-37", "00754", { 37: "555443210" }],
+      ["GT1", "GT1-2", "00406", { 2: "G77321" }],
+      ["GT1", "GT1-3", "00407", { 3: name }],
+      ["GT1", "GT1-4", "00408", { 4: name }],
+      ["GT1", "GT1-5", "00409", { 5: "9 Elm Rd^^Dayton^OH^45402" }],
+      ["GT1", "GT1-6", "00410", { 6: "9375550190" }],
+      ["GT1", "GT1-7", "00411", { 7: "9375550191" }],
+      ["GT1", "GT1-8", "00412", { 8: "19631207" }],
+      ["GT1", "GT1-12", "00416", { 12: "555443210" }],
+      ["GT1", "GT1-19", "00423", { 19: "EMP77321" }],
+      ["IN1", "IN1-16", "00441", { 16: name }],
+      ["IN1", "IN1-18", "00443", { 18: "19631207" }],
+      ["IN1", "IN1-19", "00444", { 19: "9 Elm Rd^^Dayton^OH^45402" }],
+      ["IN1", "IN1-36", "00461", { 36: "POL77321" }],
+      ["IN1", "IN1-49", "01230", { 49: "MEM77321" }],
     ];
-    expect(covered).toHaveLength(28);
-    for (const [segment, label, fields] of covered) {
+    expect(covered).toHaveLength(35);
+    for (const [segment, label, item, fields] of covered) {
       const r = scan(`cov-${label}.ts`, `const m = "${seg(segment, fields)}";\n`);
-      expect(r.code, `${label} is NAMED in the banner and must report. stderr: ${r.stderr}`).toBe(
-        1,
-      );
-      expect(r.stderr).toContain(label);
+      expect(
+        r.code,
+        `${label} (v2.5.1 item ${item}) is NAMED in the banner and must report. stderr: ${r.stderr}`,
+      ).toBe(1);
+      // The exact locator the report prints, with its trailing space: `PID-3`
+      // alone is a prefix of `PID-33` and would let a renumbering pass.
+      expect(r.stderr).toContain(`segment=${label} `);
     }
 
     // OUTSIDE the named set: each must be clean, and each zero is a GAP the
-    // banner declares, not a clearance. They run in the SAME case as the 28
+    // banner declares, not a clearance. They run in the SAME case as the 35
     // positives above, deliberately, so a wholesale detector failure cannot
-    // produce them. Seven of these were measured by a refuter against a banner
-    // that called itself the authoritative list of this gate's limits and did
-    // not mention one of them.
-    const uncovered: [string, string, Record<number, string>][] = [
-      ["NK1", "NK1-26", { 26: name }],
-      ["NK1", "NK1-31", { 31: "9375550188" }],
-      ["NK1", "NK1-32", { 32: "9 Elm Rd^^Dayton^OH^45402" }],
-      ["NK1", "NK1-37", { 37: "555443210" }],
-      ["GT1", "GT1-2", { 2: "G77321" }],
-      ["GT1", "GT1-4", { 4: name }],
-      ["IN1", "IN1-49", { 49: "MEM77321" }],
-      ["PID", "PID-4", { 4: "ALT77321" }],
-      ["PID", "PID-18", { 18: "ACC77321" }],
-      ["PV1", "PV1-7", { 7: `1234^${family}^${given}` }],
+    // produce them, and each carries the v2.5.1 element it actually is.
+    //
+    // ▶ IN1-17 IS FIRST BECAUSE IT IS THE MEASURED DEFECT THIS WHOLE DISCIPLINE
+    //   EXISTS FOR. It shipped as a telephone field and is *Insured's
+    //   Relationship To Patient* (item 00442), so a coded relationship was
+    //   reported as a phone number and the remedy it steered a developer toward
+    //   was a global PHONE clearance of that digit string. IN1 carries no insured
+    //   telephone at all; IN1-7 (item 00432) is the payer's, an organisation's.
+    //   The rest are OFF-BY-ONE controls: a value one field away from a field
+    //   that IS read must stay clean, which is what a wrong number would break.
+    const uncovered: [string, string, string, Record<number, string>][] = [
+      ["IN1", "IN1-17", "00442", { 17: "9375550190" }],
+      ["IN1", "IN1-7", "00432", { 7: "9375550191" }],
+      ["PID", "PID-4", "00107", { 4: "ALT77321" }],
+      ["PID", "PID-10", "00113", { 10: name }],
+      ["PID", "PID-18", "00121", { 18: "ACC77321" }],
+      ["NK1", "NK1-3", "00192", { 3: name }],
+      ["GT1", "GT1-11", "00415", { 11: name }],
+      ["PV1", "PV1-7", "00147", { 7: `1234^${family}^${given}` }],
+      ["PV1", "PV1-19", "00149", { 19: "V77321" }],
     ];
-    for (const [segment, label, fields] of uncovered) {
+    for (const [segment, label, item, fields] of uncovered) {
       const r = scan(`unc-${label}.ts`, `const m = "${seg(segment, fields)}";\n`);
-      expect(r.code, `${label} is declared OUT of scope. stderr: ${r.stderr}`).toBe(0);
+      expect(
+        r.code,
+        `${label} (v2.5.1 item ${item}) is declared OUT of scope. stderr: ${r.stderr}`,
+      ).toBe(0);
+      expect(r.stderr).not.toContain(`segment=${label} `);
     }
-  }, 60_000);
+  }, 120_000);
+
+  it("NK1-37 is an UNDASHED SSN, which the cross-cutting floor is structurally blind to", () => {
+    // ▶ NON-VACUITY FOR THE SHARPEST CELL THE WIDENING ADDED, and the class rule
+    //   this repository paid for: ENUMERATION ALONE BUYS THE FLOOR AND NOTHING
+    //   ELSE. The floor matches a DASHED shape only, so this value passes it on
+    //   its own; the field table is the only thing that catches it. Both
+    //   polarities in one case, so neither half can drift away from the other.
+    const undashed = ["555", "44", "3210"].join("");
+
+    const floorOnly = scan("nk1-37-floor.txt", `${undashed}\n`);
+    expect(floorOnly.code, `stderr: ${floorOnly.stderr}`).toBe(0);
+
+    const structured = scan("nk1-37-field.ts", `const m = "${seg("NK1", { 37: undashed })}";\n`);
+    expect(structured.code, `stderr: ${structured.stderr}`).toBe(1);
+    expect(structured.stderr).toContain("segment=NK1-37 ");
+    expect(structured.stderr).toContain("social security number");
+  });
 
   it("a literal backslash before r or n truncates the segment, and can silence the field it cuts", () => {
     // The fourth recogniser limit, disclosed rather than guessed at: the escaped

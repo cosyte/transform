@@ -481,17 +481,71 @@ a reader the pass covers "member id"). **A negative list of that shape cannot be
 every clause of every segment would have to appear on it. The banner in `scripts/phi-scan.ts` now
 enumerates EXACTLY the fields that are read, and says that anything not named is not checked. That
 claim is checkable; the other one was not. **Correct it by narrowing the claim, never by silently
-adding a field number.**
+adding a field number.** **Those seven are READ as of 2026-08-08**, because the corroboration below
+grounds them; the rule that produced them is unchanged and is the durable half.
 
-**▶ PROVENANCE, RECORDED FIELD BY FIELD, BECAUSE "cross-corroborated in repo" WAS ITSELF MEASURED AS
-AN OVERCLAIM.** The numbers are asserted from HL7 v2.5.1 and were **not** checked against a published
-copy of the standard. **13 of the 28 are corroborated in-repo** (PID-3/5/7/11/13/14,
-NK1-2/4/5/6/16, IN1-16/36) by `src/messages/patient.ts`, `src/messages/related-person.ts` and the
-vendored `@cosyte/hl7` type surface. **15 are corroborated by nothing here at all, and that is where
-the residual risk sits: the WHOLE GT1 row** (3, 5, 6, 7, 8, 12, 19, which no in-repo source mentions
-even once), plus PID-6, PID-9, PID-19, PID-20, NK1-30, NK1-33, IN1-18 and IN1-19. One number was
-wrong on the way here (IN1-17). That is why the table is deliberately narrow and why widening it
-means citing a source, not adding a number.
+### The field numbers, corroborated against a published v2.5.1
+
+**▶ THE 15 THAT WERE OWED ARE PAID, AND NONE OF THEM WAS WRONG.** The provenance note here used to
+say the numbers were asserted from v2.5.1 and **not** checked against a published copy: 13 of 28 were
+corroborated in-repo only (against `src/messages/patient.ts`, `src/messages/related-person.ts` and
+the vendored `@cosyte/hl7` type surface) and **15 by nothing at all** (the whole GT1 row, plus PID-6,
+PID-9, PID-19, PID-20, NK1-30, NK1-33, IN1-18 and IN1-19). All 15 are now checked, and all 15 are
+correct as used. **A null result is the report**: the risk was real either way, because an ungrounded
+number is a MISSED LEAK or a FALSE POSITIVE ON A CLINICAL FIELD and which one it is cannot be known
+until it is checked. `IN1-17` is the proof that the risk was not theoretical.
+
+**Sources, both named so a reader can repeat this rather than trust it.** (1) The HL7 v2.5.1 standard
+text, read as the SEGMENT ATTRIBUTE TABLES ("HL7 Attribute Table - PID", and so on): Chapter 3,
+Patient Administration, PID 3.4.2 and NK1 3.4.5, at `www.hl7.eu/HL7v2x/v251/std251/ch03.html`; and
+Chapter 6, Financial Management, GT1 6.5.5 and IN1 6.5.6, at the same path with `ch06.html`. Read
+2026-08-08. (2) A second, independently published, version-pinned artifact, checked field by field:
+the HAPI HL7 v2 **generated structures for v2.5.1**,
+`hapifhir.github.io/hapi-hl7v2/v251/apidocs/ca/uhn/hl7v2/model/v251/segment/<SEG>.html`. The two
+agree on the number, the name and the data type of every row, and on the segment lengths (PID 39,
+NK1 39, GT1 57, IN1 53). The tables were parsed out of the HTML rather than read through a
+summarizer, so the extraction is repeatable.
+
+**▶ ONE THING WAS WRONG, AND ONLY READING THE STANDARD COULD HAVE SHOWN IT: THE GT1 CLAUSE CITATION.**
+The source said Chapter 6 **6.5.4**; GT1 is **6.5.5** in v2.5.1. Nothing detected differently because
+of it, which is exactly why it survived: a wrong clause is how the NEXT reader "confirms" a number
+against the wrong table and comes away more confident rather than less.
+
+**▶ THE VERSION IS LOAD-BEARING, AND THAT IS MEASURED.** Three of these rows read differently in a
+later v2: **PID-9, PID-19 and PID-20 are WITHDRAWN from v2.7 onward**, and a published v2+ copy of
+the same segment says so at exactly those numbers. Grounding against the wrong version's table yields
+a confident wrong answer, not an error. The other tell is the data type: v2.5.1 says TS where a later
+version says DTM, and IS/CE where a later one says CWE. **Cite the version, not just the segment.**
+
+**▶ AND THE ANTI-DRIFT DEVICE THAT OUTLIVES THIS SESSION: EVERY ROW NOW CARRIES ITS v2.5.1 ITEM
+NUMBER**, in the banner and in the suite's coverage case. An item number is the standard's own stable
+identifier for an element (PID-6 and NK1-26 share `00109` because they ARE the same element), so a
+reader re-checking a row is checking the same element rather than a same-numbered one.
+
+**What the corroboration then bought, as detection.** The seven fields the refuter had measured as
+unread are read: NK1-26 `00109`, NK1-31 `00749`, NK1-32 `00750`, NK1-37 `00754`, GT1-2 `00406`,
+GT1-4 `00408`, IN1-49 `01230`. **A UNION, never a replacement, and the superset is proved cell by
+cell**: a probe of one violator per cell through the real CLI read `exit=1` on all 28 cells that
+reported before and on all 7 that did not, with every deliberate non-cell (IN1-17, IN1-7, PID-10,
+PID-18, NK1-3, GT1-11, PV1-19) still `exit=0`. **The tracked corpus stayed clean** (`pnpm phi-scan`
+exit 0 before and after), so nothing was traded for it. NK1-37 is the sharpest of the seven: an
+undashed contact SSN, which the cross-cutting floor is structurally blind to, pinned in both
+polarities in one case.
+
+**▶ AND A SILENT-MISS SHAPE FIXED WHILE IT WAS CHEAP: `PHI_SEGMENTS` WAS `Object.keys(NAME_FIELDS)`.**
+Read from one table, a segment added to (say) `ID_FIELDS` alone would never be LOCATED, so its fields
+would never be read and nothing would report: no error, no warning, and a banner naming rows the
+scanner cannot reach. It is the union of all five tables now. Both expressions answer identically
+today, so this is a guard against the next edit rather than a behaviour change in this one.
+
+**▶ WHAT IS STILL NOT GROUND TRUTH HERE, SAID PLAINLY.** Nothing in this repository can check a field
+number against the standard at CI time, and nothing should try: the corroboration is a citation a
+human or an agent repeats, and the suite pins what the table makes the scanner DO, not whether the
+table matches HL7. **The GT1 row also fires on nothing in this corpus** (no tracked file carries a
+`GT1|` literal at all), so every GT1 cell is exercised only by synthetic segments assembled in the
+suite. **Do not add a field number you cannot ground**, and if you cannot ground one, leave it out
+and disclose it: an ungrounded number left OUT of the table is a better outcome than a confident
+wrong one in it.
 
 **And a fourth recogniser limit the second pass found**: a literal backslash followed by `r` or `n`
 inside a field value ends the segment early, because the escaped separator is also the terminator.
