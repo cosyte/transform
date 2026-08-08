@@ -48,6 +48,14 @@
  *   published copy without having to trust this comment, and a number that
  *   silently moved is visible rather than plausible.
  *
+ *   ▶ EXTRACT AN ITEM NUMBER OR DO NOT WRITE ONE, AND THAT IS MEASURED HERE.
+ *   The rows in this table were pulled out of the attribute tables
+ *   mechanically; nine rows in the suite's NEGATIVE-CONTROL list were written
+ *   from recall instead, and one of them (`PV1-7`) was wrong. Eight being right
+ *   was luck, and the wrong one was invisible because it changed no detection at
+ *   all. A wrong citation costs nothing until the next reader re-checks a row
+ *   against it, lands on a DIFFERENT element, and comes away confirmed.
+ *
  *       PID-3   00106 .. Patient Identifier List ................. id
  *       PID-5   00108 .. Patient Name ............................ name
  *       PID-6   00109 .. Mother's Maiden Name .................... name

@@ -1407,6 +1407,18 @@ describe("phi-scan: the coverage claim is POSITIVE, and this is what makes it ch
     //   telephone at all; IN1-7 (item 00432) is the payer's, an organisation's.
     //   The rest are OFF-BY-ONE controls: a value one field away from a field
     //   that IS read must stay clean, which is what a wrong number would break.
+    //
+    // ▶ THESE NINE ROWS ARE CORROBORATED THE SAME WAY THE 35 ABOVE ARE, AND THE
+    //   FIRST DRAFT OF THIS LIST WAS NOT. A refuter measured `PV1-7` written here
+    //   as item 00147; PV1-7 is item **00137** (Attending Doctor) and 00147 is
+    //   PV1-17 (Admitting Doctor). Eight of the nine happened to be right, which
+    //   is the point: they were ASSERTED FROM RECALL rather than extracted from
+    //   the table the 35 were extracted from, so being right was luck and being
+    //   wrong was invisible. No detection changed either way (PV1 is read by
+    //   nothing, and the case asserts a clean result), which is exactly how a
+    //   wrong citation survives: it costs nothing until someone re-checks a row
+    //   against it and lands on a different element, confirmed. **Extract an item
+    //   number from the standard or do not write one.**
     const uncovered: [string, string, string, Record<number, string>][] = [
       ["IN1", "IN1-17", "00442", { 17: "9375550190" }],
       ["IN1", "IN1-7", "00432", { 7: "9375550191" }],
@@ -1415,7 +1427,7 @@ describe("phi-scan: the coverage claim is POSITIVE, and this is what makes it ch
       ["PID", "PID-18", "00121", { 18: "ACC77321" }],
       ["NK1", "NK1-3", "00192", { 3: name }],
       ["GT1", "GT1-11", "00415", { 11: name }],
-      ["PV1", "PV1-7", "00147", { 7: `1234^${family}^${given}` }],
+      ["PV1", "PV1-7", "00137", { 7: `1234^${family}^${given}` }],
       ["PV1", "PV1-19", "00149", { 19: "V77321" }],
     ];
     for (const [segment, label, item, fields] of uncovered) {

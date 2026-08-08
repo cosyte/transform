@@ -522,6 +522,18 @@ NUMBER**, in the banner and in the suite's coverage case. An item number is the 
 identifier for an element (PID-6 and NK1-26 share `00109` because they ARE the same element), so a
 reader re-checking a row is checking the same element rather than a same-numbered one.
 
+**▶ AND THE DEVICE IMMEDIATELY PRODUCED ITS OWN DEFECT, WHICH IS THE MOST USEFUL THING IN THIS
+SECTION.** The 35 READ rows were extracted from the attribute tables mechanically. The nine
+NEGATIVE-CONTROL rows in the same case were not: they were written from recall, and a refuter
+measured `PV1-7` as item `00147`. **PV1-7 is `00137` (Attending Doctor); `00147` is PV1-17 (Admitting
+Doctor).** Eight of the nine happened to be right, which is the whole lesson: being right was luck,
+and being wrong was invisible, because **no detection changes either way** (PV1 is read by nothing
+and the case asserts a clean result). A wrong citation costs nothing until the next reader re-checks
+a row against it, lands on a different element, and comes away CONFIRMED. All nine are extracted and
+verified now, 44 of 44 against the published tables, with a negative control that re-checks every row
+against the WRONG segment's table and mismatches 43 of 44. **Extract an item number or do not write
+one**, and never let "I checked the important ones" stand in for a list that says it was all checked.
+
 **What the corroboration then bought, as detection.** The seven fields the refuter had measured as
 unread are read: NK1-26 `00109`, NK1-31 `00749`, NK1-32 `00750`, NK1-37 `00754`, GT1-2 `00406`,
 GT1-4 `00408`, IN1-49 `01230`. **A UNION, never a replacement, and the superset is proved cell by
@@ -541,9 +553,14 @@ today, so this is a guard against the next edit rather than a behaviour change i
 **▶ WHAT IS STILL NOT GROUND TRUTH HERE, SAID PLAINLY.** Nothing in this repository can check a field
 number against the standard at CI time, and nothing should try: the corroboration is a citation a
 human or an agent repeats, and the suite pins what the table makes the scanner DO, not whether the
-table matches HL7. **The GT1 row also fires on nothing in this corpus** (no tracked file carries a
-`GT1|` literal at all), so every GT1 cell is exercised only by synthetic segments assembled in the
-suite. **Do not add a field number you cannot ground**, and if you cannot ground one, leave it out
+table matches HL7. **The GT1 row also fires on nothing in this corpus**: measured at `ec4b95b`, no
+tracked file carried a GT1 segment literal, so every GT1 cell is exercised only by synthetic segments
+assembled in the suite. **A first draft of that sentence wrote the segment id followed by the field
+separator, and this file is INSIDE the scan's own corpus**, so the sentence became the only
+occurrence of the thing it said did not occur. It parsed to an empty segment and reported nothing, so
+it was false rather than dangerous, but the shape is the one to watch: **a note about a detector,
+inside the corpus that detector reads, is itself an input.** Name the segment; do not spell a
+literal. **Do not add a field number you cannot ground**, and if you cannot ground one, leave it out
 and disclose it: an ungrounded number left OUT of the table is a better outcome than a confident
 wrong one in it.
 
