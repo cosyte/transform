@@ -94,11 +94,14 @@
  *          CODE values that share those component positions.
  *        - A LITERAL BACKSLASH FOLLOWED BY `r` OR `n` INSIDE A FIELD VALUE ENDS
  *          THE SEGMENT EARLY, because the escaped separator is also the
- *          terminator. Measured: a Windows path in PID-11 (`C:\records\…`)
- *          truncates there, so PID-13 and PID-14 go unread. It can only SHORTEN
- *          a segment, never renumber one, since the fields before the cut keep
- *          their positions; and the field it cuts in still reports. Not
- *          decidable from static text, so it is disclosed rather than guessed.
+ *          terminator. Measured: a Windows path in PID-11 truncates there, so
+ *          PID-13 and PID-14 go unread. It can only SHORTEN a segment, NEVER
+ *          RENUMBER one, since the fields before the cut keep their positions.
+ *          **BUT THE FIELD IT CUTS IN CAN GO SILENT TOO**, and an earlier draft
+ *          of this line claimed otherwise: the surviving prefix reports only if
+ *          it still clears a recogniser floor, so a cut before the digits of a
+ *          phone, or inside a family name, loses that field AND everything after
+ *          it. Not decidable from static text, so disclosed rather than guessed.
  *
  *      Anything inside a BINARY or compressed target is unreadable to both
  *      passes: they decode as UTF-8, and a name inside a gzip stream survives.

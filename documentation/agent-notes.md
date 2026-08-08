@@ -401,6 +401,13 @@ figure published before did not:** 14 paths x 4 payloads x 3 routes is 168 cells
 pins the BASE half, because a head-only test structurally cannot. What the suite does pin is the
 head side of every cell that carries the argument, each by a named case.
 
+**▶ AND THE COVERAGE CLAIM IS PINNED IN BOTH DIRECTIONS, WHICH TOOK TWO GOES.** A first version of
+that case named eight fields and claimed a field added to the table without being added to the
+banner would red there. Measured: adding two did nothing, the suite stayed green. Worse was the
+NARROWING direction, where the code drops a field and the banner keeps claiming it: **15 of the 28
+named fields fired in no test at all**, so that shipped green too. The case now enumerates **all
+28** positives beside the declared gaps, in one run, so both directions red.
+
 **▶ THE ONE SUBTRACTION, NAMED RATHER THAN LEFT TO BE FOUND: `pnpm phi-scan package.json` exited 1
 on the npm publisher contact in its `author` field and now exits 0.** That mailbox is public,
 organisational and not PHI; it is **named in `scripts/phi-allow-list.txt` rather than scrubbed**,
@@ -476,17 +483,23 @@ enumerates EXACTLY the fields that are read, and says that anything not named is
 claim is checkable; the other one was not. **Correct it by narrowing the claim, never by silently
 adding a field number.**
 
-**▶ PROVENANCE, RECORDED BECAUSE ITS ABSENCE WAS THE ROOT CAUSE.** The field numbers are asserted
-from HL7 v2.5.1 and were cross-corroborated **in-repo only**, against `src/messages/related-person.ts`
-and the vendored `@cosyte/hl7` type surface. They were **not** checked against a published copy of
-the standard, and one of them was wrong on the way here (IN1-17). That is why the table is
-deliberately narrow and why widening it means citing a source, not adding a number.
+**▶ PROVENANCE, RECORDED FIELD BY FIELD, BECAUSE "cross-corroborated in repo" WAS ITSELF MEASURED AS
+AN OVERCLAIM.** The numbers are asserted from HL7 v2.5.1 and were **not** checked against a published
+copy of the standard. **13 of the 28 are corroborated in-repo** (PID-3/5/7/11/13/14,
+NK1-2/4/5/6/16, IN1-16/36) by `src/messages/patient.ts`, `src/messages/related-person.ts` and the
+vendored `@cosyte/hl7` type surface. **15 are corroborated by nothing here at all, and that is where
+the residual risk sits: the WHOLE GT1 row** (3, 5, 6, 7, 8, 12, 19, which no in-repo source mentions
+even once), plus PID-6, PID-9, PID-19, PID-20, NK1-30, NK1-33, IN1-18 and IN1-19. One number was
+wrong on the way here (IN1-17). That is why the table is deliberately narrow and why widening it
+means citing a source, not adding a number.
 
 **And a fourth recogniser limit the second pass found**: a literal backslash followed by `r` or `n`
 inside a field value ends the segment early, because the escaped separator is also the terminator.
 Measured, a Windows path in PID-11 truncates there and PID-13/14 go unread. It can only SHORTEN a
-segment, never renumber one (the fields before the cut keep their positions) and the field it cuts
-in still reports, so it is disclosed rather than guessed at: it is not decidable from static text.
+segment, **never renumber one** (the fields before the cut keep their positions). **But the field it
+cuts in can go SILENT too, and the first draft of this disclosure claimed otherwise**: the surviving
+prefix reports only if it still clears a recogniser floor, so a cut inside a family name loses that
+field and everything after it. Not decidable from static text, so disclosed rather than guessed.
 
 **▶ AND ONE PRE-EXISTING RESIDUAL THE REFUTER NAMED: UNTRACKED content under an undeclared top-level
 directory is invisible to BOTH enumerating routes.** The reconciliation covers the tracked half

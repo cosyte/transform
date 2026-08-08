@@ -1319,28 +1319,60 @@ describe("phi-scan: the coverage claim is POSITIVE, and this is what makes it ch
     return parts.join("|");
   };
 
-  it("reads every field the banner names, and NONE that it does not", () => {
+  it("reads EVERY ONE of the 28 fields the banner names, and NONE that it does not", () => {
+    // ▶ ALL 28, NOT A SAMPLE, AND THAT IS THE FINDING. An earlier draft named
+    //   eight and its comment claimed a field added to the table without being
+    //   added to the banner would red here. Measured: adding PID-4 and PID-18 to
+    //   the table left the suite 75/75 GREEN. Worse is the NARROWING direction,
+    //   where the code drops a field and the banner goes on claiming it: 15 of
+    //   the 28 fired in no test at all, so that shipped green too. Enumerating
+    //   every named field is what makes the claim durable in both directions.
     const name = `${family}^${given}`;
-    // In the named set: each must report.
     const covered: [string, string, Record<number, string>][] = [
+      ["PID", "PID-3", { 3: "A77321^^^HOSP^MR" }],
       ["PID", "PID-5", { 5: name }],
+      ["PID", "PID-6", { 6: name }],
       ["PID", "PID-7", { 7: "19631207" }],
+      ["PID", "PID-9", { 9: name }],
+      ["PID", "PID-11", { 11: "9 Elm Rd^^Dayton^OH^45402" }],
+      ["PID", "PID-13", { 13: "9375550187" }],
+      ["PID", "PID-14", { 14: "9375550186" }],
+      ["PID", "PID-19", { 19: "555443210" }],
+      ["PID", "PID-20", { 20: "DL77321" }],
       ["NK1", "NK1-2", { 2: name }],
+      ["NK1", "NK1-4", { 4: "9 Elm Rd^^Dayton^OH^45402" }],
+      ["NK1", "NK1-5", { 5: "9375550188" }],
+      ["NK1", "NK1-6", { 6: "9375550189" }],
+      ["NK1", "NK1-16", { 16: "19631207" }],
+      ["NK1", "NK1-30", { 30: name }],
       ["NK1", "NK1-33", { 33: "A77321" }],
       ["GT1", "GT1-3", { 3: name }],
+      ["GT1", "GT1-5", { 5: "9 Elm Rd^^Dayton^OH^45402" }],
+      ["GT1", "GT1-6", { 6: "9375550190" }],
+      ["GT1", "GT1-7", { 7: "9375550191" }],
+      ["GT1", "GT1-8", { 8: "19631207" }],
       ["GT1", "GT1-12", { 12: "555443210" }],
+      ["GT1", "GT1-19", { 19: "EMP77321" }],
       ["IN1", "IN1-16", { 16: name }],
+      ["IN1", "IN1-18", { 18: "19631207" }],
+      ["IN1", "IN1-19", { 19: "9 Elm Rd^^Dayton^OH^45402" }],
       ["IN1", "IN1-36", { 36: "POL77321" }],
     ];
+    expect(covered).toHaveLength(28);
     for (const [segment, label, fields] of covered) {
       const r = scan(`cov-${label}.ts`, `const m = "${seg(segment, fields)}";\n`);
-      expect(r.code, `${label} should report. stderr: ${r.stderr}`).toBe(1);
+      expect(r.code, `${label} is NAMED in the banner and must report. stderr: ${r.stderr}`).toBe(
+        1,
+      );
       expect(r.stderr).toContain(label);
     }
 
     // OUTSIDE the named set: each must be clean, and each zero is a GAP the
-    // banner declares, not a clearance. They run in the same suite as the
-    // controls above so a wholesale detector failure cannot produce them.
+    // banner declares, not a clearance. They run in the SAME case as the 28
+    // positives above, deliberately, so a wholesale detector failure cannot
+    // produce them. Seven of these were measured by a refuter against a banner
+    // that called itself the authoritative list of this gate's limits and did
+    // not mention one of them.
     const uncovered: [string, string, Record<number, string>][] = [
       ["NK1", "NK1-26", { 26: name }],
       ["NK1", "NK1-31", { 31: "9375550188" }],
@@ -1349,20 +1381,28 @@ describe("phi-scan: the coverage claim is POSITIVE, and this is what makes it ch
       ["GT1", "GT1-2", { 2: "G77321" }],
       ["GT1", "GT1-4", { 4: name }],
       ["IN1", "IN1-49", { 49: "MEM77321" }],
+      ["PID", "PID-4", { 4: "ALT77321" }],
+      ["PID", "PID-18", { 18: "ACC77321" }],
       ["PV1", "PV1-7", { 7: `1234^${family}^${given}` }],
     ];
     for (const [segment, label, fields] of uncovered) {
       const r = scan(`unc-${label}.ts`, `const m = "${seg(segment, fields)}";\n`);
       expect(r.code, `${label} is declared OUT of scope. stderr: ${r.stderr}`).toBe(0);
     }
-  });
+  }, 60_000);
 
-  it("a literal backslash before r or n truncates the segment, and only shortens it", () => {
+  it("a literal backslash before r or n truncates the segment, and can silence the field it cuts", () => {
     // The fourth recogniser limit, disclosed rather than guessed at: the escaped
     // separator is also the terminator, so a Windows path in an address field
     // ends the segment there. Pinned so the disclosure cannot outlive the
     // behaviour. The fields BEFORE the cut keep their positions, which is what
     // makes this a truncation rather than a renumbering.
+    //
+    // ▶ AND THE SECOND HALF, WHICH AN EARLIER DRAFT OF THE DISCLOSURE GOT WRONG
+    //   IN THE FLATTERING DIRECTION: it claimed the field the cut lands in still
+    //   reports. It reports only if the surviving prefix still clears a
+    //   recogniser floor. The second probe below cuts inside a family name, and
+    //   that field goes silent along with everything after it.
     const winPath = ["C:", "records", "scan.tif"].join("\\\\");
     const r = scan(
       "backslash.ts",
@@ -1375,5 +1415,17 @@ describe("phi-scan: the coverage claim is POSITIVE, and this is what makes it ch
     expect(r.stderr).toContain("PID-11");
     // And the truncation itself: PID-13 is past the cut.
     expect(r.stderr).not.toContain("PID-13");
+
+    // A cut INSIDE a name: the prefix no longer clears the name-token floor, so
+    // PID-5 itself goes silent and so does every field after it. Only PID-3,
+    // which precedes the cut, survives.
+    const cut = scan(
+      "backslash-name.ts",
+      `const p = "${seg("PID", { 3: "A77321^^^HOSP^MR", 5: "O\\rourke^Sean", 7: "19631207", 13: "5551230000" })}";\n`,
+    );
+    expect(cut.code, `stderr: ${cut.stderr}`).toBe(1);
+    expect(cut.stderr).toContain("PID-3");
+    expect(cut.stderr).not.toContain("PID-5");
+    expect(cut.stderr).not.toContain("PID-7");
   });
 });
