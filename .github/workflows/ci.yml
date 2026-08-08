@@ -39,10 +39,13 @@ jobs:
   # Universal gates from the shared pipeline (typecheck, lint, format, test, coverage, build, attw,
   # dual ESM/CJS smoke, actionlint) on the standard Node matrix. Repo-specific extra jobs (e.g. an
   # examples smoke, a starter-kit build) are added on top of this caller, never instead of it.
-  # The template ships a PHI scanner (scripts/phi-scan.ts), so the shared pipeline's optional
-  # PHI-scan step is switched on. NOTE: the scaffolded scanner is a STARTER: it detects only
-  # cross-cutting SSN/email shapes until you add structured, field-level detection for this
-  # standard's PHI (see the STARTER banner in scripts/phi-scan.ts).
+  # The shared pipeline's optional PHI-scan step is switched on, and what it runs is the all-mode
+  # walk over this repo's whole TRACKED corpus, reconciled against `git ls-files` so a root that is
+  # missing, emptied or replaced refuses rather than reporting clean. It runs the cross-cutting
+  # SSN/email floor AND an HL7 v2 structured pass over a NAMED SET of PID/NK1/GT1/IN1 fields. The
+  # banner at the top of scripts/phi-scan.ts enumerates exactly which fields those are and states
+  # that anything not named is not checked; read it as the whole of the coverage, because two
+  # refuter passes measured the opposite shape (a list of what is NOT covered) incomplete.
   ci:
     uses: cosyte/.github/.github/workflows/ci.yml@main
     with:

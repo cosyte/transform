@@ -172,38 +172,39 @@ Full narrative, every measurement: `documentation/agent-notes.md#the-attw-guardr
 
 ### The PHI scanner
 
-Full narrative, every measurement and both refuter passes:
-`documentation/agent-notes.md#the-phi-scanner-guardrail-in-full`.
+Measurements, the grid, the refuters, and the `--staged` ARGV traps (`--diff-filter` keeps `T`/`U`,
+`--no-renames`, STATUS not mode, re-measure the stride):
+`documentation/agent-notes.md#the-phi-scanner-guardrail-in-full`. **No counts.**
 
-- **▶ THE CLAIM IS EXACTLY: the scanner refuses (exit 2) every entry it ENUMERATES, and every path
-  NAMED DIRECTLY, that is not a regular file.** "It follows nothing" is the looser wording and **two
-  separate refuter passes measured it FALSE.** Do not tighten the sentence back up.
-- **Do not "fix" the link blindness by following the link**: it reads bytes the enumeration does not
-  control (outside the repo, a loop, a device, a blocking FIFO), and git does not carry them anyway.
-- **`lstat` answers for the FINAL COMPONENT ONLY.** A named path with a **symlinked ancestor**, or a
-  plain absolute/`../` argument, is still followed. **Pre-existing, disclosed, deliberately NOT
-  closed.** If you touch `buildTargetsForPaths`, **re-measure the sentence, do not re-assert it**.
-- **▶ THE ONE-LETTER TRAP: `--diff-filter` MUST KEEP `T`.** Replacing a tracked file with a link is
-  neither an add nor a modify: under `AM` the record dies before any mode is read and a mode-`120000`
-  blob passes **green**. Keep `U` too (refused: no stage-0 entry), and keep `--no-renames`, which is
-  what makes a staged rename arrive as a single-path `A`. Key on the **STATUS, not the mode**.
-- **Adding any argument to that `git diff --cached` ARGV means re-measuring the record stride**:
-  `--find-copies-harder` re-enables two-path records even placed _before_ `--no-renames`.
-- **A refusal never echoes the link target**: that is working-tree text and can itself carry PHI.
-  Name the repo-relative path plus a token from the closed `entryKind`/`gitModeKind` sets, nothing
-  else. **This applies to the prose too**: write the dangerous target as a _shape_, never an example.
-- **The walk has NO extension scope of its own** (it skips regular `*.md` and takes everything else);
-  `src/**.ts` is the **`--staged`** route's boundary. **Do not describe the two as one rule.**
-- **Exit `2` means every failure to complete; exit `1` means HITS FOUND.** An uncaught throw used to
-  land on node's `1`, so a caller read a gate that never ran as one that ran and fired.
-- **Three residuals are disclosed, NOT closed**: (1) an empty enumeration reports clean; (2) the
-  ancestor-component / absolute / `../` reads above; (3) a scan **root's own path** staged as a
-  non-regular entry is outside the `--staged` route's prefix scope. **Do not silently re-close any,
-  and do not let a future edit read as though they were.**
-- **Test against throwaway git repos under `os.tmpdir()`**: the scanner roots everything at
-  `process.cwd()`, so **never write a link or a violator into this corpus** to test it.
-- **The enumerate-then-read race is deliberately still open**, unreachable by scope today, _until a
-  walk root widens_, which reintroduces it verbatim.
+- **▶ THE CLAIM IS EXACTLY: it refuses (exit 2) every entry it ENUMERATES, and every path NAMED
+  DIRECTLY, that is not a regular file.** "Follows nothing" is looser and **two refuter passes
+  measured it FALSE**; do not tighten it back, and never close it by following. **`lstat` answers
+  for the FINAL COMPONENT ONLY**: touch `buildTargetsForPaths` and **re-measure, never re-assert**.
+  **A refusal never echoes the link target**, and that binds the prose: a _shape_, never an example.
+- **▶ THERE ARE THREE ROUTES, NOT TWO** (`all`, `--staged`, `<path>`), all running the content
+  passes. **Enumerate all three before calling anything additive.**
+- **▶ SCOPE IS THE TRACKED CORPUS, RECONCILED AGAINST `git ls-files` EVERY RUN**, because
+  **the `fixtures` root HAD NEVER EXISTED ON ANY COMMIT** and went unopened on every run ever made while
+  the run printed clean. **A count cannot detect that**, nor can an existence check: an EMPTIED root
+  opens nothing. **Roots stay DISJOINT** or nested files report twice. The `*.md` walk skip is
+  gone (additive); `src/**.ts` was the **`--staged`** bound, now widened. **Not one rule.**
+- **▶ WIDEN BY UNION AND PROVE THE GRID: every base `1` still `1`.** One cell is not:
+  **`phi-scan package.json` on the npm publisher mailbox**, declared with `EMAIL` (a **path AND an
+  address**). **Every allow-list entry is ROUTE-BLIND** and clears on `--staged`; every tag but
+  `EMAIL` is FILE-blind. **Named, never scrubbed.**
+- **An exemption is a LITERAL PATH, never a predicate, and reaches the ALL route only**: the vendored
+  gzip tarballs are the whole list, and `<path>` still reads them.
+- **Exit `2` is every failure to complete; `1` is HITS FOUND. A regular-file root is `2` HERE,
+  derived from this contract; siblings differ, never port one.** A non-directory root refuses first,
+  because **`existsSync` FOLLOWS**: a dangling one printed clean over an off-disk corpus. An
+  **absent** root is fine.
+- **Enumerating buys the SSN/email floor and NOTHING else**, so the HL7 v2 pass ships **in addition
+  to** it, never instead: the floor finds **zero** in this repo's `PID|` fixtures. **No standalone
+  `.hl7` ships: every message is a `.ts` literal.**
+- **Four residuals are disclosed, NOT closed**, named in the notes; the reconciliation is **path
+  sets, not bytes**; **the enumerate-then-read race precondition HAPPENED.**
+- **Throwaway repos under `os.tmpdir()`; never write a violator here. The scanner's own test file is
+  IN the corpus**: payloads assemble at runtime, never as literals.
 
 ### The agent-instruction contract gate
 

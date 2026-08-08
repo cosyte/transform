@@ -9,14 +9,29 @@
 #
 # Format: `<TAG> <value>` per line. `#` comments and blank lines are ignored.
 #   NAME <token>          synthetic person-name word, matched case-insensitively
-#   DOB <value>           synthetic date of birth (normalize as your detector does)
+#   DOB <value>           synthetic date of birth, the leading 8 digits of a v2 TS
 #   ID <value>            synthetic id matching an SSN / MRN / member-id shape
+#   ADDRESS <value>       synthetic address component (street, city, postal code)
+#   PHONE <value>         synthetic telephone number, compared on digits only
 #   EMAILDOMAIN <domain>  reserved / test email domain that is allowed to appear
+#   EMAIL <path> <addr>   one allowed mailbox in one file: the narrowest tag here
 #
-# NOTE: the STARTER scanner only actively consumes EMAILDOMAIN (its floor is
-# SSN + email shapes). NAME / DOB / ID entries are loaded and ready for the
-# structured, field-level detectors you MUST add to scripts/phi-scan.ts before
-# relying on this as a real PHI gate: see the STARTER banner in that file.
+# ▶ EVERY ENTRY HERE IS ROUTE-BLIND. It clears its literal on the all-mode walk,
+#   on `pnpm phi-scan <path>`, AND on `--staged`, which is the pre-commit gate.
+#   So adding one is a subtraction from the commit-blocking route as well,
+#   whatever the reason for adding it was. There is no route-scoped tag and
+#   there should not be: a value that is safe on one route and not another is a
+#   claim nobody can hold in their head.
+#
+# ▶ AND EVERY TAG BUT ONE IS ALSO FILE-BLIND. `NAME`, `DOB`, `ID`, `ADDRESS`,
+#   `PHONE` and `EMAILDOMAIN` clear their value in EVERY file the scan reads.
+#   `EMAIL` is the exception: it takes a literal path as well, so it clears one
+#   address in one file. Prefer the narrowest tag that covers the case.
+#
+# ▶ NEVER ADD A VALUE THIS REPOSITORY'S OWN GATE TESTS USE AS A TRIPWIRE. The
+#   violator payloads in `test/scripts/phi-scan.test.ts` are assembled from
+#   parts at runtime precisely so they never need an entry here: allow-listing
+#   one would blind the floor for every corpus at once.
 #
 # To add a new synthetic fixture: reuse the tokens below, or append new ones here
 # and commit. Adding a token is a reviewed, intentional act, never silent.
@@ -27,12 +42,81 @@ EMAILDOMAIN example.org
 EMAILDOMAIN example.net
 EMAILDOMAIN example.test
 
-# --- Synthetic person-name tokens (example: extend for your fixtures) ---
-# NAME DOE
-# NAME JOHN
+# --- Synthetic person-name tokens ---
+#
+# Every one is a placeholder in this repository's HL7 v2 fixtures, hand-read
+# before it was declared. `Jane Q. Public` and `Jane Doe` are the standard
+# anonymous-party placeholders; the rest are mnemonics keyed to the test file
+# they appear in (`Appt^Amy` in the appointment suite, `Doc^Dana` in the
+# document suite, `Imm^Ian` in the immunization suite, `Kin^Next` for a
+# next-of-kin). None names a real person.
+NAME PUBLIC
+NAME JANE
+NAME JOHN
+NAME DOE
+NAME APPT
+NAME AMY
+NAME DOC
+NAME DANA
+NAME IMM
+NAME IAN
+NAME KIN
+NAME NEXT
 
-# --- Synthetic dates of birth (example: normalize to your detector's format) ---
-# DOB 19800115
+# --- Synthetic dates of birth (leading 8 digits of the v2 TS) ---
+#
+# Round placeholder dates, none of them a real person's.
+DOB 19800115
+DOB 19850101
+DOB 19900101
+DOB 20180101
 
-# --- Synthetic ids: SSN / MRN / member-id shapes (example) ---
-# ID MRN12345
+# --- Synthetic ids: SSN / MRN / member-id shapes ---
+#
+# `999887777` is an SSN-shaped value in area number 999, which the Social
+# Security Administration has never issued and never will, so it cannot collide
+# with a real number. The MRN values are sequence placeholders.
+ID MRN1
+ID MRN2
+ID MRN12345
+ID 999887777
+
+# --- Synthetic address components ---
+#
+# Placeholder street lines against a real city and postal code. The combination
+# does not identify anyone: no such patient, and no such address record.
+ADDRESS 123 MAIN ST
+ADDRESS 456 OAK AVE
+ADDRESS 1 ST
+ADDRESS APT 4
+ADDRESS BOSTON
+ADDRESS 02101
+
+# --- Synthetic telephone numbers ---
+#
+# The 555 exchange is the reserved fictional range.
+PHONE 555-1234
+PHONE 555-9999
+
+# --- Allowed mailboxes: one address, in one file ---
+#
+# ▶ THIS IS NOT A SCRUB, AND THE ADDRESS IS NAMED HERE ON PURPOSE. The one
+#   mailbox this repository carries is the npm publisher contact in
+#   `package.json`'s `author` field. It is public (it is on the package's
+#   registry page), it is an organisation address rather than a person's, and it
+#   is not PHI. Deleting it to get the gate green would destroy the evidence
+#   that this audit looked at it, which is the opposite of what an audit is for.
+#
+# ▶ AND ITS COST, STATED RATHER THAN LEFT TO BE FOUND. Two literals, so this is
+#   as narrow as this mechanism goes: every OTHER address at cosyte.com still
+#   reports, and this SAME address in any other file still reports. What it does
+#   cost is one measured cell: before this change `pnpm phi-scan package.json`
+#   exited 1 on that mailbox, and now it exits 0. That is a real subtraction, it
+#   is the only one in this change, and it is the price of the walk covering
+#   package.json at all rather than exempting the whole file.
+#   `test/scripts/phi-scan.test.ts` pins the cell and both narrowness halves.
+# The declaration itself carries the literal, so the file holding it needs its
+# own entry. Stated rather than special-cased in the scanner: an allow-list that
+# silently excused itself would be the one file nobody checks.
+EMAIL package.json hello@cosyte.com
+EMAIL scripts/phi-allow-list.txt hello@cosyte.com
