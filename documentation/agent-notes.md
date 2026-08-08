@@ -393,9 +393,13 @@ porting one is the bug this item exists to stop.**
 sitting beside it: declaring both reports every nested file twice. The previous list is a strict
 SUBSET of the new one, and the `--staged` scope's previous predicate is a strict subset of its new
 one (the `.ts` suffix requirement is dropped, not kept), so nothing either route saw can stop being
-seen. **Proved by grid rather than argued: 169 cells over 15 paths, 4 payloads and all 3 routes,
+seen. **Proved by grid rather than argued: 168 cells, 14 paths x 4 payloads x 3 routes,
 each run against the base scanner and the head scanner. 37 base `1` cells still `1`, 74 cells
-`0 -> 1`, and exactly ONE `1 -> 0`,** which is the next paragraph.
+`0 -> 1`, and exactly ONE `1 -> 0`,** which is the next paragraph. **The totals factor and the
+figure published before did not:** 14 paths x 4 payloads x 3 routes is 168 cells, and 37 + 74 + 1 +
+56 unchanged zeros is 168. It is a recorded measurement rather than a fixture: nothing in the suite
+pins the BASE half, because a head-only test structurally cannot. What the suite does pin is the
+head side of every cell that carries the argument, each by a named case.
 
 **▶ THE ONE SUBTRACTION, NAMED RATHER THAN LEFT TO BE FOUND: `pnpm phi-scan package.json` exited 1
 on the npm publisher contact in its `author` field and now exits 0.** That mailbox is public,
@@ -460,12 +464,29 @@ escaped separator is now both a boundary AND a terminator, and the terminator ha
 without it the whole message is read as one segment and the next-of-kin's relationship code is
 reported as the patient's PID-11 address.
 
-**The list of what it still does NOT do lives in the banner at the top of `scripts/phi-scan.ts`,
-and `.github/workflows/ci.yml` and `phi-scan-overrides.md` both defer to it**, so an omission there
-is the gate claiming to be wider than it is. It covers template interpolation, PV1/ORC/OBR XCN
-provider names, non-default separators, one-character name components, the PID fields outside the
-mapped set, and binary or compressed targets. **A refuter measured an earlier version of that list
-incomplete in the false-confidence direction; add to it before you add to the code.**
+**▶ THE COVERAGE STATEMENT IS POSITIVE, AND THAT SHAPE IS THE FINDING RATHER THAN A STYLE CHOICE.**
+Two successive refuter passes measured an EXHAUSTIVE NEGATIVE LIST of "what this does not catch"
+incomplete in the false-confidence direction, and the second measured it incomplete AGAIN after it
+had been extended in answer to the first. Seven PHI-bearing v2.5.1 fields reported clean while the
+list called itself authoritative: NK1-26, NK1-31, NK1-32, NK1-37 (a contact SSN, invisible to the
+floor too because it is undashed), GT1-2, GT1-4 and IN1-49 (the insured's id, while three files told
+a reader the pass covers "member id"). **A negative list of that shape cannot be kept true**, because
+every clause of every segment would have to appear on it. The banner in `scripts/phi-scan.ts` now
+enumerates EXACTLY the fields that are read, and says that anything not named is not checked. That
+claim is checkable; the other one was not. **Correct it by narrowing the claim, never by silently
+adding a field number.**
+
+**▶ PROVENANCE, RECORDED BECAUSE ITS ABSENCE WAS THE ROOT CAUSE.** The field numbers are asserted
+from HL7 v2.5.1 and were cross-corroborated **in-repo only**, against `src/messages/related-person.ts`
+and the vendored `@cosyte/hl7` type surface. They were **not** checked against a published copy of
+the standard, and one of them was wrong on the way here (IN1-17). That is why the table is
+deliberately narrow and why widening it means citing a source, not adding a number.
+
+**And a fourth recogniser limit the second pass found**: a literal backslash followed by `r` or `n`
+inside a field value ends the segment early, because the escaped separator is also the terminator.
+Measured, a Windows path in PID-11 truncates there and PID-13/14 go unread. It can only SHORTEN a
+segment, never renumber one (the fields before the cut keep their positions) and the field it cuts
+in still reports, so it is disclosed rather than guessed at: it is not decidable from static text.
 
 **▶ AND ONE PRE-EXISTING RESIDUAL THE REFUTER NAMED: UNTRACKED content under an undeclared top-level
 directory is invisible to BOTH enumerating routes.** The reconciliation covers the tracked half

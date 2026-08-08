@@ -23,14 +23,7 @@
  *       actually carries. `@cosyte/transform` ships NO standalone `.hl7`
  *       fixture files at all: every message in the corpus is an inline `.ts`
  *       STRING LITERAL, so this pass finds segment literals ANYWHERE in a
- *       target's text rather than assuming the file IS the message. It parses
- *       PID / NK1 / GT1 / IN1 by field and component and checks each
- *       PHI-bearing field against the allow-list:
- *         - person NAMES (XPN family / given / middle)
- *         - DATE OF BIRTH (TS, leading 8 digits)
- *         - MRN / member id / SSN (CX repetitions and bare id fields)
- *         - ADDRESS (XAD street / other designation / city / postal code)
- *         - PHONE (XTN components carrying 4 or more digits)
+ *       target's text rather than assuming the file IS the message.
  *
  *   ⚠  ENUMERATING MORE FILES BUYS THE FLOOR AND NOTHING ELSE. The floor finds
  *      ZERO in this repository's HL7 fixtures: they carry no dashed SSN and no
@@ -38,31 +31,79 @@
  *      names, DOBs and MRNs and reported every one of them clean. That is the
  *      false confidence this banner exists to refuse.
  *
- *   ⚠  STILL NOT DETECTED. **THIS LIST IS THE AUTHORITATIVE STATEMENT OF THIS
- *      GATE'S LIMITS AND TWO OTHER FILES DEFER TO IT**, so an omission here is
- *      not a documentation slip, it is the gate claiming to be wider than it is.
- *      A refuter measured an earlier version of this list INCOMPLETE in the
- *      false-confidence direction. Add to it before you add to the code:
+ *   ══════════════════════════════════════════════════════════════════════════
+ *   ▶ THE COVERAGE STATEMENT IS POSITIVE, AND THAT SHAPE IS THE POINT.
+ *
+ *   Two successive refuter passes measured an EXHAUSTIVE NEGATIVE LIST of "what
+ *   this does not catch" incomplete, in the false-confidence direction, and the
+ *   second measured it incomplete AGAIN after it had been extended in answer to
+ *   the first. Seven PHI-bearing v2.5.1 fields reported clean while the list
+ *   claimed to be authoritative: NK1-26 (mother's maiden name), NK1-31 (contact
+ *   telephone), NK1-32 (contact address), NK1-37 (contact SSN), GT1-2
+ *   (guarantor number), GT1-4 (guarantor spouse name) and IN1-49 (insured's id).
+ *
+ *   A negative list of that shape CANNOT be kept true: every clause of every
+ *   segment of the standard would have to appear on it. So the claim is stated
+ *   the only way that is checkable, as EXACTLY WHAT IS READ. Anything not named
+ *   below IS NOT CHECKED, including but not limited to the seven fields above.
+ *
+ *       PID-3, PID-19, PID-20 ....... id / SSN / driver's licence
+ *       PID-5, PID-6, PID-9 ......... name / mother's maiden name / alias
+ *       PID-7 ....................... date of birth
+ *       PID-11 ...................... address
+ *       PID-13, PID-14 .............. home / business telephone
+ *       NK1-2, NK1-30 ............... name / contact person's name
+ *       NK1-4 ....................... address
+ *       NK1-5, NK1-6 ................ telephone
+ *       NK1-16 ...................... date of birth
+ *       NK1-33 ...................... next-of-kin identifiers
+ *       GT1-3 ....................... guarantor name
+ *       GT1-5 ....................... guarantor address
+ *       GT1-6, GT1-7 ................ guarantor telephone
+ *       GT1-8 ....................... guarantor date of birth
+ *       GT1-12, GT1-19 .............. guarantor SSN / employee id
+ *       IN1-16, IN1-18, IN1-19 ...... insured name / DOB / address
+ *       IN1-36 ...................... insured's policy identifier
+ *
+ *   NO OTHER SEGMENT IS READ AT ALL: not PV1, ORC, OBR, OBX, RXA, SCH, TXA, and
+ *   not MSH. NO OTHER FIELD of the four segments above is read. Within a field,
+ *   only the components named in each `check…Field` are read.
+ *
+ *   ▶ PROVENANCE, SAID PLAINLY BECAUSE ITS ABSENCE WAS THE ROOT CAUSE OF A
+ *   MEASURED DEFECT. The field numbers are asserted from HL7 v2.5.1 (PID and
+ *   NK1 in Chapter 3, GT1 and IN1 in Chapter 6) and were cross-corroborated
+ *   in-repo only, against `src/messages/related-person.ts` and the vendored
+ *   `@cosyte/hl7` type surface. **They were NOT checked against a published copy
+ *   of the standard.** One of them was wrong on the way here: IN1-17 shipped as
+ *   a telephone field and is in fact Insured's Relationship To Patient, so a
+ *   SNOMED code was reported as a phone number. That is why the table is
+ *   deliberately narrow, why it is stated positively, and why widening it means
+ *   citing a source rather than adding a number.
+ *   ══════════════════════════════════════════════════════════════════════════
+ *
+ *   ⚠  FOUR THINGS THE PASS CANNOT SEE EVEN INSIDE THE FIELDS IT READS. These
+ *      are properties of the recogniser rather than of the table above:
  *        - a value injected by TEMPLATE INTERPOLATION (`${…}`) into a segment
  *          literal. A static text scan cannot see what a placeholder resolves
  *          to; such a component is skipped rather than guessed at.
- *        - PROVIDER names in PV1 / ORC / OBR XCN fields. Those identify a
- *          clinician, not a patient, and the XCN layout differs from XPN;
- *          declared out of scope rather than half-implemented.
- *        - a segment written with a NON-DEFAULT field separator, or with a
- *          non-default component separator. The pass keys on `SEG|` and splits
- *          on `^` / `~` / `&`, which is the v2 default and what this corpus uses;
- *          MSH-1/MSH-2 are not consulted.
+ *        - a segment written with a NON-DEFAULT field or component separator.
+ *          The pass keys on `SEG|` and splits on `^` / `~` / `&`, the v2 default
+ *          and what this corpus uses; MSH-1 and MSH-2 are not consulted.
  *        - a NAME COMPONENT THAT IS ONE CHARACTER, so a middle initial is below
  *          the token floor. Raising it competes with the one- and two-letter
  *          CODE values that share those component positions.
- *        - a person name carried somewhere OTHER than a v2 segment literal, and
- *          the whole of PID-2 (external id), PID-4 (alternate id), PID-18
- *          (account number) and the patient-visit segments.
- *        - anything inside a BINARY or compressed target: the passes decode as
- *          UTF-8 text and a name inside a gzip stream survives that unreadable.
+ *        - A LITERAL BACKSLASH FOLLOWED BY `r` OR `n` INSIDE A FIELD VALUE ENDS
+ *          THE SEGMENT EARLY, because the escaped separator is also the
+ *          terminator. Measured: a Windows path in PID-11 (`C:\records\…`)
+ *          truncates there, so PID-13 and PID-14 go unread. It can only SHORTEN
+ *          a segment, never renumber one, since the fields before the cut keep
+ *          their positions; and the field it cuts in still reports. Not
+ *          decidable from static text, so it is disclosed rather than guessed.
  *
- *      ▶ TWO ENTRIES THAT USED TO BE ON THIS LIST WERE FIXED RATHER THAN
+ *      Anything inside a BINARY or compressed target is unreadable to both
+ *      passes: they decode as UTF-8, and a name inside a gzip stream survives.
+ *
+ *      ▶ TWO ENTRIES THAT USED TO BE ON A NEGATIVE LIST WERE FIXED RATHER THAN
  *      DISCLOSED, because both were reachable and both reported CLEAN: a name
  *      component outside ASCII (`García`, `Nguyễn`), and a whole message pasted
  *      into ONE literal with ESCAPED `\r` separators. Do not re-narrow either.
@@ -609,16 +650,21 @@ function walk(dir: string, out: string[], unscannable: Unscannable[]): void {
       walk(full, out, unscannable);
     } else if (e.isFile()) {
       // ▶ THE `*.md` SKIP THAT USED TO SIT HERE IS GONE, AND ITS REMOVAL IS
-      // PURELY ADDITIVE. It dropped 14 tracked markdown files before a byte of
-      // any of them was read, on the argument that documentation may
-      // legitimately describe violator values. Two things were wrong with that.
+      // PURELY ADDITIVE, AND THE COUNT IT USED TO CARRY WAS WRONG TWICE. Under the
+      // OLD roots the skip dropped **ZERO** files: `src/` holds no markdown and
+      // `test/fixtures/` never existed, so it was dead code. Under the widened
+      // roots it would drop **15**, which is the only reason removing it matters
+      // at all, and it is why the two figures published before (16, then 14)
+      // were both counts of something else. The skip existed on the argument
+      // that documentation may legitimately describe violator values. Two
+      // things were wrong with that.
       // First, it was an ENUMERATION-time judgement standing in for a
       // CONTENT-time one: the allow-list already exists to say "this literal is
       // synthetic", by value and under review, which a filename cannot. Second,
       // it was never true of the other routes: `pnpm phi-scan notes.md` ran the
       // same content passes at base and reported what it found, so the skip made
       // the two routes disagree about the same bytes. Measured over this repo's
-      // tracked corpus at `daf75c3`, opening all 14 produced ZERO new hits.
+      // tracked corpus, opening all 15 produced ZERO new hits.
       out.push(full);
     } else {
       unscannable.push({ path: normalizePath(full), kind: entryKind(e) });

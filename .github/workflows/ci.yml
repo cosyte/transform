@@ -42,8 +42,10 @@ jobs:
   # The shared pipeline's optional PHI-scan step is switched on, and what it runs is the all-mode
   # walk over this repo's whole TRACKED corpus, reconciled against `git ls-files` so a root that is
   # missing, emptied or replaced refuses rather than reporting clean. It runs the cross-cutting
-  # SSN/email floor AND an HL7 v2 structured pass over PID/NK1/GT1/IN1. What it still does not see
-  # is written out in the banner at the top of scripts/phi-scan.ts.
+  # SSN/email floor AND an HL7 v2 structured pass over a NAMED SET of PID/NK1/GT1/IN1 fields. The
+  # banner at the top of scripts/phi-scan.ts enumerates exactly which fields those are and states
+  # that anything not named is not checked; read it as the whole of the coverage, because two
+  # refuter passes measured the opposite shape (a list of what is NOT covered) incomplete.
   ci:
     uses: cosyte/.github/.github/workflows/ci.yml@main
     with:

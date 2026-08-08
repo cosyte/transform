@@ -1300,3 +1300,80 @@ describe("phi-scan: the HL7 pass sees names it cannot spell, and messages in one
     expect(runIn(root, ["notes/leak.ts"]).code).toBe(1);
   });
 });
+
+describe("phi-scan: the coverage claim is POSITIVE, and this is what makes it checkable", () => {
+  // Two refuter passes measured an exhaustive NEGATIVE list ("what this does not
+  // catch") incomplete in the false-confidence direction, the second time after
+  // it had been extended in answer to the first. A negative list of that shape
+  // cannot be kept true. The banner now enumerates exactly which fields are
+  // read; these cases assert the boundary of that enumeration from both sides,
+  // so a field quietly added to the table without being added to the banner reds
+  // here rather than shipping as a silently wider claim.
+  const family = ["Kowal", "ski"].join("");
+  const given = ["Barb", "ara"].join("");
+
+  const seg = (name: string, fields: Readonly<Record<number, string>>): string => {
+    const max = Math.max(0, ...Object.keys(fields).map(Number));
+    const parts = [name];
+    for (let i = 1; i <= max; i += 1) parts.push(fields[i] ?? "");
+    return parts.join("|");
+  };
+
+  it("reads every field the banner names, and NONE that it does not", () => {
+    const name = `${family}^${given}`;
+    // In the named set: each must report.
+    const covered: [string, string, Record<number, string>][] = [
+      ["PID", "PID-5", { 5: name }],
+      ["PID", "PID-7", { 7: "19631207" }],
+      ["NK1", "NK1-2", { 2: name }],
+      ["NK1", "NK1-33", { 33: "A77321" }],
+      ["GT1", "GT1-3", { 3: name }],
+      ["GT1", "GT1-12", { 12: "555443210" }],
+      ["IN1", "IN1-16", { 16: name }],
+      ["IN1", "IN1-36", { 36: "POL77321" }],
+    ];
+    for (const [segment, label, fields] of covered) {
+      const r = scan(`cov-${label}.ts`, `const m = "${seg(segment, fields)}";\n`);
+      expect(r.code, `${label} should report. stderr: ${r.stderr}`).toBe(1);
+      expect(r.stderr).toContain(label);
+    }
+
+    // OUTSIDE the named set: each must be clean, and each zero is a GAP the
+    // banner declares, not a clearance. They run in the same suite as the
+    // controls above so a wholesale detector failure cannot produce them.
+    const uncovered: [string, string, Record<number, string>][] = [
+      ["NK1", "NK1-26", { 26: name }],
+      ["NK1", "NK1-31", { 31: "9375550188" }],
+      ["NK1", "NK1-32", { 32: "9 Elm Rd^^Dayton^OH^45402" }],
+      ["NK1", "NK1-37", { 37: "555443210" }],
+      ["GT1", "GT1-2", { 2: "G77321" }],
+      ["GT1", "GT1-4", { 4: name }],
+      ["IN1", "IN1-49", { 49: "MEM77321" }],
+      ["PV1", "PV1-7", { 7: `1234^${family}^${given}` }],
+    ];
+    for (const [segment, label, fields] of uncovered) {
+      const r = scan(`unc-${label}.ts`, `const m = "${seg(segment, fields)}";\n`);
+      expect(r.code, `${label} is declared OUT of scope. stderr: ${r.stderr}`).toBe(0);
+    }
+  });
+
+  it("a literal backslash before r or n truncates the segment, and only shortens it", () => {
+    // The fourth recogniser limit, disclosed rather than guessed at: the escaped
+    // separator is also the terminator, so a Windows path in an address field
+    // ends the segment there. Pinned so the disclosure cannot outlive the
+    // behaviour. The fields BEFORE the cut keep their positions, which is what
+    // makes this a truncation rather than a renumbering.
+    const winPath = ["C:", "records", "scan.tif"].join("\\\\");
+    const r = scan(
+      "backslash.ts",
+      `const p = "${seg("PID", { 5: `${family}^${given}`, 7: "19631207", 11: `${winPath}^^Springfield^ZZ^99999`, 13: "5551230000" })}";\n`,
+    );
+    expect(r.code, `stderr: ${r.stderr}`).toBe(1);
+    // Everything before the cut is still read, at its right field number.
+    expect(r.stderr).toContain("PID-5");
+    expect(r.stderr).toContain("PID-7");
+    expect(r.stderr).toContain("PID-11");
+    // And the truncation itself: PID-13 is past the cut.
+    expect(r.stderr).not.toContain("PID-13");
+  });
+});
