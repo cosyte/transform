@@ -454,8 +454,8 @@ leading 8 digits of a TS), ids (CX-1 across `~` repetitions, with an `SS` type c
 9-digit value named as an SSN), addresses (XAD 1/2/3/5) and phones (XTN components with 4+ digits).
 
 **▶ EVERY FIELD NUMBER IS CITED TO HL7 v2.5.1 BY CHAPTER AND CLAUSE IN THE SOURCE, AND THE REASON IS
-A MEASURED DEFECT: an uncited table produced `IN1-17` as a telephone field.** IN1-17 is *Insured's
-Relationship To Patient*, so a SNOMED relationship code was reported as a phone number, and the
+A MEASURED DEFECT: an uncited table produced `IN1-17` as a telephone field.** IN1-17 is _Insured's
+Relationship To Patient_, so a SNOMED relationship code was reported as a phone number, and the
 remedy that diagnostic steered a developer toward was a global `PHONE` clearance of that digit
 string. **IN1 carries no insured telephone at all**; IN1-7 is the payer's. Found by the refuter.
 
@@ -530,9 +530,19 @@ Doctor).** Eight of the nine happened to be right, which is the whole lesson: be
 and being wrong was invisible, because **no detection changes either way** (PV1 is read by nothing
 and the case asserts a clean result). A wrong citation costs nothing until the next reader re-checks
 a row against it, lands on a different element, and comes away CONFIRMED. All nine are extracted and
-verified now, 44 of 44 against the published tables, with a negative control that re-checks every row
-against the WRONG segment's table and mismatches 43 of 44. **Extract an item number or do not write
-one**, and never let "I checked the important ones" stand in for a list that says it was all checked.
+verified now: **44 of 44 rows (35 read, 9 negative-control) match the item number the published table
+gives for their own segment.** The instrument was then checked against a WRONG table: re-running the
+same comparison with **every** row looked up in the **PV1** table mismatches **42 of 44**, and the
+only two that match are `PV1-7` and `PV1-19`, which genuinely are PV1 rows. **Extract an item number
+or do not write one**, and never let "I checked the important ones" stand in for a list that says it
+was all checked.
+
+**▶ AND THAT SENTENCE WAS ITSELF WRONG ONCE, WHICH IS WHY IT NOW NAMES THE PAIRING.** It first read
+"mismatches 43 of 44" with no statement of WHICH table the rows were re-checked against. 43 was the
+count taken **before** `PV1-7` was corrected, when the wrong row mismatched its own segment too, and
+without the pairing named nobody could reproduce either number. A control whose comparand is unstated
+is not a control. It is also a SCRATCH measurement, not a test: **nothing in this repository
+re-derives it**, and it is recorded as a citation to repeat rather than a gate that fires.
 
 **What the corroboration then bought, as detection.** The seven fields the refuter had measured as
 unread are read: NK1-26 `00109`, NK1-31 `00749`, NK1-32 `00750`, NK1-37 `00754`, GT1-2 `00406`,
@@ -557,8 +567,10 @@ table matches HL7. **The GT1 row also fires on nothing in this corpus**: measure
 tracked file carried a GT1 segment literal, so every GT1 cell is exercised only by synthetic segments
 assembled in the suite. **A first draft of that sentence wrote the segment id followed by the field
 separator, and this file is INSIDE the scan's own corpus**, so the sentence became the only
-occurrence of the thing it said did not occur. It parsed to an empty segment and reported nothing, so
-it was false rather than dangerous, but the shape is the one to watch: **a note about a detector,
+occurrence of the thing it said did not occur. It opened a segment whose only field is GT1-1, which
+no table reads, so it reported nothing and was false rather than dangerous. **It did NOT parse to an
+empty segment, and an earlier wording of this line said it did**: the shape is the one to watch, and
+so is describing it loosely. **A note about a detector,
 inside the corpus that detector reads, is itself an input.** Name the segment; do not spell a
 literal. **Do not add a field number you cannot ground**, and if you cannot ground one, leave it out
 and disclose it: an ungrounded number left OUT of the table is a better outcome than a confident
