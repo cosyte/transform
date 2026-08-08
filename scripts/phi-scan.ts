@@ -37,48 +37,115 @@
  *   Two successive refuter passes measured an EXHAUSTIVE NEGATIVE LIST of "what
  *   this does not catch" incomplete, in the false-confidence direction, and the
  *   second measured it incomplete AGAIN after it had been extended in answer to
- *   the first. Seven PHI-bearing v2.5.1 fields reported clean while the list
- *   claimed to be authoritative: NK1-26 (mother's maiden name), NK1-31 (contact
- *   telephone), NK1-32 (contact address), NK1-37 (contact SSN), GT1-2
- *   (guarantor number), GT1-4 (guarantor spouse name) and IN1-49 (insured's id).
+ *   the first. A negative list of that shape CANNOT be kept true: every clause
+ *   of every segment of the standard would have to appear on it. So the claim is
+ *   stated the only way that is checkable, as EXACTLY WHAT IS READ. Anything not
+ *   named below IS NOT CHECKED.
  *
- *   A negative list of that shape CANNOT be kept true: every clause of every
- *   segment of the standard would have to appear on it. So the claim is stated
- *   the only way that is checkable, as EXACTLY WHAT IS READ. Anything not named
- *   below IS NOT CHECKED, including but not limited to the seven fields above.
+ *   ▶ EACH ROW CARRIES THE v2.5.1 ITEM NUMBER, AND THAT IS THE ANTI-DRIFT
+ *   DEVICE, NOT DECORATION. An item number is the standard's own stable
+ *   identifier for an element, so a reader can re-check a row against a
+ *   published copy without having to trust this comment, and a number that
+ *   silently moved is visible rather than plausible.
  *
- *       PID-3, PID-19, PID-20 ....... id / SSN / driver's licence
- *       PID-5, PID-6, PID-9 ......... name / mother's maiden name / alias
- *       PID-7 ....................... date of birth
- *       PID-11 ...................... address
- *       PID-13, PID-14 .............. home / business telephone
- *       NK1-2, NK1-30 ............... name / contact person's name
- *       NK1-4 ....................... address
- *       NK1-5, NK1-6 ................ telephone
- *       NK1-16 ...................... date of birth
- *       NK1-33 ...................... next-of-kin identifiers
- *       GT1-3 ....................... guarantor name
- *       GT1-5 ....................... guarantor address
- *       GT1-6, GT1-7 ................ guarantor telephone
- *       GT1-8 ....................... guarantor date of birth
- *       GT1-12, GT1-19 .............. guarantor SSN / employee id
- *       IN1-16, IN1-18, IN1-19 ...... insured name / DOB / address
- *       IN1-36 ...................... insured's policy identifier
+ *   ▶ EXTRACT AN ITEM NUMBER OR DO NOT WRITE ONE, AND THAT IS MEASURED HERE.
+ *   The rows in this table were pulled out of the attribute tables
+ *   mechanically; nine rows in the suite's NEGATIVE-CONTROL list were written
+ *   from recall instead, and one of them (`PV1-7`) was wrong. Eight being right
+ *   was luck, and the wrong one was invisible because it changed no detection at
+ *   all. A wrong citation costs nothing until the next reader re-checks a row
+ *   against it, lands on a DIFFERENT element, and comes away confirmed.
+ *
+ *       PID-3   00106 .. Patient Identifier List ................. id
+ *       PID-5   00108 .. Patient Name ............................ name
+ *       PID-6   00109 .. Mother's Maiden Name .................... name
+ *       PID-7   00110 .. Date/Time of Birth ...................... DOB
+ *       PID-9   00112 .. Patient Alias ........................... name
+ *       PID-11  00114 .. Patient Address ......................... address
+ *       PID-13  00116 .. Phone Number - Home ..................... phone
+ *       PID-14  00117 .. Phone Number - Business ................. phone
+ *       PID-19  00122 .. SSN Number - Patient .................... id
+ *       PID-20  00123 .. Driver's License Number - Patient ....... id
+ *       NK1-2   00191 .. Name .................................... name
+ *       NK1-4   00193 .. Address ................................. address
+ *       NK1-5   00194 .. Phone Number ............................ phone
+ *       NK1-6   00195 .. Business Phone Number ................... phone
+ *       NK1-16  00110 .. Date/Time of Birth ...................... DOB
+ *       NK1-26  00109 .. Mother's Maiden Name .................... name
+ *       NK1-30  00748 .. Contact Person's Name ................... name
+ *       NK1-31  00749 .. Contact Person's Telephone Number ....... phone
+ *       NK1-32  00750 .. Contact Person's Address ................ address
+ *       NK1-33  00751 .. Next of Kin/Associated Party's Ids ...... id
+ *       NK1-37  00754 .. Contact Person Social Security Number ... id
+ *       GT1-2   00406 .. Guarantor Number ........................ id
+ *       GT1-3   00407 .. Guarantor Name .......................... name
+ *       GT1-4   00408 .. Guarantor Spouse Name ................... name
+ *       GT1-5   00409 .. Guarantor Address ....................... address
+ *       GT1-6   00410 .. Guarantor Ph Num - Home ................. phone
+ *       GT1-7   00411 .. Guarantor Ph Num - Business ............. phone
+ *       GT1-8   00412 .. Guarantor Date/Time Of Birth ............ DOB
+ *       GT1-12  00416 .. Guarantor SSN ........................... id
+ *       GT1-19  00423 .. Guarantor Employee ID Number ............ id
+ *       IN1-16  00441 .. Name Of Insured ......................... name
+ *       IN1-18  00443 .. Insured's Date Of Birth ................. DOB
+ *       IN1-19  00444 .. Insured's Address ....................... address
+ *       IN1-36  00461 .. Policy Number ........................... id
+ *       IN1-49  01230 .. Insured's ID Number ..................... id
  *
  *   NO OTHER SEGMENT IS READ AT ALL: not PV1, ORC, OBR, OBX, RXA, SCH, TXA, and
  *   not MSH. NO OTHER FIELD of the four segments above is read. Within a field,
  *   only the components named in each `check…Field` are read.
  *
- *   ▶ PROVENANCE, SAID PLAINLY BECAUSE ITS ABSENCE WAS THE ROOT CAUSE OF A
- *   MEASURED DEFECT. The field numbers are asserted from HL7 v2.5.1 (PID and
- *   NK1 in Chapter 3, GT1 and IN1 in Chapter 6) and were cross-corroborated
- *   in-repo only, against `src/messages/related-person.ts` and the vendored
- *   `@cosyte/hl7` type surface. **They were NOT checked against a published copy
- *   of the standard.** One of them was wrong on the way here: IN1-17 shipped as
- *   a telephone field and is in fact Insured's Relationship To Patient, so a
- *   SNOMED code was reported as a phone number. That is why the table is
- *   deliberately narrow, why it is stated positively, and why widening it means
- *   citing a source rather than adding a number.
+ *   ══════════════════════════════════════════════════════════════════════════
+ *   ▶ PROVENANCE. EVERY ROW ABOVE IS CORROBORATED AGAINST A PUBLISHED COPY OF
+ *   HL7 v2.5.1, WHICH THE PREVIOUS DRAFT OF THIS BANNER SAID IT WAS NOT.
+ *
+ *   Read as the SEGMENT ATTRIBUTE TABLES ("HL7 Attribute Table - PID", and so
+ *   on) of the v2.5.1 standard text: Chapter 3, Patient Administration (PID
+ *   §3.4.2, NK1 §3.4.5) and Chapter 6, Financial Management (GT1 §6.5.5, IN1
+ *   §6.5.6), at `www.hl7.eu/HL7v2x/v251/std251/ch03.html` and `…/ch06.html`,
+ *   2026-08-08. Every row was then cross-checked, field by field, against a
+ *   SECOND independently published and version-pinned artifact: the HAPI HL7 v2
+ *   generated structures for v2.5.1,
+ *   `hapifhir.github.io/hapi-hl7v2/v251/apidocs/…/model/v251/segment/<SEG>.html`.
+ *   The two agree on the number, the name and the data type of every row, and on
+ *   the segment lengths (PID 39, NK1 39, GT1 57, IN1 53).
+ *
+ *   WHAT THE CORROBORATION FOUND:
+ *     - NO FIELD NUMBER WAS WRONG. The fifteen that had never been checked
+ *       against a published source (the whole GT1 row, plus PID-6/9/19/20,
+ *       NK1-30/33 and IN1-18/19) are all correct as used. That is a finding, not
+ *       a formality: an ungrounded number is a missed leak or a false positive
+ *       on a clinical field, and which one is not knowable until it is checked.
+ *     - THE GT1 CLAUSE CITATION WAS WRONG, AND ONLY READING THE STANDARD SHOWED
+ *       IT. This banner cited GT1 as Chapter 6 §6.5.4; GT1 is §6.5.5 in v2.5.1.
+ *       A wrong clause is how the next reader "confirms" a number against the
+ *       wrong table and comes away more confident, not less.
+ *     - SEVEN FIELDS DISCLOSED AS UNREAD ARE NOW READ, because the same source
+ *       grounds them: NK1-26, NK1-31, NK1-32, NK1-37, GT1-2, GT1-4 and IN1-49.
+ *       That is a UNION with the previous list, never a replacement: every cell
+ *       that reported before still reports, which the suite pins cell by cell.
+ *
+ *   ▶ THE VERSION IS LOAD-BEARING, AND THAT IS MEASURED RATHER THAN CAUTIONARY.
+ *   Three of these rows read DIFFERENTLY in a later v2: PID-9, PID-19 and PID-20
+ *   are WITHDRAWN from v2.7 onward, and a published v2+ copy of the same segment
+ *   says exactly that at exactly those numbers. Grounding a number against the
+ *   wrong version's table therefore yields a confident wrong answer rather than
+ *   an error. This package targets v2.5.1, so cite v2.5.1. The other tell is the
+ *   data type: v2.5.1 says TS where a later version says DTM, and IS/CE where a
+ *   later one says CWE.
+ *
+ *   ▶ AND THE RULE THAT OUTLIVES THIS CHANGE: DO NOT ADD A FIELD NUMBER YOU
+ *   CANNOT GROUND. Measured cost of not citing at all: a first draft of this
+ *   table mapped IN1-17 as a telephone field. IN1-17 is Insured's Relationship
+ *   To Patient (CE, table 0063, item 00442), so a SNOMED relationship code was
+ *   reported as a phone number, and the remedy that diagnostic steered a
+ *   developer toward was a global `PHONE` clearance of that digit string. **IN1
+ *   carries no insured telephone at all**: IN1-7 (item 00432) is Insurance Co
+ *   Phone Number, the PAYER's, an organisation's, so `IN1` is absent from
+ *   `PHONE_FIELDS` deliberately rather than by omission. IN1-17 is the suite's
+ *   negative control for exactly that reason. An ungrounded number left OUT of
+ *   the table, disclosed, is a better outcome than a confident wrong one in it.
  *   ══════════════════════════════════════════════════════════════════════════
  *
  *   ⚠  FOUR THINGS THE PASS CANNOT SEE EVEN INSIDE THE FIELDS IT READS. These
@@ -1137,22 +1204,26 @@ function scanCommonShapes(path: string, content: string, allow: AllowList, hits:
 // carry is names, DOBs, MRNs, one undashed SSN in an `SS`-typed identifier, one
 // street address and two phone numbers, and the floor is blind to every one.
 
-// ▶ EVERY FIELD NUMBER BELOW IS FROM HL7 v2.5.1, AND THE CLAUSE IS CITED BECAUSE
-// AN UNCITED TABLE IS WHAT PRODUCES A WRONG ONE. PID is Chapter 3 §3.4.2, NK1
-// Chapter 3 §3.4.5, PV1 Chapter 3 §3.4.3, GT1 Chapter 6 §6.5.4 and IN1 Chapter 6
-// §6.5.6. Measured cost of not citing them: a first draft of this table mapped
-// **IN1-17 as a telephone field**. IN1-17 is *Insured's Relationship To Patient*
-// (CE, table 0063), so a SNOMED relationship code was reported as a phone
-// number, and the remedy that diagnostic steered a developer toward was a global
-// `PHONE` clearance of that digit string. **IN1 carries no insured telephone at
-// all**: IN1-7 is the PAYER's number, an organisation's, so `IN1` is absent from
-// `PHONE_FIELDS` deliberately rather than by omission.
+// ▶ EVERY FIELD NUMBER BELOW IS CORROBORATED AGAINST A PUBLISHED HL7 v2.5.1, AND
+// THE CLAUSE IS CITED BECAUSE AN UNCITED TABLE IS WHAT PRODUCES A WRONG ONE. PID
+// is Chapter 3 §3.4.2, NK1 Chapter 3 §3.4.5, PV1 Chapter 3 §3.4.3, GT1 Chapter 6
+// §6.5.5 and IN1 Chapter 6 §6.5.6. **GT1 WAS CITED HERE AS §6.5.4 AND THAT WAS
+// WRONG**; reading the standard is what showed it. The sources, the second
+// artifact both were checked against, and the version trap are in the banner at
+// the head of this file. Measured cost of not citing at all: a first draft of
+// this table mapped **IN1-17 as a telephone field**. IN1-17 is *Insured's
+// Relationship To Patient* (CE, table 0063, item 00442), so a SNOMED
+// relationship code was reported as a phone number, and the remedy that
+// diagnostic steered a developer toward was a global `PHONE` clearance of that
+// digit string. **IN1 carries no insured telephone at all**: IN1-7 is the
+// PAYER's number, an organisation's, so `IN1` is absent from `PHONE_FIELDS`
+// deliberately rather than by omission.
 
 /** PHI-bearing fields per segment, by v2 field number (`PID-5` is index 5). */
 const NAME_FIELDS: Record<string, number[]> = {
   PID: [5, 6, 9],
-  NK1: [2, 30],
-  GT1: [3],
+  NK1: [2, 26, 30],
+  GT1: [3, 4],
   IN1: [16],
 };
 const DOB_FIELDS: Record<string, number[]> = {
@@ -1163,24 +1234,45 @@ const DOB_FIELDS: Record<string, number[]> = {
 };
 const ID_FIELDS: Record<string, number[]> = {
   PID: [3, 19, 20],
-  NK1: [33],
-  GT1: [12, 19],
-  IN1: [36],
+  NK1: [33, 37],
+  GT1: [2, 12, 19],
+  IN1: [36, 49],
 };
 const ADDRESS_FIELDS: Record<string, number[]> = {
   PID: [11],
-  NK1: [4],
+  NK1: [4, 32],
   GT1: [5],
   IN1: [19],
 };
 const PHONE_FIELDS: Record<string, number[]> = {
   PID: [13, 14],
-  NK1: [5, 6],
+  NK1: [5, 6, 31],
   GT1: [6, 7],
   // IN1 is absent on purpose: see the citation note above.
 };
 
-const PHI_SEGMENTS = Object.keys(NAME_FIELDS);
+/**
+ * The segment ids `SEGMENT_OPENING` will locate at all, as the UNION of every
+ * table above.
+ *
+ * ▶ IT WAS `Object.keys(NAME_FIELDS)`, AND THAT IS A SILENT-MISS SHAPE EVEN
+ * THOUGH IT ANSWERS IDENTICALLY TODAY. Read from one table, a segment added to
+ * (say) `ID_FIELDS` alone is never located, so its fields are never read, and
+ * NOTHING reports: no error, no warning, and a coverage table above that names
+ * rows the scanner cannot reach. The union cannot do that. Today both
+ * expressions yield exactly `PID, NK1, GT1, IN1` in that order (`PHONE_FIELDS`
+ * is the only table missing one, and it is a subset), so this is a guard against
+ * the next edit rather than a behaviour change in this one.
+ */
+const PHI_SEGMENTS = [
+  ...new Set([
+    ...Object.keys(NAME_FIELDS),
+    ...Object.keys(DOB_FIELDS),
+    ...Object.keys(ID_FIELDS),
+    ...Object.keys(ADDRESS_FIELDS),
+    ...Object.keys(PHONE_FIELDS),
+  ]),
+];
 
 /**
  * Locate a segment literal by its `SEG|` opening. The leading boundary keeps
