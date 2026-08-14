@@ -33,6 +33,14 @@ describe("stable code registries", () => {
         "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
         "TRANSFORM_RESOURCE_INVALID",
         "TRANSFORM_SEGMENT_ASSEMBLED",
+        // Phase 7: the reverse direction (additions only).
+        "TRANSFORM_CODE_NOT_INVERTIBLE",
+        "TRANSFORM_CODE_SYSTEM_NOT_V2",
+        "TRANSFORM_MISSING_TRIGGER",
+        "TRANSFORM_NO_V2_TARGET",
+        "TRANSFORM_RESOURCE_MALFORMED",
+        "TRANSFORM_UNSUPPORTED_RESOURCE",
+        "TRANSFORM_VALUE_NOT_REPRESENTABLE",
       ].sort(),
     );
   });

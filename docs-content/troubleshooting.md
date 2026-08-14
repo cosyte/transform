@@ -50,8 +50,17 @@ resource values; those carry PHI.
   ORU^R01 → DiagnosticReport + Observation, ORM_O01 / OML_O21 → ServiceRequest and
   RXO → MedicationRequest, and the thin IG singles VXU_V04 → Immunization, SIU_S12 →
   Appointment, and MDM_T02 → DocumentReference. The v2→FHIR direction is
-  feature-complete for the IG-covered message set; terminology depth, profiles, and the reverse
-  FHIR → v2 direction are not implemented.
+  feature-complete for the IG-covered message set; terminology depth and profiles are not
+  implemented.
+- **Reverse (FHIR → v2) scope: two shapes, deliberately.** `toV2Patient` emits an `ADT`-shaped
+  message carrying a `PID`, `toV2Observation` an `ORU`-shaped message carrying an `OBX`. Both
+  require the caller to pass the v2 trigger (no resource carries one, so it is never inferred: a
+  missing one returns no message and a `TRANSFORM_MISSING_TRIGGER` diagnostic). The direction is
+  **lossy by design and not a round-trip**: a mapping row whose inverse is ambiguous is refused
+  (`TRANSFORM_CODE_NOT_INVERTIBLE`), an element with no v2 field in this map is flagged
+  (`TRANSFORM_NO_V2_TARGET`), and a value v2 cannot carry unchanged is left out
+  (`TRANSFORM_VALUE_NOT_REPRESENTABLE`). Emitting a `Patient` **and** an `Encounter` together as a
+  visit-carrying ADT is not implemented.
 - **Thin-IG-single scope**: each family covers the single trigger the IG maps and the
   resource-internal fields; references to resources this tier does not yet build (Immunization
   performer/manufacturer/location, Appointment practitioner/location participants, DocumentReference

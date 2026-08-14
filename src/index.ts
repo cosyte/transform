@@ -16,8 +16,15 @@
  * all through `toFhir(msg)`), and the **terminology value-translation** layer: a
  * `$translate`-shaped {@link toFhirCodeableConceptVia} engine applying the license-clean IG value
  * ConceptMaps to the previously structural-only coded fields (route/site, appointment type, order
- * priority, substitution). Terminology **depth beyond these maps**, profiles, and the reverse
- * FHIR → v2 direction are not implemented.
+ * priority, substitution).
+ *
+ * It also ships a **narrow reverse path**, FHIR → v2: {@link toV2Patient} and
+ * {@link toV2Observation} emit a complete v2 message carrying a `PID` or an `OBX` built from the
+ * subset of the IG segment maps whose inverse is defensible. Each requires the caller to supply the
+ * v2 trigger, because no FHIR resource carries one. It is **lossy by design and not a round-trip**:
+ * a value the inverse of the IG map cannot ground is flagged and left absent, never guessed.
+ * Terminology **depth beyond these maps**, profiles, and any wider FHIR → v2 conversion are not
+ * implemented.
  *
  * @packageDocumentation
  */
@@ -77,7 +84,11 @@ export { ADMINISTRATIVE_GENDER_MAP } from "./messages/patient.js";
 export { ENCOUNTER_CLASS_V3_MAP, ENCOUNTER_STATUS_MAP } from "./messages/encounter.js";
 
 // ── Message-level assembly: HL7 v2 ORU^R01 → FHIR DiagnosticReport + Observation graph (Phase 3) ──
-export { OBSERVATION_STATUS_MAP, HL70078_INTERPRETATION_CODES } from "./messages/observation.js";
+export {
+  OBSERVATION_STATUS_MAP,
+  HL70078_INTERPRETATION_CODES,
+  V3_OBSERVATION_INTERPRETATION_SYSTEM,
+} from "./messages/observation.js";
 export { DIAGNOSTIC_REPORT_STATUS_MAP } from "./messages/diagnostic-report.js";
 
 // ── Message-level assembly: HL7 v2 ORM/OML → ServiceRequest, RXO → MedicationRequest (Phase 4) ────
@@ -109,3 +120,10 @@ export {
 } from "./terminology/concept-map.js";
 export type { CodedTarget, CodedValueMap } from "./terminology/concept-map.js";
 export { SERVICE_REQUEST_PRIORITY_MAP } from "./messages/service-request.js";
+
+// ── The reverse direction: FHIR → a narrow, explicitly-scoped v2 message subset (Phase 7) ────────
+export { toV2Patient, GENDER_TO_V2, NAME_USE_TO_V2, ADDRESS_USE_TO_V2 } from "./reverse/patient.js";
+export { toV2Observation, OBSERVATION_STATUS_TO_V2 } from "./reverse/observation.js";
+export { invertCodeMap } from "./reverse/v2.js";
+export type { ReverseOptions } from "./reverse/coding.js";
+export type { ReverseResult } from "./reverse/message.js";

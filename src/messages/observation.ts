@@ -49,8 +49,16 @@ import type { ConvertResult } from "../diagnostics/result.js";
 import type { TransformContext } from "../terminology/context.js";
 import { reference } from "./reference.js";
 
-/** The v3 ObservationInterpretation canonical system (FHIR `Observation.interpretation` binding). */
-const V3_OBSERVATION_INTERPRETATION_SYSTEM =
+/**
+ * The v3 ObservationInterpretation canonical system (FHIR `Observation.interpretation` binding).
+ *
+ * @example
+ * ```ts
+ * import { V3_OBSERVATION_INTERPRETATION_SYSTEM } from "@cosyte/transform";
+ * V3_OBSERVATION_INTERPRETATION_SYSTEM.endsWith("v3-ObservationInterpretation"); // => true
+ * ```
+ */
+export const V3_OBSERVATION_INTERPRETATION_SYSTEM =
   "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation";
 
 /**

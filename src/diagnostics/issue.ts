@@ -129,6 +129,48 @@ export const ISSUE_REGISTRY: Readonly<Record<IssueCode, IssueMeta>> = Object.fre
     message:
       "required FHIR element could not be derived from the source; emitted with a data-absent-reason extension, never fabricated.",
   },
+  [ISSUE_CODES.TRANSFORM_MISSING_TRIGGER]: {
+    severity: "error",
+    fhirIssueType: "required",
+    message:
+      "reverse conversion requires an explicit v2 trigger from the caller; no resource carries one, so none was inferred and no message was built.",
+  },
+  [ISSUE_CODES.TRANSFORM_UNSUPPORTED_RESOURCE]: {
+    severity: "error",
+    fhirIssueType: "not-supported",
+    message:
+      "resource type is outside the reverse converter's supported shapes; no v2 message emitted and no segment layout guessed.",
+  },
+  [ISSUE_CODES.TRANSFORM_RESOURCE_MALFORMED]: {
+    severity: "error",
+    fhirIssueType: "structure",
+    message:
+      "input is not a structurally well-shaped FHIR resource for this conversion; nothing emitted, nothing thrown.",
+  },
+  [ISSUE_CODES.TRANSFORM_NO_V2_TARGET]: {
+    severity: "information",
+    fhirIssueType: "informational",
+    message:
+      "populated FHIR element has no v2 field in this reverse map; surfaced and left out, never approximated into a neighbouring field.",
+  },
+  [ISSUE_CODES.TRANSFORM_VALUE_NOT_REPRESENTABLE]: {
+    severity: "warning",
+    fhirIssueType: "value",
+    message:
+      "FHIR value cannot be carried into its v2 target without altering it; the v2 field is left absent, never truncated, rounded, or coerced.",
+  },
+  [ISSUE_CODES.TRANSFORM_CODE_NOT_INVERTIBLE]: {
+    severity: "warning",
+    fhirIssueType: "code-invalid",
+    message:
+      "FHIR code has no usable inverse in the governing IG ConceptMap (ambiguous or absent); v2 field left absent, never resolved arbitrarily.",
+  },
+  [ISSUE_CODES.TRANSFORM_CODE_SYSTEM_NOT_V2]: {
+    severity: "warning",
+    fhirIssueType: "code-invalid",
+    message:
+      "coding system has no v2 coding-system mnemonic here; coding flagged rather than written with no table context or from an unrelated table.",
+  },
 });
 
 /**
