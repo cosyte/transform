@@ -13,6 +13,15 @@
  * complete message through `buildMessage` and appends its mapped segment to it. The trigger is used
  * verbatim as the trailing component of the fixed message code the shape itself owns.
  *
+ * **What is missing is declared, not merely missing.** A FHIR resource carrying no source for a v2
+ * field the segment's own attribute table marks *required* leaves that field absent, because the
+ * alternative is inventing content for a clinical reader. Absent is the right wire; **silent** is
+ * not, so each shape names its required fields ({@link ReverseShape.required}) and every one of them
+ * that ends up unsourced raises {@link ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT}. When nothing
+ * at all grounded a field, there is no segment to be missing from and no message is built:
+ * {@link ISSUE_CODES.TRANSFORM_NO_V2_MESSAGE_EMITTED} declares that outcome on its own, so an
+ * empty-handed conversion never looks like a successful one.
+ *
  * @packageDocumentation
  */
 
@@ -178,32 +187,120 @@ export function flagUnmapped(
   }
 }
 
+// ▶ EVERY `RequiredV2Field` ROW A SHAPE DECLARES CLAIMS ONE CELL OF A PUBLISHED HL7
+// v2.5.1 SEGMENT ATTRIBUTE TABLE: the OPT (usage) column reading `R`. The tables
+// are Chapter 3 §3.4.2 (PID) and Chapter 7 §7.4.2 (OBX), the same standard text
+// and the same second, version-pinned publication that `scripts/phi-scan.ts` cites
+// for its field numbers, and the VERSION IS LOAD-BEARING here for the same reason
+// it is there: a later v2 reads some of these cells differently, so grounding
+// against the wrong version's table yields a confident wrong answer, not an error.
+//
+// ▶ AND THE USAGE CELL WAS NOT EXTRACTED BY THE PASS THAT WROTE THESE ROWS, WHICH
+// IS SAID HERE RATHER THAN LEFT TO BE DISCOVERED. That pass ran with no network
+// egress and could not open either publication, so the four rows below are
+// ASSERTED from the attribute tables rather than read out of them. This repository
+// has already measured what that costs once: a `PV1-7` item number written from
+// recall, right by luck, and invisible either way. So the rule that work left
+// behind is kept literally here too: AN ITEM NUMBER IS WRITTEN ONLY WHERE THIS
+// REPOSITORY HAS ALREADY EXTRACTED ONE. `PID-3` (`00106`) and `PID-5` (`00108`)
+// carry theirs, from the Chapter 3 extraction dated 2026-08-08 in
+// `test/scripts/phi-scan.test.ts`; the OBX rows carry NONE, because nothing here
+// has ever extracted one.
+//
+// ▶ RE-EXTRACT BEFORE ADDING A ROW, AND RE-EXTRACT THESE FOUR THE NEXT TIME A
+// READER HAS THE TABLES OPEN. A wrong usage cell is a FALSE DIAGNOSTIC ON A
+// CLINICAL FIELD, the same harm class the field-number corroboration exists for,
+// and unlike a wrong field number it fires on every conversion rather than once.
+
 /**
- * Build the complete message for a shape: `buildMessage` with the shape's fixed message code and the
- * caller's trigger, then the mapped segment appended to it. Returns `undefined` when the segment
- * would carry no field at all, so an empty segment is never emitted.
+ * One v2 field the segment's own attribute table marks **required**, paired with the FHIR element
+ * this reverse map would have sourced it from. A required field with no source is left absent (v2
+ * optionality is a receiver-side contract, and a placeholder would be a fabricated clinical value),
+ * and declared: absence is the right wire, silence is not.
  *
- * @param messageCode - The shape's fixed MSH-9.1 message code (`"ADT"`, `"ORU"`).
- * @param trigger - The caller's bare trigger, used verbatim as MSH-9.2.
- * @param segment - The segment name to append (`"PID"`, `"OBX"`).
- * @param byPosition - The mapped fields, keyed by 1-based HL7 field position.
- * @param ctx - The resolved reverse context (its `envelope` supplies the MSH fields).
  * @example
  * ```ts
- * // emitMessage("ADT", "A28", "PID", fields, ctx)?.toString()
+ * // { position: 3, location: "PID.3", fhirPath: "Patient.identifier" }
+ * ```
+ */
+export interface RequiredV2Field {
+  /** The 1-based HL7 field position within the segment (`3` is the third field). */
+  readonly position: number;
+  /** The v2 location the issue reports (`"PID.3"`), never a value. */
+  readonly location: string;
+  /** The FHIR path this map sources the field from (`"Patient.identifier"`). */
+  readonly fhirPath: string;
+}
+
+/**
+ * A reverse shape's fixed identity: the message code it emits under, the segment it carries, the
+ * resource it converts, and that segment's required fields. All four are library-owned constants;
+ * none is derived from input content, so none can carry a value into a diagnostic.
+ *
+ * @example
+ * ```ts
+ * // { messageCode: "ADT", segment: "PID", resourceName: "Patient", required: PID_REQUIRED }
+ * ```
+ */
+export interface ReverseShape {
+  /** The fixed MSH-9.1 message code (`"ADT"`, `"ORU"`). */
+  readonly messageCode: string;
+  /** The segment this shape appends (`"PID"`, `"OBX"`). */
+  readonly segment: string;
+  /** The resource type this shape converts, for the FHIR path of a whole-message diagnostic. */
+  readonly resourceName: string;
+  /** The segment's v2-required fields, in field order. */
+  readonly required: readonly RequiredV2Field[];
+}
+
+/**
+ * Build the complete message for a shape: `buildMessage` with the shape's fixed message code and the
+ * caller's trigger, then the mapped segment appended to it, and finally the honest account of what
+ * the resource could not supply.
+ *
+ * Two outcomes, and each is declared:
+ *
+ * - **Nothing grounded a field.** No message is built (an empty segment is never emitted) and
+ *   {@link ISSUE_CODES.TRANSFORM_NO_V2_MESSAGE_EMITTED} is raised, so `{ value: undefined }` can
+ *   never be read as a successful empty conversion. The required-field rows are *not* also raised
+ *   here: there is no emitted segment for a field to be absent from, and restating it per field
+ *   would add noise, not information.
+ * - **A message is built.** Every one of the shape's required fields that no mapped content reached
+ *   raises {@link ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT}. The wire is untouched by this:
+ *   the issue reports the field's absence, it never fills it.
+ *
+ * @param shape - The shape's fixed identity and its segment's required fields.
+ * @param trigger - The caller's bare trigger, used verbatim as MSH-9.2.
+ * @param byPosition - The mapped fields, keyed by 1-based HL7 field position.
+ * @param ctx - The resolved reverse context (its `envelope` supplies the MSH fields).
+ * @param issues - The issue sink.
+ * @example
+ * ```ts
+ * // emitMessage(PATIENT_SHAPE, "A28", fields, ctx, issues)?.toString()
  * // -> "MSH|^~\\&|...|ADT^A28|...\rPID|||MRN1||Public^Jane\r"
  * ```
  */
 export function emitMessage(
-  messageCode: string,
+  shape: ReverseShape,
   trigger: string,
-  segment: string,
   byPosition: ReadonlyMap<number, RawField>,
   ctx: ReverseContext,
+  issues: TransformIssue[],
 ): Hl7Message | undefined {
-  if (byPosition.size === 0) return undefined;
-  return buildMessage({ ...ctx.envelope, type: `${messageCode}^${trigger}` }).addSegment(
-    segment,
+  if (byPosition.size === 0) {
+    issues.push(
+      issue(ISSUE_CODES.TRANSFORM_NO_V2_MESSAGE_EMITTED, shape.segment, shape.resourceName),
+    );
+    return undefined;
+  }
+  for (const field of shape.required) {
+    if (byPosition.has(field.position)) continue;
+    issues.push(
+      issue(ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT, field.location, field.fhirPath),
+    );
+  }
+  return buildMessage({ ...ctx.envelope, type: `${shape.messageCode}^${trigger}` }).addSegment(
+    shape.segment,
     segmentFields(byPosition),
   );
 }

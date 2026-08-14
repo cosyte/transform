@@ -41,7 +41,9 @@ import {
   flagUnmapped,
   hasTrigger,
   readResource,
+  type RequiredV2Field,
   type ReverseResult,
+  type ReverseShape,
 } from "./message.js";
 import { at, readComplexes, readString, readStrings } from "./read.js";
 import { invertCodeMap, v2Date, v2Field, type V2Components } from "./v2.js";
@@ -93,6 +95,28 @@ const PATIENT_MAPPED: ReadonlySet<string> = new Set([
   "gender",
   "address",
 ]);
+
+// The PID rows whose v2.5.1 usage is `R`, and ONLY those two. PID-1 is `O`, PID-2
+// and PID-4 are `B` (retained for backward compatibility, not required), and
+// PID-6, PID-7, PID-8 and PID-11 are `O`, so none of them is declared here even
+// though this map writes three of them: declaring an optional field as required
+// would be a false diagnostic on a clinical field. Read the grounding banner above
+// `RequiredV2Field` in `message.ts` before adding a row to this list.
+/** The PID fields v2.5.1 requires, with the `Patient` element this map sources each from. */
+const PID_REQUIRED: readonly RequiredV2Field[] = [
+  // PID-3 Patient Identifier List, v2.5.1 item 00106.
+  { position: 3, location: "PID.3", fhirPath: "Patient.identifier" },
+  // PID-5 Patient Name, v2.5.1 item 00108.
+  { position: 5, location: "PID.5", fhirPath: "Patient.name" },
+];
+
+/** What `toV2Patient` emits: an `ADT` message carrying a `PID`, whose required fields are above. */
+const PATIENT_SHAPE: ReverseShape = {
+  messageCode: "ADT",
+  segment: "PID",
+  resourceName: "Patient",
+  required: PID_REQUIRED,
+};
 
 /** `Patient` elements with a known PID home this narrow map does not implement. */
 const PATIENT_UNMAPPED: Readonly<Record<string, string>> = Object.freeze({
@@ -288,6 +312,12 @@ function pidFields(
  * Lossy by design and never round-trip-safe: a value the inverse of the IG map cannot ground is
  * flagged and left absent, never guessed, and a resource of another type is refused outright.
  *
+ * A `PID` field v2 requires (PID-3 Patient Identifier List, PID-5 Patient Name) that this resource
+ * gives no source for stays absent and is declared with
+ * {@link ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT}: the emitted message is honest about what
+ * it lacks rather than padded to look conformant. A `Patient` that grounds no `PID` field at all
+ * yields no message and {@link ISSUE_CODES.TRANSFORM_NO_V2_MESSAGE_EMITTED}.
+ *
  * @param resource - The FHIR `Patient` node (build one with `@cosyte/fhir`'s `parseResource`).
  * @param trigger - The bare v2 trigger, e.g. `"A28"`. Required; never derived from the resource.
  * @param options - Caller-vetted reverse context: assigning authorities, code systems, MSH envelope.
@@ -315,6 +345,7 @@ export function toV2Patient(
 
   flagUnmapped(patient, PATIENT_MAPPED, PATIENT_UNMAPPED, "Patient", "PID", issues);
   const ctx = reverseContext(options);
-  const value = emitMessage("ADT", trigger, "PID", pidFields(patient, ctx, issues), ctx);
+  const fields = pidFields(patient, ctx, issues);
+  const value = emitMessage(PATIENT_SHAPE, trigger, fields, ctx, issues);
   return { value, issues };
 }

@@ -83,10 +83,13 @@ describe("toV2Patient: the emitted message", () => {
     expect(parseHL7(wire).get("PID.5.1")).toBe("Do^e|Public");
   });
 
-  it("emits no message when nothing in the resource maps to a PID field", () => {
+  it("emits no message when nothing in the resource maps to a PID field, and says so", () => {
     const result = toV2Patient(patient({ active: true }), "A28");
     expect(result.value).toBeUndefined();
-    expect(codes(result)).toContain(ISSUE_CODES.TRANSFORM_NO_V2_TARGET);
+    expect(codes(result)).toEqual([
+      ISSUE_CODES.TRANSFORM_NO_V2_TARGET,
+      ISSUE_CODES.TRANSFORM_NO_V2_MESSAGE_EMITTED,
+    ]);
   });
 
   it("seeds the assigning authority only from the caller, never from the system URI", () => {
@@ -96,14 +99,81 @@ describe("toV2Patient: the emitted message", () => {
       { assigningAuthorities: { "urn:oid:1.2.3": "HOSP" } },
     );
     expect(parseHL7(withSeed.value?.toString() ?? "").get("PID.3.4")).toBe("HOSP");
-    expect(withSeed.issues).toEqual([]);
+    // The seeding itself raises nothing. What this fixture DOES raise is PID-5: it carries no name,
+    // and PID-5 is v2-required, so its absence is declared rather than left for the receiver.
+    expect(codes(withSeed)).toEqual([ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT]);
+    expect(withSeed.issues[0]?.v2Location).toBe("PID.5");
 
     const unseeded = toV2Patient(
       patient({ identifier: [{ value: "MRN1", system: "urn:oid:1.2.3" }] }),
       "A28",
     );
     expect(parseHL7(unseeded.value?.toString() ?? "").get("PID.3.4")).toBe(undefined);
-    expect(codes(unseeded)).toEqual([ISSUE_CODES.TRANSFORM_NO_V2_TARGET]);
+    expect(codes(unseeded)).toEqual([
+      ISSUE_CODES.TRANSFORM_NO_V2_TARGET,
+      ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT,
+    ]);
+  });
+});
+
+describe("toV2Patient: a v2-required field with no FHIR source is declared, never fabricated", () => {
+  it("flags PID-3 and PID-5 when the Patient carries neither an identifier nor a name", () => {
+    const result = toV2Patient(patient({ gender: "female" }), "A28");
+    const flagged = result.issues.filter(
+      (i) => i.code === ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT,
+    );
+    expect(flagged.map((i) => i.v2Location)).toEqual(["PID.3", "PID.5"]);
+    expect(flagged.map((i) => i.fhirPath)).toEqual(["Patient.identifier", "Patient.name"]);
+
+    // The other half of the same rule, asserted in the same case: absent, not fabricated. Neither
+    // field carries a placeholder, an empty component, or anything else invented to satisfy v2.
+    const round = parseHL7(result.value?.toString() ?? "");
+    expect(round.get("PID.3")).toBeUndefined();
+    expect(round.get("PID.5")).toBeUndefined();
+  });
+
+  it.each([
+    ["PID.3", "Patient.identifier", { name: [{ family: "Public" }] }],
+    ["PID.5", "Patient.name", { identifier: [{ value: "MRN1" }] }],
+  ])(
+    "flags %s alone when the resource sources the other required field",
+    (location, path, json) => {
+      const result = toV2Patient(patient(json), "A28");
+      expect(codes(result)).toEqual([ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT]);
+      expect(result.issues[0]?.v2Location).toBe(location);
+      expect(result.issues[0]?.fhirPath).toBe(path);
+    },
+  );
+
+  it("raises nothing when both required fields are sourced", () => {
+    const result = toV2Patient(
+      patient({ identifier: [{ value: "MRN1" }], name: [{ family: "Public" }] }),
+      "A28",
+    );
+    expect(result.issues).toEqual([]);
+  });
+
+  it("declares the absence without touching a single byte of the wire", () => {
+    // The exact wire this shape emitted before the absence was declared, pinned byte for byte: this
+    // is a diagnostics-only contract, so no placeholder, no empty component, no reordering and no
+    // extra field may appear because a required field went unsourced.
+    const result = toV2Patient(patient({ identifier: [{ value: "MRN1" }] }), "A28", {
+      envelope: { controlId: "MSGID1", timestamp: "20260102101500" },
+    });
+    expect(result.value?.toString()).toBe(
+      "MSH|^~\\&|||||20260102101500||ADT^A28|MSGID1|P|2.5\rPID|||MRN1\r",
+    );
+    expect(codes(result)).toEqual([ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT]);
+  });
+
+  it("says so when it declines to emit any message at all", () => {
+    // Nothing grounded a PID field, so there is no segment for a field to be absent from: one code
+    // declares the whole outcome, and `{ value: undefined }` is never a silent empty success.
+    const result = toV2Patient(patient({}), "A28");
+    expect(result.value).toBeUndefined();
+    expect(codes(result)).toEqual([ISSUE_CODES.TRANSFORM_NO_V2_MESSAGE_EMITTED]);
+    expect(result.issues[0]?.v2Location).toBe("PID");
+    expect(result.issues[0]?.fhirPath).toBe("Patient");
   });
 });
 

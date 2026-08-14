@@ -47,7 +47,9 @@ import {
   flagUnmapped,
   hasTrigger,
   readResource,
+  type RequiredV2Field,
   type ReverseResult,
+  type ReverseShape,
 } from "./message.js";
 import { at, readComplexes, readNumberText, readString } from "./read.js";
 import { invertCodeMap, v2Field, v2Number, v2Timestamp, type V2Components } from "./v2.js";
@@ -83,6 +85,31 @@ const OBSERVATION_MAPPED: ReadonlySet<string> = new Set([
   "valueString",
   "valueDateTime",
 ]);
+
+// The OBX rows whose v2.5.1 usage is `R`, and ONLY those two. OBX-2 (Value Type)
+// and OBX-5 (Observation Value) are `C`, conditional on each other rather than
+// required, and OBX-4 is `C` too, so none of the three is declared here: a
+// conditional field reported as required is a false diagnostic on a clinical
+// field. OBX-1 and OBX-6 through OBX-14 are `O`. Read the grounding banner above
+// `RequiredV2Field` in `message.ts` before adding a row to this list.
+/** The OBX fields v2.5.1 requires, with the `Observation` element this map sources each from. */
+const OBX_REQUIRED: readonly RequiredV2Field[] = [
+  // OBX-3 Observation Identifier. UNREACHABLE TODAY BY CONSTRUCTION, and kept
+  // anyway: `obxFields` returns no field at all when it cannot build OBX-3, so an
+  // emitted OBX always carries one and this row can only fire if that early return
+  // is ever relaxed. It guards the next edit rather than changing this one.
+  { position: 3, location: "OBX.3", fhirPath: "Observation.code" },
+  // OBX-11 Observation Result Status.
+  { position: 11, location: "OBX.11", fhirPath: "Observation.status" },
+];
+
+/** What `toV2Observation` emits: an `ORU` message carrying an `OBX`, required fields above. */
+const OBSERVATION_SHAPE: ReverseShape = {
+  messageCode: "ORU",
+  segment: "OBX",
+  resourceName: "Observation",
+  required: OBX_REQUIRED,
+};
 
 /** `Observation` elements with a known OBX/OBR home this narrow map does not implement. */
 const OBSERVATION_UNMAPPED: Readonly<Record<string, string>> = Object.freeze({
@@ -389,6 +416,12 @@ function obxFields(
  * patient, and a subject segment assembled from a reference would be fabricated. Lossy by design and
  * never round-trip-safe.
  *
+ * An `OBX` field v2 requires (OBX-11 Observation Result Status) that this resource gives no source
+ * for stays absent and is declared with {@link ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT},
+ * rather than defaulted to `F`: a result reported as final that the sender never called final is the
+ * confidently wrong value this library exists to refuse. An `Observation` that grounds no `OBX`
+ * field at all yields no message and {@link ISSUE_CODES.TRANSFORM_NO_V2_MESSAGE_EMITTED}.
+ *
  * @param resource - The FHIR `Observation` node.
  * @param trigger - The bare v2 trigger, e.g. `"R01"`. Required; never derived from the resource.
  * @param options - Caller-vetted reverse context: code systems and the MSH envelope.
@@ -418,6 +451,7 @@ export function toV2Observation(
 
   flagUnmapped(observation, OBSERVATION_MAPPED, OBSERVATION_UNMAPPED, "Observation", "OBX", issues);
   const ctx = reverseContext(options);
-  const value = emitMessage("ORU", trigger, "OBX", obxFields(observation, ctx, issues), ctx);
+  const fields = obxFields(observation, ctx, issues);
+  const value = emitMessage(OBSERVATION_SHAPE, trigger, fields, ctx, issues);
   return { value, issues };
 }

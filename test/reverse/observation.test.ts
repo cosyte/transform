@@ -97,6 +97,61 @@ describe("toV2Observation: the emitted message", () => {
   });
 });
 
+describe("toV2Observation: a v2-required field with no FHIR source is declared, never fabricated", () => {
+  // The one fixture the wire pin needs to be exact about: no display text, so OBX-3 reads `789-8^^LN`.
+  const bare = () =>
+    parseResource(
+      '{"resourceType":"Observation","code":{"coding":[{"system":"http://loinc.org","code":"789-8"}]}}',
+    ).resource;
+
+  it("flags OBX-11 when the Observation carries no status", () => {
+    const result = toV2Observation(bare(), "R01");
+    expect(codes(result)).toEqual([ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT]);
+    expect(result.issues[0]?.v2Location).toBe("OBX.11");
+    expect(result.issues[0]?.fhirPath).toBe("Observation.status");
+    // Absent, not defaulted: a result the sender never called final is never reported as final.
+    expect(parseHL7(result.value?.toString() ?? "").get("OBX.11")).toBeUndefined();
+  });
+
+  it("flags OBX-11 when a status arrives but its inverse is not usable", () => {
+    const result = toV2Observation(observation({ status: "entered-in-error" }), "R01");
+    expect(codes(result)).toEqual([
+      ISSUE_CODES.TRANSFORM_CODE_NOT_INVERTIBLE,
+      ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT,
+    ]);
+    expect(parseHL7(result.value?.toString() ?? "").get("OBX.11")).toBeUndefined();
+  });
+
+  it("raises nothing when the required status is sourced", () => {
+    expect(toV2Observation(observation({ status: "final" }), "R01").issues).toEqual([]);
+  });
+
+  it("declares the absence without touching a single byte of the wire", () => {
+    // Byte-for-byte the wire this shape emitted before the absence was declared.
+    const result = toV2Observation(bare(), "R01", {
+      envelope: { controlId: "MSGID1", timestamp: "20260102101500" },
+    });
+    expect(result.value?.toString()).toBe(
+      "MSH|^~\\&|||||20260102101500||ORU^R01|MSGID1|P|2.5\rOBX|||789-8^^LN\r",
+    );
+    expect(codes(result)).toEqual([ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT]);
+  });
+
+  it("says so when it declines to emit any message at all", () => {
+    const result = toV2Observation(
+      parseResource('{"resourceType":"Observation","status":"final"}').resource,
+      "R01",
+    );
+    expect(result.value).toBeUndefined();
+    expect(codes(result)).toEqual([
+      ISSUE_CODES.TRANSFORM_RESOURCE_MALFORMED,
+      ISSUE_CODES.TRANSFORM_NO_V2_MESSAGE_EMITTED,
+    ]);
+    expect(result.issues[1]?.v2Location).toBe("OBX");
+    expect(result.issues[1]?.fhirPath).toBe("Observation");
+  });
+});
+
 describe("toV2Observation: the required trigger", () => {
   it("refuses an empty trigger without building a message", () => {
     const result = toV2Observation(observation({ status: "final" }), "");

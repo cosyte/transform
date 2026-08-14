@@ -61,6 +61,15 @@ resource values; those carry PHI.
   (`TRANSFORM_NO_V2_TARGET`), and a value v2 cannot carry unchanged is left out
   (`TRANSFORM_VALUE_NOT_REPRESENTABLE`). Emitting a `Patient` **and** an `Encounter` together as a
   visit-carrying ADT is not implemented.
+- **An emitted message can be missing a field v2 requires, and it tells you so.** PID-3 (Patient
+  Identifier List), PID-5 (Patient Name) and OBX-11 (Observation Result Status) are required fields
+  with no safe default: a resource that carries no source for one leaves it absent, never a
+  fabricated placeholder, and raises one `TRANSFORM_V2_REQUIRED_FIELD_ABSENT` per field naming the v2
+  location and the FHIR path it would have come from. Supply the missing element on the resource, or
+  repair the message before you send it. If nothing in the resource grounds any field of the target
+  segment, there is no message to repair: the call returns `value: undefined` and one
+  `TRANSFORM_NO_V2_MESSAGE_EMITTED`, which is how an empty-handed conversion is told apart from a
+  successful one.
 - **Thin-IG-single scope**: each family covers the single trigger the IG maps and the
   resource-internal fields; references to resources this tier does not yet build (Immunization
   performer/manufacturer/location, Appointment practitioner/location participants, DocumentReference

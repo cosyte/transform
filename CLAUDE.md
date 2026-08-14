@@ -37,10 +37,15 @@ as a trap is clinical-safety content.
   argument on every entry point** and is never inferred: no FHIR resource carries one.
   **▶ THE IG PUBLISHES NO FHIR-TO-V2 MAP**, so a many-to-one forward row has no usable inverse and is
   refused, never resolved to its most likely source code; and **round-trip is asserted only as
-  "parses back", never as "equals"**. The `Patient` + `Encounter` visit-carrying ADT is **deferred,
-  not dropped**: the vendored parser exports no ADT assembly entry point (measured, zero occurrences
-  in its `dist/`), and hand-assembling PID + PV1 here would invert the tier split. Every measurement,
-  the refusal set, and the deferral:
+  "parses back", never as "equals"**. **▶ AND ABSENT IS NOT THE SAME AS SILENT**: a v2-REQUIRED field
+  the resource gives no source for (PID-3, PID-5, OBX-11) stays absent and RAISES
+  `TRANSFORM_V2_REQUIRED_FIELD_ABSENT`, and a conversion that grounds no field at all raises
+  `TRANSFORM_NO_V2_MESSAGE_EMITTED` instead of returning an empty success. **The usage cells behind
+  those rows are asserted, NOT extracted** (the pass that wrote them had no network egress), so
+  re-extract before trusting or widening them. The `Patient` + `Encounter` visit-carrying ADT is
+  **deferred, not dropped**: the vendored parser exports no ADT assembly entry point (measured, zero
+  occurrences in its `dist/`), and hand-assembling PID + PV1 here would invert the tier split. Every
+  measurement, the refusal set, and the deferral:
   `documentation/agent-notes.md#the-reverse-direction-and-what-it-does-not-claim`. Phase **8
   (profiles)** and deeper terminology remain deferred.
 - **Never quote a version here.** This line read "not yet published to npm" for several releases

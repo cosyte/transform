@@ -171,6 +171,18 @@ export const ISSUE_REGISTRY: Readonly<Record<IssueCode, IssueMeta>> = Object.fre
     message:
       "coding system has no v2 coding-system mnemonic here; coding flagged rather than written with no table context or from an unrelated table.",
   },
+  [ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT]: {
+    severity: "error",
+    fhirIssueType: "required",
+    message:
+      "a v2-required field is absent from the emitted segment because the resource carried no source this map could ground it from; left absent per v2 optionality rules and declared here, never filled with a placeholder.",
+  },
+  [ISSUE_CODES.TRANSFORM_NO_V2_MESSAGE_EMITTED]: {
+    severity: "error",
+    fhirIssueType: "processing",
+    message:
+      "no v2 message was emitted: nothing in the resource grounded a single field of the target segment, and an empty segment is never emitted.",
+  },
 });
 
 /**

@@ -174,6 +174,16 @@ produced them. An element with no v2 field in this narrow map is flagged
 written under a borrowed table (`TRANSFORM_CODE_SYSTEM_NOT_V2`). Nothing here reconstructs the
 message a resource came from, and nothing claims to.
 
+**What v2 requires but your resource does not carry is left absent, and said out loud.** A `PID`
+needs PID-3 (Patient Identifier List) and PID-5 (Patient Name); an `OBX` needs OBX-11 (Observation
+Result Status). A resource that gives no source for one of them still gets a message with that field
+absent, never a placeholder invented to satisfy v2 structure, and one
+`TRANSFORM_V2_REQUIRED_FIELD_ABSENT` diagnostic per field, carrying the v2 location and the FHIR path
+it would have come from. A resource that grounds no field of the target segment at all returns no
+message and one `TRANSFORM_NO_V2_MESSAGE_EMITTED`, so an empty-handed conversion is never mistaken
+for a successful one. Both are `error` severity: an emitted message missing a field v2 requires is
+not conformant, and this is where you find that out rather than at the receiver.
+
 ## License
 
 MIT © Cosyte

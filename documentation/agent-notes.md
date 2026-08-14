@@ -105,6 +105,32 @@ turn into further MSH-9 components) returns `TRANSFORM_VALUE_NOT_REPRESENTABLE`,
 not be written verbatim into MSH-9.2 and trimming it would emit something the caller did not ask
 for. Both were found by the fuzz suite, not by reading.
 
+**▶ ABSENT IS THE RIGHT WIRE. SILENT IS NOT, AND THAT DISTINCTION SHIPPED BROKEN ONCE.** The first
+cut of this direction satisfied half of its own rule: a `Patient` carrying neither `identifier` nor
+`name` emitted an `ADT` whose `PID` had no PID-3 and no PID-5, an `Observation` with no `status`
+emitted an `OBX` with no OBX-11, and both returned an **empty `issues` array**. Nothing was
+fabricated, which was the half that held. But `flagUnmapped` iterates the elements a resource
+**carries**, so a wholly ABSENT element could raise nothing at all, and a wholly empty conversion
+returned `{ value: undefined, issues: [] }`, indistinguishable from a successful empty one. The fix
+is diagnostics-only and the wire is pinned byte for byte in both suites: each shape now declares its
+required fields (`PID_REQUIRED`, `OBX_REQUIRED`), every one that no mapped content reached raises
+`TRANSFORM_V2_REQUIRED_FIELD_ABSENT`, and an empty field map raises
+`TRANSFORM_NO_V2_MESSAGE_EMITTED` instead of nothing. **Do not "fix" an absent required field by
+supplying a default**: an OBX-11 defaulted to `F` reports a result as final that the sender never
+called final.
+
+**▶ AND THE USAGE CELLS BEHIND THOSE ROWS ARE ASSERTED, NOT EXTRACTED. THAT IS A DISCLOSED GAP, NOT A
+CLEARED ONE.** Each row claims one cell of a published v2.5.1 segment attribute table (the OPT column
+reading `R`), from Chapter 3 §3.4.2 for PID and Chapter 7 §7.4.2 for OBX. The pass that wrote them
+**could not open either publication** (no network egress), so it asserted the four cells rather than
+reading them out, and said so in the banner above `RequiredV2Field` in `src/reverse/message.ts`.
+The rule the field-number corroboration left behind is kept literally: **an item number appears only
+where this repository already extracted one**, so PID-3 carries `00106` and PID-5 carries `00108`
+(from the dated Chapter 3 extraction in `test/scripts/phi-scan.test.ts`) and the two OBX rows carry
+none at all. **Re-extract all four the next time a reader has the tables open**, and re-extract
+before adding a fifth: a wrong usage cell is a false diagnostic on a clinical field, and unlike a
+wrong field number it fires on every conversion rather than once.
+
 **Composites are structured, never concatenated.** Field content goes to `addSegment` as a
 `RawField` of components, so the serializer owns escaping: a family name of `Do^e|Public` emits as
 `Do\S\e\F\Public` and reads back identically, where a hand-joined `"Do^e"` string would have become

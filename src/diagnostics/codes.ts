@@ -115,6 +115,20 @@ export const ISSUE_CODES = {
    * the coding cannot be written into a v2 coded field. It is flagged rather than emitted with no
    * table context or with a code from an unrelated table. */
   TRANSFORM_CODE_SYSTEM_NOT_V2: "TRANSFORM_CODE_SYSTEM_NOT_V2",
+  /** A v2 field the segment's own attribute table marks **required** (usage `R`) is absent from an
+   * emitted segment, because the FHIR resource carried no source this reverse map could ground it
+   * from, or the source it carried had no faithful v2 form. The field is left absent per v2
+   * optionality rules and **declared here**: a placeholder is never written to satisfy v2 structure,
+   * and the receiver is never left to discover the gap. Distinct from
+   * {@link ISSUE_CODES.TRANSFORM_REQUIRED_ELEMENT_UNKNOWN}, which is the forward direction's
+   * FHIR-required element. */
+  TRANSFORM_V2_REQUIRED_FIELD_ABSENT: "TRANSFORM_V2_REQUIRED_FIELD_ABSENT",
+  /** A reverse (FHIR to v2) conversion produced **no message at all**: nothing in the resource
+   * grounded a single field of the target segment, and an empty segment is never emitted. Raised so
+   * that an empty-handed conversion is never indistinguishable from a successful one, and separate
+   * from the refusals that name their own cause (an absent trigger, an unsupported resource type, a
+   * structurally malformed resource). */
+  TRANSFORM_NO_V2_MESSAGE_EMITTED: "TRANSFORM_NO_V2_MESSAGE_EMITTED",
 } as const;
 
 /** A value from {@link ISSUE_CODES}: the type consumers narrow `issue.code` against. */
