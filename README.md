@@ -24,8 +24,10 @@ grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fh
 > via `toFhir(msg)`, and **terminology value translation** of coded fields: route/site,
 > appointment type, order priority, and substitution are now value-translated through their IG
 > `mappedVia` ConceptMaps via `toFhirCodeableConceptVia`, fail-safe on any code the IG leaves unmapped.
-> The v2→FHIR direction is feature-complete for the IG-covered message set; deeper
-> terminology, profiles, and the reverse FHIR → v2 direction are not implemented.
+> The v2→FHIR direction is feature-complete for the IG-covered message set. It also ships a
+> **narrow reverse path**, FHIR → v2: `toV2Patient(patient, trigger)` and
+> `toV2Observation(observation, trigger)` emit a complete v2 message carrying a `PID` or an `OBX`.
+> Deeper terminology, profiles, and any wider FHIR → v2 conversion are not implemented.
 
 ## Install
 
@@ -133,6 +135,54 @@ coding is preserved alongside the derived one). It is fail-safe by refusal: a co
 its `(unmapped)` group is flagged, never coerced to a neighbour. Fields whose IG target is **SNOMED CT**
 (RXR-4 method, SCH-7 reason) stay structural, because SNOMED is not bundled (BYO ConceptMap), and fields the
 IG ships no value map for (TXA-2 document type, RXA-5 vaccine code) are carried as-is, never invented.
+
+## Emit v2 back out, narrowly
+
+Two entry points go the other way, FHIR → v2. Each takes the FHIR resource **plus the v2 trigger you
+want the message to carry**, and returns the same `{ value, issues }` envelope, where `value` is a
+complete `@cosyte/hl7` message:
+
+| Function                                | in                 | out                                        |
+| --------------------------------------- | ------------------ | ------------------------------------------ |
+| `toV2Patient(patient, trigger)`         | FHIR `Patient`     | a v2 `ADT^<trigger>` message with a `PID`  |
+| `toV2Observation(observation, trigger)` | FHIR `Observation` | a v2 `ORU^<trigger>` message with an `OBX` |
+
+```ts
+import { parseResource } from "@cosyte/fhir";
+import { toV2Patient } from "@cosyte/transform";
+
+const { resource } = parseResource(patientJson);
+const { value, issues } = toV2Patient(resource, "A28", {
+  assigningAuthorities: { "urn:oid:1.2.840.114350": "HOSP" },
+  envelope: { sendingApp: "EHR", sendingFacility: "MAIN" },
+});
+// value.toString() -> "MSH|^~\\&|EHR|MAIN|...|ADT^A28|...\rPID|||MRN1||Public^Jane\r"
+```
+
+**The trigger is required and is never inferred.** No FHIR resource carries an HL7 v2 message
+trigger, so there is nothing to derive one from: supply it, or the call returns no message and one
+`TRANSFORM_MISSING_TRIGGER` diagnostic, without building anything.
+
+**This direction is lossy by design, and it is not a round-trip.** The published mapping guide runs
+v2 → FHIR, and several of its rows are many-to-one, so their inverse is ambiguous and is **refused**:
+`gender` `other`, name use `official` and `temp`, address use `work`, every `Address.type`, and
+`Observation.status` `entered-in-error` each leave their v2 field absent with a
+`TRANSFORM_CODE_NOT_INVERTIBLE` diagnostic rather than picking one of the v2 codes that could have
+produced them. An element with no v2 field in this narrow map is flagged
+(`TRANSFORM_NO_V2_TARGET`), a value v2 cannot carry unchanged is flagged and left out
+(`TRANSFORM_VALUE_NOT_REPRESENTABLE`), and a coding system with no v2 mnemonic is flagged rather than
+written under a borrowed table (`TRANSFORM_CODE_SYSTEM_NOT_V2`). Nothing here reconstructs the
+message a resource came from, and nothing claims to.
+
+**What v2 requires but your resource does not carry is left absent, and said out loud.** A `PID`
+needs PID-3 (Patient Identifier List) and PID-5 (Patient Name); an `OBX` needs OBX-11 (Observation
+Result Status). A resource that gives no source for one of them still gets a message with that field
+absent, never a placeholder invented to satisfy v2 structure, and one
+`TRANSFORM_V2_REQUIRED_FIELD_ABSENT` diagnostic per field, carrying the v2 location and the FHIR path
+it would have come from. A resource that grounds no field of the target segment at all returns no
+message and one `TRANSFORM_NO_V2_MESSAGE_EMITTED`, so an empty-handed conversion is never mistaken
+for a successful one. Both are `error` severity: an emitted message missing a field v2 requires is
+not conformant, and this is where you find that out rather than at the receiver.
 
 ## License
 

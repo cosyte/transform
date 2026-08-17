@@ -14,6 +14,16 @@
  *   entry points. **Nothing in this library throws one today**: the datatype converters and
  *   `toFhir` alike fail safe to a value-free issue instead.
  *
+ * **The line between the two registries is structural, and it decides where a new code goes.** A
+ * `FatalCode` is the type carried by a *thrown* error; a `TransformIssue.code` is typed `IssueCode`
+ * and {@link ISSUE_REGISTRY} is exhaustive over {@link ISSUE_CODES} alone. So a condition that is
+ * *returned* on the non-throwing `{ value, issues }` channel is an {@link ISSUE_CODES} entry by
+ * construction, however severe it is: the missing-trigger refusal on the reverse
+ * (FHIR to v2) entry points is returned, never thrown, so it is
+ * {@link ISSUE_CODES.TRANSFORM_MISSING_TRIGGER} rather than a fatal code. Adding it to
+ * {@link FATAL_CODES} instead would have required widening `TransformIssue.code` to
+ * `IssueCode | FatalCode` and blurring exactly that split.
+ *
  * @packageDocumentation
  */
 
@@ -78,6 +88,47 @@ export const ISSUE_CODES = {
    * emitted with a `data-absent-reason` extension (value `unknown`) rather than fabricated, e.g.
    * `MessageHeader.source.endpoint` from an MSH-3 application namespace that is not a URL. */
   TRANSFORM_REQUIRED_ELEMENT_UNKNOWN: "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+  /** A reverse (FHIR to v2) conversion was called without the explicit message trigger it requires.
+   * No FHIR resource carries a v2 trigger, so it is never inferred from resource content and never
+   * defaulted: no message is built and no builder is called. */
+  TRANSFORM_MISSING_TRIGGER: "TRANSFORM_MISSING_TRIGGER",
+  /** A reverse (FHIR to v2) conversion was handed a resource outside the narrow set of shapes it
+   * supports. No v2 message is emitted and no segment layout is guessed. */
+  TRANSFORM_UNSUPPORTED_RESOURCE: "TRANSFORM_UNSUPPORTED_RESOURCE",
+  /** A resource handed to a reverse (FHIR to v2) conversion is not structurally a FHIR resource of
+   * its expected type (not an object, no `resourceType`, or an element carrying the wrong node
+   * kind). Nothing is emitted and nothing is thrown. */
+  TRANSFORM_RESOURCE_MALFORMED: "TRANSFORM_RESOURCE_MALFORMED",
+  /** A populated FHIR element has no v2 field in the narrow reverse map that covers this shape
+   * (the IG map defines no source for it, or its inverse is not implemented here). The element is
+   * surfaced and left out, never approximated into a neighbouring v2 field. */
+  TRANSFORM_NO_V2_TARGET: "TRANSFORM_NO_V2_TARGET",
+  /** A FHIR value cannot be carried into its v2 target without altering it (a lexical form v2 has
+   * no representation for, or content that exceeds the target's component structure). The v2 field
+   * is left absent rather than truncated, rounded, or coerced. */
+  TRANSFORM_VALUE_NOT_REPRESENTABLE: "TRANSFORM_VALUE_NOT_REPRESENTABLE",
+  /** A FHIR code has no usable inverse in the IG ConceptMap that governs its field: either several
+   * v2 source codes map onto it (so the inverse is ambiguous) or the map has no row for it at all.
+   * The v2 field is left absent, never resolved to one arbitrary member of the ambiguous set. */
+  TRANSFORM_CODE_NOT_INVERTIBLE: "TRANSFORM_CODE_NOT_INVERTIBLE",
+  /** A `Coding.system` is not a system this library can name with a v2 coding-system mnemonic, so
+   * the coding cannot be written into a v2 coded field. It is flagged rather than emitted with no
+   * table context or with a code from an unrelated table. */
+  TRANSFORM_CODE_SYSTEM_NOT_V2: "TRANSFORM_CODE_SYSTEM_NOT_V2",
+  /** A v2 field the segment's own attribute table marks **required** (usage `R`) is absent from an
+   * emitted segment, because the FHIR resource carried no source this reverse map could ground it
+   * from, or the source it carried had no faithful v2 form. The field is left absent per v2
+   * optionality rules and **declared here**: a placeholder is never written to satisfy v2 structure,
+   * and the receiver is never left to discover the gap. Distinct from
+   * {@link ISSUE_CODES.TRANSFORM_REQUIRED_ELEMENT_UNKNOWN}, which is the forward direction's
+   * FHIR-required element. */
+  TRANSFORM_V2_REQUIRED_FIELD_ABSENT: "TRANSFORM_V2_REQUIRED_FIELD_ABSENT",
+  /** A reverse (FHIR to v2) conversion produced **no message at all**: nothing in the resource
+   * grounded a single field of the target segment, and an empty segment is never emitted. Raised so
+   * that an empty-handed conversion is never indistinguishable from a successful one, and separate
+   * from the refusals that name their own cause (an absent trigger, an unsupported resource type, a
+   * structurally malformed resource). */
+  TRANSFORM_NO_V2_MESSAGE_EMITTED: "TRANSFORM_NO_V2_MESSAGE_EMITTED",
 } as const;
 
 /** A value from {@link ISSUE_CODES}: the type consumers narrow `issue.code` against. */

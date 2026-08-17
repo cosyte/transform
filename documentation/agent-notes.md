@@ -68,9 +68,83 @@ flagged, never coerced; SNOMED-target maps (RXR-4 method, SCH-7 reason) stay str
 SNOMED bundled; and fields with no IG value map (TXA-2, RXA-5) are documented as structural, never
 invented.
 
+Phase 7 opened the **reverse direction, narrowly**: `toV2Patient` and `toV2Observation` emit a
+complete v2 message carrying a `PID` or an `OBX`, each requiring a caller-supplied trigger. Two of
+the three shapes the phase scoped shipped; the `Patient` + `Encounter` visit-carrying ADT did not.
+The measurements, the refusals and the deferral are in
+`documentation/agent-notes.md#the-reverse-direction-and-what-it-does-not-claim`.
+
 **Deferred to later phases:** deeper terminology (the full HL7 THO NamingSystem crosswalk beyond the
-shipped value maps, consumer-supplied ConceptMap application), the reverse FHIR→v2 direction (Phase 7),
-and profiles (Phase 8).
+shipped value maps, consumer-supplied ConceptMap application), the rest of the reverse FHIR→v2
+direction, and profiles (Phase 8).
+
+## The reverse direction, and what it does not claim
+
+**The mapping authority runs one way.** The IG is a **v2 to FHIR** guide; it publishes no FHIR to v2
+map. So every reverse row here is the *inverse* of a published row, and an inverse is only usable
+where the forward row is one-to-one. `invertCodeMap` is that rule as code: it keeps a target only
+when exactly one source maps to it, and drops the rest. Measured against the shipped forward maps,
+the dropped set is `gender` `other` (Table 0001 `O`/`A`/`N`), name use `official` (`L`/`R`) and
+`temp` (`NAV`/`TEMP`), address use `work` (`B`/`O`), every `Address.type` row (`M`/`SH` both mean
+`postal`), and `Observation.status` `entered-in-error` (`D`/`W`). Each one raises
+`TRANSFORM_CODE_NOT_INVERTIBLE` and leaves the v2 field absent. **Do not "fix" one by picking the
+most likely source code**: that is a confident wrong value in the one direction where the reader is
+a clinical system, not a person.
+
+**Round-trip is exercised as "parses back", never as "equals".** `test/reverse/property.test.ts`
+asserts that every emitted message starts `MSH|`, parses under `parseHL7` without a fatal error, and
+carries the caller's trigger verbatim in MSH-9. It never asserts that a v2 message transformed to
+FHIR and back equals the original, and no shipped text says it does. A bare segment would fail the
+parse outright (`parseHL7` fatally rejects input whose first segment is not `MSH`), which is why
+each shape emits a whole message.
+
+**The trigger is a required argument because nothing else can supply it.** No FHIR resource carries
+an HL7 v2 message trigger. Missing, empty or non-string returns `TRANSFORM_MISSING_TRIGGER` with no
+builder call at all; a string that is not *bare* (whitespace, or an HL7 delimiter, which `^` would
+turn into further MSH-9 components) returns `TRANSFORM_VALUE_NOT_REPRESENTABLE`, because it could
+not be written verbatim into MSH-9.2 and trimming it would emit something the caller did not ask
+for. Both were found by the fuzz suite, not by reading.
+
+**▶ ABSENT IS THE RIGHT WIRE. SILENT IS NOT, AND THAT DISTINCTION SHIPPED BROKEN ONCE.** The first
+cut of this direction satisfied half of its own rule: a `Patient` carrying neither `identifier` nor
+`name` emitted an `ADT` whose `PID` had no PID-3 and no PID-5, an `Observation` with no `status`
+emitted an `OBX` with no OBX-11, and both returned an **empty `issues` array**. Nothing was
+fabricated, which was the half that held. But `flagUnmapped` iterates the elements a resource
+**carries**, so a wholly ABSENT element could raise nothing at all, and a wholly empty conversion
+returned `{ value: undefined, issues: [] }`, indistinguishable from a successful empty one. The fix
+is diagnostics-only and the wire is pinned byte for byte in both suites: each shape now declares its
+required fields (`PID_REQUIRED`, `OBX_REQUIRED`), every one that no mapped content reached raises
+`TRANSFORM_V2_REQUIRED_FIELD_ABSENT`, and an empty field map raises
+`TRANSFORM_NO_V2_MESSAGE_EMITTED` instead of nothing. **Do not "fix" an absent required field by
+supplying a default**: an OBX-11 defaulted to `F` reports a result as final that the sender never
+called final.
+
+**▶ AND THE USAGE CELLS BEHIND THOSE ROWS ARE ASSERTED, NOT EXTRACTED. THAT IS A DISCLOSED GAP, NOT A
+CLEARED ONE.** Each row claims one cell of a published v2.5.1 segment attribute table (the OPT column
+reading `R`), from Chapter 3 §3.4.2 for PID and Chapter 7 §7.4.2 for OBX. The pass that wrote them
+**could not open either publication** (no network egress), so it asserted the four cells rather than
+reading them out, and said so in the banner above `RequiredV2Field` in `src/reverse/message.ts`.
+The rule the field-number corroboration left behind is kept literally: **an item number appears only
+where this repository already extracted one**, so PID-3 carries `00106` and PID-5 carries `00108`
+(from the dated Chapter 3 extraction in `test/scripts/phi-scan.test.ts`) and the two OBX rows carry
+none at all. **Re-extract all four the next time a reader has the tables open**, and re-extract
+before adding a fifth: a wrong usage cell is a false diagnostic on a clinical field, and unlike a
+wrong field number it fires on every conversion rather than once.
+
+**Composites are structured, never concatenated.** Field content goes to `addSegment` as a
+`RawField` of components, so the serializer owns escaping: a family name of `Do^e|Public` emits as
+`Do\S\e\F\Public` and reads back identically, where a hand-joined `"Do^e"` string would have become
+two components. Nothing in `src/reverse` writes a `^` or a `~`.
+
+**Deferred, and why: the `Patient` + `Encounter` visit-carrying ADT.** The vendored `@cosyte/hl7`
+this repository actually builds and tests against exports no ADT assembly entry point (no
+`buildAdt`, and no `buildOru`/`encodeComposite` either): measured on the installed package, zero
+occurrences in both `dist/index.d.ts` and `dist/index.mjs`. Assembling PID + PV1 by hand instead
+would be this package inventing a message-structure layout that the parser tier owns, which is the
+opposite of the tier split ADR 0001 draws. The mapping itself is not the blocker and the deferral is
+dated and written out in `documentation/decisions/`. **Re-measure the vendored package before
+picking it up again** (`pnpm vendor:refresh` is a by-hand job, and the tarballs are unwatched by both
+Dependabot routes): the entry point may exist in a later parser release than the one vendored here.
 
 ## Publish state, and the stale claim inside it
 

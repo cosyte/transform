@@ -28,10 +28,26 @@ as a trap is clinical-safety content.
 
 ## Status
 
-- **Phases 1–6 shipped**: datatype converters + diagnostic channel, ADT/ORU/ORM-OML/RXO/VXU/SIU/MDM
-  message graphs, and the IG value-ConceptMap translation layer. Phases **7 (FHIR→v2)** and
-  **8 (profiles)** and deeper terminology are deferred. Full per-phase inventory:
+- **Phases 1-6 shipped**: datatype converters + diagnostic channel, ADT/ORU/ORM-OML/RXO/VXU/SIU/MDM
+  message graphs, and the IG value-ConceptMap translation layer. Full per-phase inventory:
   `documentation/agent-notes.md#shipped-phase-history-phases-16`.
+- **Phase 7 (FHIR→v2) shipped NARROWLY, and the narrowness is the point**: `toV2Patient` and
+  `toV2Observation` emit a **complete** v2 message (`ADT^<trigger>` + PID, `ORU^<trigger>` + OBX)
+  from the subset of the IG segment maps whose **inverse is one-to-one**. The **trigger is a required
+  argument on every entry point** and is never inferred: no FHIR resource carries one.
+  **▶ THE IG PUBLISHES NO FHIR-TO-V2 MAP**, so a many-to-one forward row has no usable inverse and is
+  refused, never resolved to its most likely source code; and **round-trip is asserted only as
+  "parses back", never as "equals"**. **▶ AND ABSENT IS NOT THE SAME AS SILENT**: a v2-REQUIRED field
+  the resource gives no source for (PID-3, PID-5, OBX-11) stays absent and RAISES
+  `TRANSFORM_V2_REQUIRED_FIELD_ABSENT`, and a conversion that grounds no field at all raises
+  `TRANSFORM_NO_V2_MESSAGE_EMITTED` instead of returning an empty success. **The usage cells behind
+  those rows are asserted, NOT extracted** (the pass that wrote them had no network egress), so
+  re-extract before trusting or widening them. The `Patient` + `Encounter` visit-carrying ADT is
+  **deferred, not dropped**: the vendored parser exports no ADT assembly entry point (measured, zero
+  occurrences in its `dist/`), and hand-assembling PID + PV1 here would invert the tier split. Every
+  measurement, the refusal set, and the deferral:
+  `documentation/agent-notes.md#the-reverse-direction-and-what-it-does-not-claim`. Phase **8
+  (profiles)** and deeper terminology remain deferred.
 - **Never quote a version here.** This line read "not yet published to npm" for several releases
   after first publish, which is part of why a `VERSION` constant stuck at `"0.0.0"` shipped unnoticed.
   Derive it: `npm view @cosyte/transform version`.

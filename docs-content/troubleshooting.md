@@ -50,8 +50,26 @@ resource values; those carry PHI.
   ORU^R01 → DiagnosticReport + Observation, ORM_O01 / OML_O21 → ServiceRequest and
   RXO → MedicationRequest, and the thin IG singles VXU_V04 → Immunization, SIU_S12 →
   Appointment, and MDM_T02 → DocumentReference. The v2→FHIR direction is
-  feature-complete for the IG-covered message set; terminology depth, profiles, and the reverse
-  FHIR → v2 direction are not implemented.
+  feature-complete for the IG-covered message set; terminology depth and profiles are not
+  implemented.
+- **Reverse (FHIR → v2) scope: two shapes, deliberately.** `toV2Patient` emits an `ADT`-shaped
+  message carrying a `PID`, `toV2Observation` an `ORU`-shaped message carrying an `OBX`. Both
+  require the caller to pass the v2 trigger (no resource carries one, so it is never inferred: a
+  missing one returns no message and a `TRANSFORM_MISSING_TRIGGER` diagnostic). The direction is
+  **lossy by design and not a round-trip**: a mapping row whose inverse is ambiguous is refused
+  (`TRANSFORM_CODE_NOT_INVERTIBLE`), an element with no v2 field in this map is flagged
+  (`TRANSFORM_NO_V2_TARGET`), and a value v2 cannot carry unchanged is left out
+  (`TRANSFORM_VALUE_NOT_REPRESENTABLE`). Emitting a `Patient` **and** an `Encounter` together as a
+  visit-carrying ADT is not implemented.
+- **An emitted message can be missing a field v2 requires, and it tells you so.** PID-3 (Patient
+  Identifier List), PID-5 (Patient Name) and OBX-11 (Observation Result Status) are required fields
+  with no safe default: a resource that carries no source for one leaves it absent, never a
+  fabricated placeholder, and raises one `TRANSFORM_V2_REQUIRED_FIELD_ABSENT` per field naming the v2
+  location and the FHIR path it would have come from. Supply the missing element on the resource, or
+  repair the message before you send it. If nothing in the resource grounds any field of the target
+  segment, there is no message to repair: the call returns `value: undefined` and one
+  `TRANSFORM_NO_V2_MESSAGE_EMITTED`, which is how an empty-handed conversion is told apart from a
+  successful one.
 - **Thin-IG-single scope**: each family covers the single trigger the IG maps and the
   resource-internal fields; references to resources this tier does not yet build (Immunization
   performer/manufacturer/location, Appointment practitioner/location participants, DocumentReference

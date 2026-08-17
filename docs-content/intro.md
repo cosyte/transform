@@ -23,8 +23,10 @@ grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fh
 > Immunization**, **SIU_S12 → Appointment**, and **MDM_T02 → DocumentReference**, plus
 > **terminology value translation** of coded fields: route/site, appointment type, order
 > priority, and substitution translated through their IG `mappedVia` ConceptMaps. The
-> v2→FHIR direction is feature-complete for the IG-covered message set; deeper terminology, profiles,
-> and the reverse FHIR → v2 direction are not implemented.
+> v2→FHIR direction is feature-complete for the IG-covered message set. A **narrow reverse path**
+> also ships, FHIR → v2: `toV2Patient(patient, trigger)` and `toV2Observation(observation, trigger)`
+> emit a complete v2 message carrying a `PID` or an `OBX`, lossy by design and never a round-trip.
+> Deeper terminology, profiles, and any wider FHIR → v2 conversion are not implemented.
 
 ## The fail-safe promise
 
