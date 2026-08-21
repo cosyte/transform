@@ -376,8 +376,8 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
  * the previous list (`test/fixtures` + `src`) is a strict SUBSET of this one, so
  * nothing the walk opened before can stop being opened.
  *
- * ▶ `vendor/` IS DELIBERATELY ABSENT. It holds two `pnpm pack` gzip tarballs of
- * sibling packages, and see `RECONCILE_EXEMPT` for why a text scan over gzip
+ * ▶ `vendor/` IS DELIBERATELY ABSENT. It holds a `pnpm pack` gzip tarball of a
+ * sibling package, and see `RECONCILE_EXEMPT` for why a text scan over gzip
  * bytes is neither a detection nor a clearance.
  */
 const WALK_ROOT_NAMES = [
@@ -406,23 +406,30 @@ const WALK_ROOTS = WALK_ROOT_NAMES.map((name) => join(REPO_ROOT, name));
  *   3. It is enumerated here in source, so adding one is a reviewed act and a
  *      diff, never a silently-widening glob.
  *
- * WHY THESE TWO: they are gzip archives. Their bytes are not the text they
- * carry, so scanning them is neither a detection nor a clearance: a name inside
- * one is compressed and unreadable to any text pass, and a clean result over
- * them would be evidence of nothing. Both are `pnpm pack` outputs of sibling
- * `@cosyte/*` repositories, each gated by its own PHI scanner at its own source.
- * Measured here before this change, the fhir tarball produced exactly one hit:
- * seven bytes of DEFLATE output that happen to match the email shape, and that
- * change with every repack. It is written as a shape rather than quoted,
- * because this file is inside the scan's own corpus and a quoted violator here
- * would red the gate on every run.
+ * WHY THIS ONE: it is a gzip archive. Its bytes are not the text it carries, so
+ * scanning it is neither a detection nor a clearance: a name inside it is
+ * compressed and unreadable to any text pass, and a clean result over it would
+ * be evidence of nothing. It is a `pnpm pack` output of a sibling `@cosyte/*`
+ * repository, gated by its own PHI scanner at its own source. Measured before
+ * the exemption was written, the fhir tarball produced exactly one hit: seven
+ * bytes of DEFLATE output that happen to match the email shape, and that change
+ * with every repack. It is written as a shape rather than quoted, because this
+ * file is inside the scan's own corpus and a quoted violator here would red the
+ * gate on every run.
+ *
+ * ▶ THE LIST SHRANK WHEN `@cosyte/hl7` STOPPED BEING VENDORED. It is now a
+ * registry devDependency resolved through `pnpm-lock.yaml`, so
+ * `vendor/cosyte-hl7-0.0.0.tgz` no longer exists and its entry went with it: an
+ * exemption for a path nothing tracks is a line the next reader has to disprove.
+ * Removing it subtracts NO detection, because the reconciliation only ever
+ * consulted this set for paths `git ls-files` still returns.
  *
  * ▶ IF `pnpm vendor:refresh` EVER RENAMES A TARBALL, THIS LIST GOES STALE AND
  * THE GATE REFUSES (exit 2) NAMING THE NEW PATH. That is the safe direction and
  * it is deliberate: the remedy is to update this list, never to loosen it into a
- * `vendor/**` pattern. The names are pinned in `scripts/vendor-refresh.sh`.
+ * `vendor/**` pattern. The name is pinned in `scripts/vendor-refresh.sh`.
  */
-const RECONCILE_EXEMPT = new Set(["vendor/cosyte-fhir-0.0.0.tgz", "vendor/cosyte-hl7-0.0.0.tgz"]);
+const RECONCILE_EXEMPT = new Set(["vendor/cosyte-fhir-0.0.0.tgz"]);
 
 // ---------------------------------------------------------------------------
 // Types

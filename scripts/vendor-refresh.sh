@@ -1,29 +1,33 @@
 #!/usr/bin/env bash
 #
-# vendor-refresh.sh: regenerate the vendored @cosyte sibling tarballs.
+# vendor-refresh.sh: regenerate the vendored @cosyte sibling tarball.
 #
 # @cosyte/transform depends on two cosyte siblings, @cosyte/hl7 and @cosyte/fhir.
 # THIS COMMENT USED TO CALL BOTH OF THEM UNPUBLISHED AND THAT WAS FALSE:
 # @cosyte/hl7 is on the registry, and it is @cosyte/fhir alone that is not. Derive
 # it rather than reading it here, because a publish state written into a comment is
 # the part that goes stale: `npm view @cosyte/hl7 version`, `npm view @cosyte/fhir
-# version`. The vendored tarballs remain how BOTH are consumed for dev/test
-# regardless, so nothing below depends on which of them the registry has.
+# version`.
 #
-# Exactly like @cosyte/mllp consumes @cosyte/hl7 today (umbrella ADR 0008), we
-# consume them as vendored `pnpm pack` tarballs pinned to a known-good sibling
-# commit, wired as `file:` devDependencies so transform's own tests build against
-# them while third-party RUNTIME deps stay at zero (see
-# documentation/decisions/0019). This is READ-ONLY on the sibling
-# repos: it builds + packs them in place and copies the tarball here; it never
-# commits, mutates source, or touches their git state.
+# ▶ ONLY @cosyte/fhir IS VENDORED NOW, AND THAT IS THE WHOLE REASON THIS SCRIPT
+#   STILL EXISTS. @cosyte/hl7 is a plain registry devDependency resolved through
+#   pnpm-lock.yaml, so re-adding it below would put a second copy of that library
+#   back in this tree, which is exactly what removing it was for. The vendored
+#   route is the interim mechanism for a sibling the registry does not have, not
+#   the preferred one: when @cosyte/fhir can be installed, this script goes.
 #
-# Usage (run from the transform repo root, with ../hl7 and ../fhir checked out):
+# Exactly like @cosyte/mllp consumes @cosyte/hl7 today (umbrella ADR 0008), the
+# vendored sibling is a `pnpm pack` tarball pinned to a known-good sibling commit,
+# wired as a `file:` devDependency so transform's own tests build against it while
+# third-party RUNTIME deps stay at zero (see documentation/decisions/0019). This is
+# READ-ONLY on the sibling repo: it builds + packs it in place and copies the
+# tarball here; it never commits, mutates source, or touches its git state.
+#
+# Usage (run from the transform repo root, with ../fhir checked out):
 #   pnpm vendor:refresh
 #
-# Pinned sibling commits (record every bump here AND in a changeset; CHANGELOG.md
+# Pinned sibling commit (record every bump here AND in a changeset; CHANGELOG.md
 # is generated from the changesets a release consumes, so do not hand-edit it):
-#   @cosyte/hl7  → 46d50eb775dc6576cec8ca5a2315720a65cb7418  (v0.0.1)
 #   @cosyte/fhir → 7a099b24e399b91d780be8110c529bc570756cfe  (v0.0.0)
 #
 # After a refresh: `pnpm install`, then `pnpm test` + `pnpm build` to confirm the
@@ -50,7 +54,6 @@ refresh() {
   echo "vendor-refresh: wrote ${vendor}/${out}"
 }
 
-refresh "@cosyte/hl7"  hl7  cosyte-hl7-0.0.0.tgz
 refresh "@cosyte/fhir" fhir cosyte-fhir-0.0.0.tgz
 
 echo "vendor-refresh: done. Now run: pnpm install && pnpm test && pnpm build"

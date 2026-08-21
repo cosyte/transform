@@ -97,7 +97,7 @@
     "@changesets/cli": "2.31.0",
     "@cosyte/eslint-config": "^0.0.4",
     "@cosyte/fhir": "file:vendor/cosyte-fhir-0.0.0.tgz",
-    "@cosyte/hl7": "file:vendor/cosyte-hl7-0.0.0.tgz",
+    "@cosyte/hl7": "^0.0.10",
     "@cosyte/prettier-config": "^0.0.2",
     "@cosyte/test-utils": "^0.0.1",
     "@cosyte/tsconfig": "^0.0.2",

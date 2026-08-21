@@ -43,10 +43,14 @@ as a trap is clinical-safety content.
   `TRANSFORM_NO_V2_MESSAGE_EMITTED` instead of returning an empty success. **The usage cells behind
   those rows are asserted, NOT extracted** (the pass that wrote them had no network egress), so
   re-extract before trusting or widening them. The `Patient` + `Encounter` visit-carrying ADT is
-  **deferred, not dropped**: the vendored parser exports no ADT assembly entry point (measured, zero
-  occurrences in its `dist/`), and hand-assembling PID + PV1 here would invert the tier split. Every
-  measurement, the refusal set, and the deferral:
-  `documentation/agent-notes.md#the-reverse-direction-and-what-it-does-not-claim`. Phase **8
+  **deferred, not dropped**, and **▶ THE UPSTREAM REASON FOR THE DEFERRAL IS GONE WHILE THE SHAPE IS
+  STILL NOT BUILT**: the parser exported no ADT assembly entry point when it was deferred, and
+  `@cosyte/hl7` `0.0.10` exports `buildAdt` (measured by a call that compiles and runs, in
+  `test/upstream-capabilities.test.ts`). Nothing else about the deferral changed, so do not read
+  "the builder exists" as "the shape is ready": hand-assembling PID + PV1 here would still invert
+  the tier split, and the IG grounding is still owed. Every measurement, the refusal set, and the
+  deferral: `documentation/agent-notes.md#the-reverse-direction-and-what-it-does-not-claim`; the
+  dependency refresh that took the measurement: `documentation/hl7-refresh/record.md`. Phase **8
   (profiles)** and deeper terminology remain deferred.
 - **Never quote a version here.** This line read "not yet published to npm" for several releases
   after first publish, which is part of why a `VERSION` constant stuck at `"0.0.0"` shipped unnoticed.
@@ -63,11 +67,15 @@ as a trap is clinical-safety content.
   never recall: `npm view @cosyte/fhir version`. **Visibility and publish state are independent**;
   never infer one from the other. Why:
   `documentation/agent-notes.md#publish-state-and-the-stale-claim-inside-it`.
-- **Consumes two cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer dependencies**, vendored
-  as `pnpm pack` tarballs in `vendor/` for dev/test (ADR 0001 + umbrella ADR 0008): refresh with
-  `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir `7a099b2`. **They are not both unpublished,
-  and that wording was stale**; `@cosyte/hl7` is on the registry and it is the `fhir` peer alone that
-  makes this package uninstallable. **Third-party runtime deps: zero.**
+- **Consumes two cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer dependencies**, and the
+  two are no longer consumed the same way for dev/test. **`@cosyte/hl7` is a plain registry
+  devDependency** resolved through `pnpm-lock.yaml`; **▶ DO NOT RE-VENDOR IT**, and do not add
+  `vendor/cosyte-hl7-*.tgz` back, because a second copy of that library in this tree is what
+  removing it was for. **`@cosyte/fhir` alone stays a vendored `pnpm pack` tarball** in `vendor/`
+  (ADR 0001 + umbrella ADR 0008; refresh with `pnpm vendor:refresh`, pinned sha `7a099b2`), for one
+  reason and one only: the registry does not have it. **They were never both unpublished, and that
+  wording was stale**; it is the `fhir` peer alone that makes this package uninstallable.
+  **Third-party runtime deps: zero.**
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 

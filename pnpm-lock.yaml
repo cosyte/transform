@@ -25,8 +25,8 @@ importers:
         specifier: file:vendor/cosyte-fhir-0.0.0.tgz
         version: file:vendor/cosyte-fhir-0.0.0.tgz
       '@cosyte/hl7':
-        specifier: file:vendor/cosyte-hl7-0.0.0.tgz
-        version: file:vendor/cosyte-hl7-0.0.0.tgz
+        specifier: ^0.0.10
+        version: 0.0.10
       '@cosyte/prettier-config':
         specifier: ^0.0.2
         version: 0.0.2
@@ -188,9 +188,8 @@ packages:
     version: 0.0.0
     engines: {node: '>=22.0.0'}
 
-  '@cosyte/hl7@file:vendor/cosyte-hl7-0.0.0.tgz':
-    resolution: {integrity: sha512-ZiHGyeIsVID2Y/DF/ZFKgYbFf0EcwaZzmDk3W3EuajExdIZ1Od/tkFmdTC6OI4Lw8gdzDyP1vVLzeim6cW3NMA==, tarball: file:vendor/cosyte-hl7-0.0.0.tgz}
-    version: 0.0.1
+  '@cosyte/hl7@0.0.10':
+    resolution: {integrity: sha512-bUVmjMvtqlNw5yv0ozwo+BRQ9Ej141t6wmpzbeN9anrEJhmZCuVJV+OBBznKqdpbDz8vqqvpT5DFEA8+v9F1rA==}
     engines: {node: '>=22.0.0'}
 
   '@cosyte/prettier-config@0.0.2':
@@ -2005,7 +2004,7 @@ snapshots:
 
   '@cosyte/fhir@file:vendor/cosyte-fhir-0.0.0.tgz': {}
 
-  '@cosyte/hl7@file:vendor/cosyte-hl7-0.0.0.tgz': {}
+  '@cosyte/hl7@0.0.10': {}
 
   '@cosyte/prettier-config@0.0.2': {}
 

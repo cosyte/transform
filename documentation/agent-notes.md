@@ -136,15 +136,24 @@ wrong field number it fires on every conversion rather than once.
 `Do\S\e\F\Public` and reads back identically, where a hand-joined `"Do^e"` string would have become
 two components. Nothing in `src/reverse` writes a `^` or a `~`.
 
-**Deferred, and why: the `Patient` + `Encounter` visit-carrying ADT.** The vendored `@cosyte/hl7`
-this repository actually builds and tests against exports no ADT assembly entry point (no
-`buildAdt`, and no `buildOru`/`encodeComposite` either): measured on the installed package, zero
-occurrences in both `dist/index.d.ts` and `dist/index.mjs`. Assembling PID + PV1 by hand instead
+**Deferred, and why: the `Patient` + `Encounter` visit-carrying ADT.** The `@cosyte/hl7` this
+repository built and tested against at the time (`0.0.1`, vendored) exported no ADT assembly entry
+point (no `buildAdt`, and no `buildOru`/`encodeComposite` either): measured on the installed package,
+zero occurrences in both `dist/index.d.ts` and `dist/index.mjs`. Assembling PID + PV1 by hand instead
 would be this package inventing a message-structure layout that the parser tier owns, which is the
 opposite of the tier split ADR 0001 draws. The mapping itself is not the blocker and the deferral is
-dated and written out in `documentation/decisions/`. **Re-measure the vendored package before
-picking it up again** (`pnpm vendor:refresh` is a by-hand job, and the tarballs are unwatched by both
-Dependabot routes): the entry point may exist in a later parser release than the one vendored here.
+dated and written out in `documentation/decisions/`.
+
+**▶ THAT BLOCKER IS GONE, AND THE SHAPE IS STILL NOT BUILT: DO NOT READ ONE FROM THE OTHER.**
+`@cosyte/hl7` `0.0.10` exports `buildAdt(event, init)` with typed `AdtPatient` / `AdtVisit` / `AdtEvent`
+bodies, and `buildOru` and `encodeComposite` with it. `test/upstream-capabilities.test.ts` is the
+measurement, kept as a call that compiles and runs rather than a sentence: it builds an ADT, parses
+it back, and reads the values out again. What that removes is the UPSTREAM reason for the deferral,
+nothing else. The visit-carrying `Patient` + `Encounter` output is still not implemented here, it is
+still owed the same IG grounding as every other shape, and the refresh that measured the builder
+deliberately did not start it: a dependency refresh whose whole claim is "no emitted FHIR value
+moved" cannot also add a message graph. The full record of the refresh, the capability inventory it
+enumerated and where the shape is routed next: `documentation/hl7-refresh/record.md`.
 
 ## Publish state, and the stale claim inside it
 
@@ -318,9 +327,16 @@ cannot hold `security-events: write`) has been observed.
 repo showed **zero** open Dependabot PRs, which meant nothing was looking, not that nothing was stale.
 Two limits are written into that file rather than left to be discovered: automatic **security** update
 PRs are a repo setting that currently reads `disabled`, and **Dependabot never resolves a
-`file:vendor/*.tgz` specifier**, so the vendored `@cosyte/hl7` and `@cosyte/fhir` tarballs -- the
-versions the tests actually exercise -- are unwatched by both the `file:` route and the peer-dep route
-and stay a `pnpm vendor:refresh` job by hand.
+`file:vendor/*.tgz` specifier**, so a vendored tarball -- the version the tests actually exercise --
+is unwatched by both the `file:` route and the peer-dep route and stays a `pnpm vendor:refresh` job by
+hand.
+
+**That limit now covers ONE sibling rather than two, and the halves diverged deliberately.**
+`@cosyte/hl7` is a registry devDependency resolved through `pnpm-lock.yaml`, so the `npm` ecosystem
+route in `.github/dependabot.yml` reaches it like any other package and the by-hand job no longer
+applies to it. `@cosyte/fhir` is still `file:vendor/cosyte-fhir-0.0.0.tgz` and still unwatched, and it
+stays that way until the registry has it. **Do not read the two as one dependency any more**: a
+sentence that treats them together was true when both were vendored and is not true now.
 
 ## The `attw` guardrail, in full
 
@@ -1055,13 +1071,16 @@ an exemption that silently grows to cover the generated half. The archive is als
 **on-disk canary**: a scan that reports it clean has gone blind rather than found good news, and
 the gate refuses rather than reporting that as a pass.
 
-**`vendor/cosyte-hl7-0.0.0.tgz` (1), declared `binary` in `.gitattributes`.** A DEFLATE stream can
-hold `E2 80 94` by coincidence and this one does; there is no edit that removes a byte from someone
-else's compressed archive, and the tarball is third-party content this repo consumes rather than
-authors. `vendor/cosyte-fhir-0.0.0.tgz` is declared alongside it and carries none today.
-**`.gitattributes` is not a silencer**: the gate REFUSES any `binary` declaration outside
-`vendor/`, so widening the exclusion means editing the gate deliberately. And a declaration about a
-file's BYTES says nothing about its NAME, so tracked filenames are scanned whatever that file says.
+**`vendor/cosyte-fhir-0.0.0.tgz`, declared `binary` in `.gitattributes`, and it is the ONLY declared
+path now.** A DEFLATE stream can hold `E2 80 94` by coincidence; there is no edit that removes a byte
+from someone else's compressed archive, and a vendored tarball is third-party content this repo
+consumes rather than authors. The fhir archive carries none today. **The measurement that used to
+sit here was taken on `vendor/cosyte-hl7-0.0.0.tgz` (1 occurrence)**; that path is gone, because
+`@cosyte/hl7` became a registry devDependency, so the declared set is one path rather than two and
+the count it carried retired with it. **`.gitattributes` is not a silencer**: the gate REFUSES any
+`binary` declaration outside `vendor/`, so widening the exclusion means editing the gate
+deliberately. And a declaration about a file's BYTES says nothing about its NAME, so tracked
+filenames are scanned whatever that file says.
 
 **Nothing else was skipped.** `CLAUDE.md` (47) and this file (68) were swept like any other tracked
 file. The banner at the top of this file protects its **claims** from being softened; it is not a

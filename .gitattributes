@@ -1,9 +1,12 @@
-# The vendored `@cosyte/hl7` and `@cosyte/fhir` tarballs are third-party archives that this
-# repository consumes for dev and test (ADR 0001; refresh them with `pnpm vendor:refresh`).
-# Declaring them keeps git from ever treating them as text, and it is the declaration that
+# The vendored `@cosyte/fhir` tarball is a third-party archive that this repository consumes for
+# dev and test (ADR 0001; refresh it with `pnpm vendor:refresh`). `@cosyte/hl7` used to sit beside
+# it and no longer does: it is a registry devDependency resolved through `pnpm-lock.yaml`, so
+# nothing vendored carries it. The glob is kept rather than narrowed to one filename because it is
+# the shape `vendor/` has always had, and a rename must not silently escape it.
+# Declaring the archive keeps git from ever treating it as text, and it is the declaration that
 # `scripts/check-no-emdash.mjs` partitions on: a DEFLATE stream can hold the em dash's UTF-8
-# bytes by coincidence, `vendor/cosyte-hl7-0.0.0.tgz` does, and there is no edit that removes
-# a byte from someone else's compressed stream.
+# bytes by coincidence, and there is no edit that removes a byte from someone else's compressed
+# stream.
 #
 # THIS FILE IS NOT A SILENCER. The em-dash gate REFUSES any `binary` declaration outside
 # `vendor/`, so widening the exclusion means editing that script deliberately rather than

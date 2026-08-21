@@ -88,11 +88,13 @@
  * ---------------------------------------------------------------------------
  *
  * A DEFLATE stream can contain `E2 80 94` by coincidence, and there is no edit
- * that removes a byte from a compressed stream. THIS REPOSITORY HAS ONE TODAY:
- * `vendor/cosyte-hl7-0.0.0.tgz`, a `pnpm pack` tarball of a cosyte sibling,
- * carries exactly one such coincidence, and `vendor/cosyte-fhir-0.0.0.tgz` sits
- * beside it. Both are declared in `.gitattributes`, which is the whole of the
- * exemption; nothing else in the tree is declared.
+ * that removes a byte from a compressed stream. THE REPOSITORY TRACKS ONE SUCH
+ * ARCHIVE TODAY: `vendor/cosyte-fhir-0.0.0.tgz`, a `pnpm pack` tarball of a
+ * cosyte sibling, declared in `.gitattributes`, which is the whole of the
+ * exemption; nothing else in the tree is declared. `vendor/cosyte-hl7-0.0.0.tgz`
+ * sat beside it and carried exactly one such coincidence when it was measured;
+ * it is gone, because `@cosyte/hl7` is a registry devDependency now rather than
+ * a vendored tarball, and the declared set shrank with it.
  *
  * The partition is `git check-attr binary`, refused for any path outside
  * `vendor/`. It is deliberately NOT a NUL-byte test and deliberately not
