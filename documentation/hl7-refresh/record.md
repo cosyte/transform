@@ -14,6 +14,11 @@ nine-versions-stale parser cannot be bumped on the strength of a green suite alo
 - **Toolchain:** unchanged. `node >=22.0.0`, `packageManager: pnpm@10.0.0`, both as declared before.
 - **Headline result:** the compared surface over 128 corpus members is **byte-identical** before and
   after. No emitted FHIR value moved. No diagnostic moved. No call site needed adapting.
+- **One test expectation was edited, and it tracks no upstream difference.** It is a repository
+  INVENTORY count that this refresh's own required end state moved: deleting the vendored tarball
+  took the tree from two declared-binary paths to one. Before and after form, cause and authority:
+  section 5b. The count of adopted diagnostic differences is still **zero** and section 5 is
+  unchanged by it.
 
 > **On dash characters in this file.** This repository bans the em dash in every spelling. One
 > upstream diagnostic quoted below contains an EN dash in a version range; it is written here as
@@ -267,7 +272,9 @@ messages are unchanged.
 - **Differences that move an emitted FHIR value: zero.** Nothing to stop on.
 - **Differences that move only diagnostics: zero.** There is no refresh artifact to adopt.
 - **Test expectations edited to track an adopted difference: zero.** There was no adopted difference
-  to track, so no expected value in any suite was rewritten.
+  to track, so no expected value in any suite was rewritten to follow the dependency. One
+  expectation was edited for a different reason entirely, on a separate authority, and section 5b
+  states it rather than filing it here: it tracks a change to THIS TREE, not to `@cosyte/hl7`.
 - **Causes recorded as undetermined: zero.** The question did not arise.
 
 **Both source trees were consulted, and they were in hand at comparison time.** The pre-refresh tree
@@ -276,6 +283,122 @@ outside this checkout); the post-refresh tree is `node_modules/@cosyte/hl7` at `
 from the registry. The comparison found a large ADDITIVE change upstream (new exports, listed in
 section 8) and no change to the behaviour of anything this package calls, which is exactly what a
 zero-difference surface predicts.
+
+## 5b. The one test expectation edited: what, why, and on whose authority
+
+Section 5 is the dependency's answer, and it moved nothing. This section is the TREE's answer, where
+one thing did move: an assertion whose subject section 2 deleted.
+
+**What the assertion is about.** `.gitattributes` declares `vendor/*.tgz` as `binary`, and the
+no-emdash gate exempts a declared-binary path from its content scan and prints how many it skipped.
+Two tracked archives matched that glob before this refresh. Deleting `vendor/cosyte-hl7-0.0.0.tgz`
+leaves exactly one, `vendor/cosyte-fhir-0.0.0.tgz`, which stays vendored because the registry does
+not have it. So the gate now reports, correctly:
+
+```
+$ pnpm run check:no-emdash
+[no-emdash] OK: 124 tracked file(s) scanned (<N> bytes), 1 declared binary and exempt from the
+content scan, 125 filename(s) checked.
+```
+
+The byte total is elided as `<N>` deliberately: this file is itself inside the scanned corpus, so a
+verbatim total would be stale the moment this paragraph is edited. The load-bearing token is
+`1 declared binary`, and `test/scripts/no-emdash-gate.test.ts` pins exactly that. The banner above is
+what the assertion reads, so an assertion still claiming two is now simply false.
+
+**BEFORE:**
+
+```ts
+    // AND THE SKIP COUNT IS PINNED, NOT MERELY SHAPED. This repository declares
+    // exactly two paths binary, both vendored tarballs. A path exclusion added to
+    // the gate's skip condition raises this number, and a refuter showed that a
+    // shape-only assertion here leaves such an exclusion completely green.
+    expect(r.out).toContain("2 declared binary");
+```
+
+**AFTER:**
+
+```ts
+    // AND THE SKIP COUNT IS PINNED, NOT MERELY SHAPED. This repository declares
+    // exactly one path binary, the one vendored tarball left. A path exclusion
+    // added to the gate's skip condition raises this number, and a refuter showed
+    // that a shape-only assertion here leaves such an exclusion completely green.
+    expect(r.out).toContain("1 declared binary");
+```
+
+**The cause, stated as what it actually is.** The required end state removed the assertion's subject:
+the in-tree copy of the library had to go, checkout-wide, and it was one of the two archives being
+counted. This is NOT a difference between `@cosyte/hl7@0.0.1` and `0.0.10`. The two source trees were
+compared (section 5) and produced no difference at all, in the FHIR output or in any diagnostic, so
+there is no upstream change to name beside this edit and none is invented here. The enumeration in
+section 5 stays empty and this edit does not enter it.
+
+**The authority, which is not this record's own reasoning.** The refresh spec permits editing a test
+expectation for one reason only, to track a difference adopted under its AC6b, and there is no such
+difference to place beside this one. The edit therefore rides a separate, deliberately bounded
+ruling: the operator decision of 2026-08-21, recorded beside this refresh's spec as
+`operator-decision-ac3-does-not-freeze-a-removed-subject.md`. It holds that AC3's freeze protects
+expectations from being bent to make failing behaviour pass, and does not extend to an assertion
+whose subject this chore legitimately removed, the count being a fact about the tree and the tree
+having changed by design. Its bounds, as written there: ONE literal, in THIS file, `2` to `1`, with
+the pin kept as a pin, every other expectation in the suite still frozen, and any second expectation
+edit a fresh question rather than a licence already granted.
+
+**What the edit deliberately does not do.** It does not weaken the assertion. The expected value
+stays an exact literal rather than becoming a shape, a range, or a count derived from
+`.gitattributes`, because the comment beside it records why the number is pinned at all: a refuter
+showed that a shape-only assertion here leaves a widened skip condition completely green. That
+reasoning holds at one path exactly as it held at two, so the pin keeps its bite. Nothing was
+skipped, deleted, retargeted or loosened, and no other expected value anywhere in the suite was
+touched.
+
+**The gate commands on the refreshed checkout, after the edit. Every one exits zero.**
+
+| command | result |
+|---|---|
+| `pnpm run build` | exit 0. ESM, CJS and both `.d.ts` outputs built. |
+| `pnpm run typecheck` | exit 0, no diagnostics. |
+| `pnpm run lint` | exit 0 at `--max-warnings=0`. |
+| `pnpm run test` | exit 0. **31 files, 524 tests, 524 passed, 0 failed.** The baseline ran 29 files and 504 tests; the whole increase is the two suites this refresh ADDED. |
+| `pnpm run phi-scan` | exit 0, `[phi-scan] OK: no hits`. |
+| `pnpm run check:no-emdash` | exit 0, banner quoted above. |
+| `pnpm run check:no-internal-refs` | exit 0, 9 public-surface files and 37 source files scanned. |
+| `pnpm run check:agent-notes` | exit 0, 3 files reconciled against `git ls-files` (125 tracked). |
+| `pnpm run format:check` | exit 0, all matched files already Prettier-clean. |
+
+**The comparison was re-verified rather than re-asserted after this edit**, since a green suite is
+not evidence about the compared surface:
+
+```
+$ diff -u documentation/hl7-refresh/surface-pre-refresh.json \
+         documentation/hl7-refresh/surface-post-refresh.json
+--- surface-pre-refresh.json
++++ surface-post-refresh.json
+@@ -1,5 +1,5 @@
+ {
+-  "label": "pre-refresh",
++  "label": "post-refresh",
+   "members": [
+```
+
+One hunk, each file's own name for itself, exactly as section 5 records. The capture was also re-run
+from scratch on the refreshed dependency into a throwaway label and diffed against the committed
+`surface-post-refresh.json`: again one hunk, the label, over all 128 members. The throwaway file was
+deleted rather than committed.
+
+**On the runner these numbers were taken with, because a number is worth what its conditions are.**
+This session's container carries `node v24.19.0` and `pnpm 11.21.0`, and installing the pinned pnpm
+was not available to it. Both are inside what this package declares (`engines.node >=22.0.0`; CI
+runs a 22 and 24 matrix), the declarations themselves are untouched (section 10), and the install
+was `pnpm install --frozen-lockfile`, which reported the lockfile up to date and skipped resolution,
+so the tree the gates ran against is the lockfile's tree and not this runner's opinion of it. One
+banner line comes with that runner: pnpm 11 prints that the `pnpm` field in `package.json` is no
+longer read, so its `overrides` keys were ignored. That is a property of the runner reading a
+pre-existing field, not a warning this refresh introduced, and the premise is checked rather than
+asserted: `git show <baseline SHA>:package.json` carries the same `pnpm.overrides` block (the
+`esbuild` and `js-yaml` security pins), byte-identical to the one there now, so the same runner has
+the same line to print on both sides of the refresh. Under the pinned `pnpm@10.0.0` the field is
+read normally and the line does not appear.
 
 ## 6. Call sites: what had to be adapted
 
@@ -485,4 +608,7 @@ Nothing about that shape is implemented under this refresh, deliberately.
 - **No `pnpm.overrides` or `resolutions` entry** for `@cosyte/hl7`. The two `pnpm.overrides` entries
   in `package.json` are the pre-existing `esbuild` and `js-yaml` security pins and are untouched.
 - **No test skipped or deleted**, and none weakened. Two suites were ADDED
-  (`test/messages/malformed-classes.test.ts`, `test/upstream-capabilities.test.ts`).
+  (`test/messages/malformed-classes.test.ts`, `test/upstream-capabilities.test.ts`). Exactly one
+  expected value was edited, a declared-binary path count this refresh's own end state moved from
+  two to one; it stayed a pinned literal, it tracks no upstream difference, and section 5b carries
+  its before and after form together with the ruling that authorized it.
