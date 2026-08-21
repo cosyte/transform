@@ -214,10 +214,10 @@ describe("check-no-emdash: the tracked tree", () => {
     expect(r.code, r.out).toBe(0);
     expect(r.out).toMatch(/OK: \d+ tracked file\(s\) scanned/);
     // AND THE SKIP COUNT IS PINNED, NOT MERELY SHAPED. This repository declares
-    // exactly two paths binary, both vendored tarballs. A path exclusion added to
-    // the gate's skip condition raises this number, and a refuter showed that a
-    // shape-only assertion here leaves such an exclusion completely green.
-    expect(r.out).toContain("2 declared binary");
+    // exactly one path binary, the one vendored tarball left. A path exclusion
+    // added to the gate's skip condition raises this number, and a refuter showed
+    // that a shape-only assertion here leaves such an exclusion completely green.
+    expect(r.out).toContain("1 declared binary");
     // And a red run names the file when it is dirty, which is what makes the
     // membership observable rather than inferred.
     const dirty = scanText(`x${EM}y`);
