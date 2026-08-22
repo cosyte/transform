@@ -183,6 +183,18 @@ export const ISSUE_REGISTRY: Readonly<Record<IssueCode, IssueMeta>> = Object.fre
     message:
       "no v2 message was emitted: nothing in the resource grounded a single field of the target segment, and an empty segment is never emitted.",
   },
+  [ISSUE_CODES.TRANSFORM_SEGMENT_NOT_EMITTED]: {
+    severity: "information",
+    fhirIssueType: "informational",
+    message:
+      "segment occurrence reached no resource in the returned bundle, and the IG publishes a segment map for its name; the bundle does not represent what this segment carried.",
+  },
+  [ISSUE_CODES.TRANSFORM_SEGMENT_NO_IG_MAP]: {
+    severity: "information",
+    fhirIssueType: "informational",
+    message:
+      "segment occurrence reached no resource in the returned bundle, and the IG publishes no segment map for its name, or the name could not be classified at all; the bundle does not represent what this segment carried.",
+  },
 });
 
 /**

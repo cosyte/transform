@@ -111,6 +111,17 @@ unresolvable authority becomes a typed issue, never a fabricated value. A trigge
 **message** map for is assembled from the segment maps and flagged, never invented; every emitted
 resource is validated against `@cosyte/fhir` before it ships.
 
+**And silence is not completeness.** Every segment occurrence that contributed nothing to a resource
+in the returned bundle raises one value-free issue naming it, so you can read the issues list instead
+of diffing the message against the bundle: `TRANSFORM_SEGMENT_NOT_EMITTED` when the IG publishes a
+segment map for that name (a gap here), `TRANSFORM_SEGMENT_NO_IG_MAP` when it publishes none, or when
+the name could not be classified at all (a gap in the standard, or a damaged line). The location is
+`DG1[2]` for a name that passes the v2 segment-identifier shape, 1-based among that name's
+occurrences, and `[#4]` for one that does not, with no part of the name reproduced. Being read and
+refused is not reaching: a counted `RXE`, an orphan `OBX` and a resource the emit gate withheld are
+all reported. A flagged segment is still not transformed: you learn what is missing, not what it
+said.
+
 The same `toFhir(msg)` handles the other message families: **ORU^R01** → `DiagnosticReport` (OBR) +
 `Observation` (OBX), and the order-entry graph, **ORM_O01 / OML_O21** ORC/OBR →
 `ServiceRequest` and **RXO** (+ RXR route) → `MedicationRequest`, with `ServiceRequest.status`

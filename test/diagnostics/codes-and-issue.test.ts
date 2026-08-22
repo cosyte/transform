@@ -43,8 +43,30 @@ describe("stable code registries", () => {
         "TRANSFORM_UNSUPPORTED_RESOURCE",
         "TRANSFORM_V2_REQUIRED_FIELD_ABSENT",
         "TRANSFORM_VALUE_NOT_REPRESENTABLE",
+        // Phase 8: the message-level completeness diagnostic (additions only).
+        "TRANSFORM_SEGMENT_NOT_EMITTED",
+        "TRANSFORM_SEGMENT_NO_IG_MAP",
       ].sort(),
     );
+  });
+
+  it("the two completeness codes are distinct from each other and from every other code", () => {
+    const all = Object.values(ISSUE_CODES);
+    expect(new Set(all).size).toBe(all.length);
+    expect(ISSUE_CODES.TRANSFORM_SEGMENT_NOT_EMITTED).not.toBe(
+      ISSUE_CODES.TRANSFORM_SEGMENT_NO_IG_MAP,
+    );
+  });
+
+  it("neither completeness code is fatal, and both are informational so they never steer a caller", () => {
+    for (const code of [
+      ISSUE_CODES.TRANSFORM_SEGMENT_NOT_EMITTED,
+      ISSUE_CODES.TRANSFORM_SEGMENT_NO_IG_MAP,
+    ] as const) {
+      expect(Object.values(FATAL_CODES)).not.toContain(code);
+      expect(ISSUE_REGISTRY[code].severity).toBe("information");
+      expect(fhirIssueTypeFor(code)).toBe("informational");
+    }
   });
 
   it("has a registry entry for every issue code, with a valid severity", () => {

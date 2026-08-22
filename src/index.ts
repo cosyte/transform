@@ -94,6 +94,24 @@ export { DIAGNOSTIC_REPORT_STATUS_MAP } from "./messages/diagnostic-report.js";
 // ── Message-level assembly: HL7 v2 ORM/OML → ServiceRequest, RXO → MedicationRequest (Phase 4) ────
 export { REQUEST_STATUS_MAP } from "./messages/service-request.js";
 
+// ── Message-level completeness: which segments did not reach the returned bundle ─────────────────
+export {
+  SEGMENT_IDENTIFIER_SHAPE,
+  SegmentReachLedger,
+  enumerateSegmentOccurrences,
+  isWellFormedSegmentName,
+  segmentOccurrenceLocation,
+} from "./messages/segment-completeness.js";
+export type { SegmentOccurrence } from "./messages/segment-completeness.js";
+export {
+  IG_MAPPED_SEGMENT_NAMES,
+  IG_SEGMENT_MAPS_PUBLISHED,
+  IG_SEGMENT_MAPS_RETRIEVED,
+  IG_SEGMENT_MAPS_SOURCE,
+  IG_SEGMENT_MAPS_VERSION,
+  isIgMappedSegmentName,
+} from "./messages/ig-segment-maps.js";
+
 // ── Message-level assembly: the thin IG singles, VXU/SIU/MDM (Phase 5) ──────────────────────────
 export {
   IG_MAPPED_IMMUNIZATION_TRIGGERS,
