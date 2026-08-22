@@ -1,0 +1,516 @@
+{
+  "capturedAtCommit": "13750f18665df32dd3892e01e439a011d29f0352",
+  "capturedFrom": "the transform tree as it stood before the message-level completeness diagnostic existed",
+  "note": "Do not regenerate from a tree that carries the diagnostic: see the banner in scripts/capture-completeness-goldens.ts.",
+  "fixtures": {
+    "ig-mapped-unhandled": {
+      "what": "an ADT carrying an AL1 and a DG1: two segments the IG maps and this library never reads",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "unclassifiable-names": {
+      "what": "a Z-segment plus four lines whose segment identifier is damaged beyond classification",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "separator-free-malformed": {
+      "what": "a damaged line carrying no field separator at all: content without a classifiable name",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "consumed-values-dropped": {
+      "what": "an NK1 whose only populated field is dropped by the terminology step, resource still emitted",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000003\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"RelatedPerson\",\"patient\":{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},\"relationship\":[{\"coding\":[{\"code\":\"SPO\"}]}]}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_CODE_UNMAPPED",
+          "severity": "warning",
+          "v2Location": "CWE.1",
+          "fhirPath": "Coding.code"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "all-reaching-terminated": {
+      "what": "every occurrence reaches an emitted resource, message terminated the conventional way",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000003\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000002\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"Encounter\",\"status\":\"in-progress\",\"class\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v3-ActCode\",\"code\":\"IMP\",\"display\":\"inpatient encounter\"},\"subject\":{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "all-reaching-unterminated": {
+      "what": "the same message with no trailing segment terminator at all",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000003\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000002\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"Encounter\",\"status\":\"in-progress\",\"class\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v3-ActCode\",\"code\":\"IMP\",\"display\":\"inpatient encounter\"},\"subject\":{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "all-reaching-doubled-terminator": {
+      "what": "the same message ending in two terminators, so the parser keeps a trailing empty position",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000003\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000002\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"Encounter\",\"status\":\"in-progress\",\"class\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v3-ActCode\",\"code\":\"IMP\",\"display\":\"inpatient encounter\"},\"subject\":{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "blank-line-between-reaching": {
+      "what": "two consecutive terminators between two segments that both reach an emitted resource",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000003\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000002\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"Encounter\",\"status\":\"in-progress\",\"class\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v3-ActCode\",\"code\":\"IMP\",\"display\":\"inpatient encounter\"},\"subject\":{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "blank-line-then-named": {
+      "what": "a blank position followed by a well-formed segment the library never reads",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "blank-line-then-malformed": {
+      "what": "a blank position followed by a damaged line, whose ordinal must count the blank",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "separator-leading-line": {
+      "what": "a line whose segment identifier was eaten but whose field separator and data survived",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "adt-obx": {
+      "what": "an OBX on the ADT path, which the assembly never reads although it emits Observation elsewhere",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "three-dg1": {
+      "what": "three occurrences of one name, none of them consumed",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "two-nk1-second-unbuilt": {
+      "what": "two NK1 occurrences where only the first yields a RelatedPerson in the returned Bundle",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000003\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"RelatedPerson\",\"patient\":{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},\"relationship\":[{\"coding\":[{\"code\":\"SPO\"}]}],\"name\":[{\"family\":\"Kin\",\"given\":[\"Next\"]}]}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_CODE_UNMAPPED",
+          "severity": "warning",
+          "v2Location": "CWE.1",
+          "fhirPath": "Coding.code"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "orm-read-and-refused": {
+      "what": "an order the assembly reads and refuses: the ORC and RXO build a request, the RXE is counted",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00003\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000003\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"O01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000002\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"MedicationRequest\",\"status\":\"unknown\",\"intent\":\"order\",\"medicationCodeableConcept\":{\"coding\":[{\"code\":\"MED1\",\"display\":\"Drug\"}]},\"subject\":{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},\"dosageInstruction\":[{\"doseAndRate\":[{\"doseRange\":{\"low\":{\"value\":1,\"unit\":\"mg\"}}}]}]}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_ELEMENT_DROPPED",
+          "severity": "information",
+          "v2Location": "RXE",
+          "fhirPath": "MedicationRequest"
+        },
+        {
+          "code": "TRANSFORM_CODE_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CWE.3",
+          "fhirPath": "Coding.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "RXO",
+          "fhirPath": "MedicationRequest.status"
+        },
+        {
+          "code": "TRANSFORM_UNIT_NOT_UCUM",
+          "severity": "warning",
+          "v2Location": "RXO.4",
+          "fhirPath": "Quantity.code"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "orm-two-refused": {
+      "what": "the same order with a second RXE, so the count-based issue stays at one",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00003\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000003\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"O01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000002\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"MedicationRequest\",\"status\":\"unknown\",\"intent\":\"order\",\"medicationCodeableConcept\":{\"coding\":[{\"code\":\"MED1\",\"display\":\"Drug\"}]},\"subject\":{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},\"dosageInstruction\":[{\"doseAndRate\":[{\"doseRange\":{\"low\":{\"value\":1,\"unit\":\"mg\"}}}]}]}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_ELEMENT_DROPPED",
+          "severity": "information",
+          "v2Location": "RXE",
+          "fhirPath": "MedicationRequest"
+        },
+        {
+          "code": "TRANSFORM_CODE_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CWE.3",
+          "fhirPath": "Coding.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "RXO",
+          "fhirPath": "MedicationRequest.status"
+        },
+        {
+          "code": "TRANSFORM_UNIT_NOT_UCUM",
+          "severity": "warning",
+          "v2Location": "RXO.4",
+          "fhirPath": "Quantity.code"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "oru-orphan-obx": {
+      "what": "an ORU whose first OBX precedes any OBR, so no report anchors it",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00004\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000004\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"R01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000003\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000003\",\"resource\":{\"resourceType\":\"DiagnosticReport\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"PLAC\"}]},\"value\":\"PLC1\"},{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"FILL\"}]},\"value\":\"FIL1\"}],\"status\":\"final\",\"code\":{\"coding\":[{\"system\":\"http://loinc.org\",\"code\":\"CBC\",\"display\":\"Complete\"}]},\"subject\":{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},\"result\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000002\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"Observation\",\"status\":\"final\",\"code\":{\"coding\":[{\"system\":\"http://loinc.org\",\"code\":\"HGB\",\"display\":\"Hemoglobin\"}]},\"subject\":{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},\"valueQuantity\":{\"value\":14,\"unit\":\"g\"}}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_ELEMENT_DROPPED",
+          "severity": "information",
+          "v2Location": "OBX",
+          "fhirPath": "DiagnosticReport.result"
+        },
+        {
+          "code": "TRANSFORM_UNIT_NOT_UCUM",
+          "severity": "warning",
+          "v2Location": "OBX.6",
+          "fhirPath": "Quantity.code"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "oru-two-orphan-obx": {
+      "what": "the same ORU with two orphan OBX, so the count-based issue stays at one",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00004\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000004\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"R01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000003\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000003\",\"resource\":{\"resourceType\":\"DiagnosticReport\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"PLAC\"}]},\"value\":\"PLC1\"},{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"FILL\"}]},\"value\":\"FIL1\"}],\"status\":\"final\",\"code\":{\"coding\":[{\"system\":\"http://loinc.org\",\"code\":\"CBC\",\"display\":\"Complete\"}]},\"subject\":{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},\"result\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000002\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"Observation\",\"status\":\"final\",\"code\":{\"coding\":[{\"system\":\"http://loinc.org\",\"code\":\"HGB\",\"display\":\"Hemoglobin\"}]},\"subject\":{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"},\"valueQuantity\":{\"value\":14,\"unit\":\"g\"}}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_ELEMENT_DROPPED",
+          "severity": "information",
+          "v2Location": "OBX",
+          "fhirPath": "DiagnosticReport.result"
+        },
+        {
+          "code": "TRANSFORM_UNIT_NOT_UCUM",
+          "severity": "warning",
+          "v2Location": "OBX.6",
+          "fhirPath": "Quantity.code"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "encounter-withheld": {
+      "what": "a PV1 whose Encounter is built and then withheld by the emit gate",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_RESOURCE_INVALID",
+          "severity": "error",
+          "v2Location": "PV1",
+          "fhirPath": "Encounter"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "nothing-emitted": {
+      "what": "a message with no trigger event, so even the MessageHeader is withheld and the Bundle is empty",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00002\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\"}",
+      "issues": [
+        {
+          "code": "TRANSFORM_SEGMENT_ASSEMBLED",
+          "severity": "information",
+          "v2Location": "MSH.9"
+        },
+        {
+          "code": "TRANSFORM_CODE_UNMAPPED",
+          "severity": "warning",
+          "v2Location": "MSH.9",
+          "fhirPath": "MessageHeader.eventCoding"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        },
+        {
+          "code": "TRANSFORM_RESOURCE_INVALID",
+          "severity": "error",
+          "v2Location": "MSH",
+          "fhirPath": "MessageHeader"
+        }
+      ]
+    },
+    "bare-msh": {
+      "what": "the minimal message: an MSH and nothing else",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}}}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "eleven-silent-segments": {
+      "what": "the eleven segment names the assembly never reads at all, in one message",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"MSG00001\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"SENDAPP\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"MRN12345\"}],\"name\":[{\"family\":\"Public\",\"given\":[\"Jane\",\"Q\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    },
+    "unique-field-tokens": {
+      "what": "every field value a token unique to this input, for the value-free assertion",
+      "bundle": "{\"resourceType\":\"Bundle\",\"identifier\":{\"value\":\"UQ0005\"},\"type\":\"message\",\"timestamp\":\"2026-07-21T14:30:00-05:00\",\"entry\":[{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000002\",\"resource\":{\"resourceType\":\"MessageHeader\",\"eventCoding\":{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0003\",\"code\":\"A01\"},\"source\":{\"name\":\"UQ0001\",\"_endpoint\":{\"extension\":[{\"url\":\"http://hl7.org/fhir/StructureDefinition/data-absent-reason\",\"valueCode\":\"unknown\"}]}},\"focus\":[{\"reference\":\"urn:uuid:00000000-0000-4000-8000-000000000001\"}]}},{\"fullUrl\":\"urn:uuid:00000000-0000-4000-8000-000000000001\",\"resource\":{\"resourceType\":\"Patient\",\"identifier\":[{\"type\":{\"coding\":[{\"system\":\"http://terminology.hl7.org/CodeSystem/v2-0203\",\"code\":\"MR\"}]},\"value\":\"UQ0006\"}],\"name\":[{\"family\":\"UQ0008\",\"given\":[\"UQ0009\"]}],\"gender\":\"female\",\"birthDate\":\"1980-01-15\"}}]}",
+      "issues": [
+        {
+          "code": "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED",
+          "severity": "warning",
+          "v2Location": "CX.4",
+          "fhirPath": "Identifier.system"
+        },
+        {
+          "code": "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN",
+          "severity": "information",
+          "v2Location": "MSH.3",
+          "fhirPath": "MessageHeader.source.endpoint"
+        }
+      ]
+    }
+  }
+}
