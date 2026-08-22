@@ -21,6 +21,12 @@
  *   {@link ISSUE_CODES.TRANSFORM_RESOURCE_INVALID} rather than shipped as silently-invalid FHIR. When
  *   the Patient is withheld, the Encounter's `subject` and any RelatedPerson are dropped rather than
  *   left dangling: references always resolve within the bundle.
+ * - **Segment-level completeness.** Every segment occurrence that contributed nothing to a resource
+ *   the returned bundle contains raises one value-free issue naming it
+ *   ({@link SegmentReachLedger}), so silence over an omitted segment can no longer read as
+ *   completeness. The diagnostic OBSERVES this assembly and never steers it: the occurrences are
+ *   marked where a resource clears the gate above, the issues are appended after every issue the
+ *   assembly raised, and no resource, value or existing issue changes because of it.
  *
  * @packageDocumentation
  */
@@ -55,6 +61,7 @@ import { collectReportGroups } from "./oru.js";
 import { buildPatient } from "./patient.js";
 import { buildRelatedPerson } from "./related-person.js";
 import { IdAllocator } from "./reference.js";
+import { SegmentReachLedger } from "./segment-completeness.js";
 import { buildServiceRequest } from "./service-request.js";
 
 /**
@@ -218,6 +225,9 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   const namingSystem = opts.namingSystem ?? createNamingSystem();
   const ctx: TransformContext = { namingSystem, options: opts };
   const ids = new IdAllocator(opts);
+  // The completeness ledger observes the assembly below: an occurrence is marked only where the
+  // resource it contributed to has just cleared the emit gate and joined the bundle.
+  const reach = new SegmentReachLedger(msg);
 
   // Dispatch: an IG-mapped ADT or ORU trigger is message-map-grounded; anything else is
   // segment-assembled (best-effort from the reusable IG segment maps, flagged as such).
@@ -246,6 +256,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
     if (built.value !== undefined && passesEmitGate(built.value, "PID", "Patient", issues)) {
       patientFullUrl = ids.next();
       focalEntries.push({ fullUrl: patientFullUrl, resource: built.value });
+      reach.markFirstOfType("PID");
     }
   }
 
@@ -258,6 +269,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
     if (built.value !== undefined && passesEmitGate(built.value, "PV1", "Encounter", issues)) {
       encounterFullUrl = ids.next();
       focalEntries.push({ fullUrl: encounterFullUrl, resource: built.value });
+      reach.markFirstOfType("PV1");
     }
   }
 
@@ -274,6 +286,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
         passesEmitGate(built.value, `NK1[${String(i)}]`, "RelatedPerson", issues)
       ) {
         focalEntries.push({ fullUrl: ids.next(), resource: built.value });
+        reach.markNthOfType("NK1", i);
       }
     }
   } else if (nextOfKin.length > 0) {
@@ -307,6 +320,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
           const url = ids.next();
           resultFullUrls.push(url);
           observationEntries.push({ fullUrl: url, resource: built.value });
+          reach.mark(obx);
         }
       }
       const report = buildDiagnosticReport(
@@ -324,6 +338,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
         const reportUrl = ids.next();
         diagnosticReportFullUrls.push(reportUrl);
         focalEntries.push({ fullUrl: reportUrl, resource: report.value });
+        reach.mark(group.obr);
       }
       // The Observations follow their report in the bundle (references resolve regardless of order).
       focalEntries.push(...observationEntries);
@@ -360,6 +375,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
           const url = ids.next();
           orderResourceFullUrls.push(url);
           focalEntries.push({ fullUrl: url, resource: built.value });
+          reach.mark(group.orc, group.obr);
         }
       }
       // MedicationRequest: an RXO pharmacy order detail (+ its first RXR route, its opening ORC).
@@ -380,6 +396,8 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
           const url = ids.next();
           orderResourceFullUrls.push(url);
           focalEntries.push({ fullUrl: url, resource: built.value });
+          // Only the FIRST RXR is incorporated into the request; a later one contributed nothing.
+          reach.mark(group.rxo, group.rxrs[0], group.orc);
         }
       }
     }
@@ -404,6 +422,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
         const url = ids.next();
         immunizationFullUrls.push(url);
         focalEntries.push({ fullUrl: url, resource: built.value });
+        reach.mark(group.rxa, group.rxr, group.orc);
       }
     }
     // OBX in a VXU are patient/immunization observations (Observation[1]/[2] in the IG bundle).
@@ -413,6 +432,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
       issues.push(...built.issues);
       if (built.value !== undefined && passesEmitGate(built.value, "OBX", "Observation", issues)) {
         focalEntries.push({ fullUrl: ids.next(), resource: built.value });
+        reach.mark(seg);
       }
     }
   }
@@ -429,6 +449,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
         const url = ids.next();
         appointmentFullUrls.push(url);
         focalEntries.push({ fullUrl: url, resource: built.value });
+        reach.mark(sch, ais);
       }
     }
   }
@@ -448,6 +469,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
         const url = ids.next();
         documentFullUrls.push(url);
         focalEntries.push({ fullUrl: url, resource: built.value });
+        reach.mark(txa, ...obxs);
       }
     }
   }
@@ -467,9 +489,15 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   const entries: Entry[] = [];
   if (header.value !== undefined && passesEmitGate(header.value, "MSH", "MessageHeader", issues)) {
     entries.push({ fullUrl: ids.next(), resource: header.value });
+    reach.markFirstOfType("MSH");
   }
   entries.push(...focalEntries);
 
   const bundle = buildBundle(msg, entries, ctx, issues);
+
+  // The completeness diagnostic goes last, so every issue the assembly raised keeps its position and
+  // its relative order, and a consumer reading the tail reads exactly what did not reach the bundle.
+  issues.push(...reach.issues());
+
   return { bundle, issues };
 }

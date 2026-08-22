@@ -129,6 +129,21 @@ export const ISSUE_CODES = {
    * from the refusals that name their own cause (an absent trigger, an unsupported resource type, a
    * structurally malformed resource). */
   TRANSFORM_NO_V2_MESSAGE_EMITTED: "TRANSFORM_NO_V2_MESSAGE_EMITTED",
+  /** A segment the message carried did **not** reach any resource in the returned bundle, and the IG
+   * *does* publish a segment map for its name: a **library gap**, fixable here. Raised once per
+   * occurrence, located `NAME[k]` with `k` counted 1-based among the occurrences of that name
+   * (`DG1[1]`, `DG1[2]`), so a consumer can tell how much of the message the bundle represents
+   * without diffing the two by hand. The occurrence may have been read and refused rather than never
+   * read: being counted, or already named by another issue, is not the same as reaching a resource. */
+  TRANSFORM_SEGMENT_NOT_EMITTED: "TRANSFORM_SEGMENT_NOT_EMITTED",
+  /** A segment the message carried did **not** reach any resource in the returned bundle, and its
+   * name is **not** one the IG publishes a segment map for: a **standard gap**, not fixable here.
+   * Custom Z-segments and `RXE` land on this code, and so does a name this library could not
+   * classify at all, because a damaged segment identifier is never re-derived from the line: an
+   * `AL1` whose identifier arrived as `AL11` reads as unclassifiable, not as an IG omission. Such an
+   * occurrence is located `[#n]` by its 1-based position among the segments of the message, with no
+   * name part at all. */
+  TRANSFORM_SEGMENT_NO_IG_MAP: "TRANSFORM_SEGMENT_NO_IG_MAP",
 } as const;
 
 /** A value from {@link ISSUE_CODES}: the type consumers narrow `issue.code` against. */
