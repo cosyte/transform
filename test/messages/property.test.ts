@@ -37,6 +37,21 @@ const numRuns = Number(process.env["FUZZ_RUNS"] ?? "300");
 /** A safe HL7 field token: no delimiters, always carrying the leak sentinel. */
 const token = fc.stringMatching(/^[A-Za-z0-9 ]{0,8}$/).map((s) => SENTINEL + s);
 const optToken = fc.option(token, { nil: undefined });
+/**
+ * A free-text token for a `TX` row (TQ1-10 / TQ1-11). `TX` is a v2 **primitive** with no component
+ * structure, so a raw `^`, `&` or `~` inside one is content and must reach the resource rather than
+ * truncate it; the escape sequences exercise the render path (a delimiter escape, a formatting
+ * command, a highlight boundary, an unrenderable vendor sequence, a dangling escape character). The
+ * field separator is still excluded: it would end the field and change the message's shape.
+ */
+const freeTextToken = fc
+  .tuple(
+    fc.stringMatching(/^[A-Za-z0-9 ]{0,6}$/),
+    fc.constantFrom("", "^", "&", "~", "<&>", "\\T\\", "\\.br\\", "\\H\\", "\\Z9\\", "\\"),
+    fc.stringMatching(/^[A-Za-z0-9 ]{0,6}$/),
+  )
+  .map(([head, delim, tail]) => `${SENTINEL}${head}${delim}${tail}`);
+const optFreeText = fc.option(freeTextToken, { nil: undefined });
 const sexCode = fc.constantFrom("F", "M", "O", "U", "A", "N", "ZZ", "", "X");
 const classCode = fc.constantFrom("I", "O", "E", "P", "R", "B", "C", "N", "U", "Z", "");
 const trigger = fc.constantFrom("A01", "A02", "A05", "A08", "A31", "A40");
@@ -209,7 +224,9 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
     );
     const periodUnit = fc.constantFrom("h", "d", "min", "hr", "HOURS", "");
     const eventCode = fc.constantFrom("AC", "PCV", "HS", "IC", "ICM", "ZZ", "");
-    const period = fc.constantFrom("6", "0.5", "+6", "007", "", "abc");
+    // "-6" and the independent "" on units cover the two shapes R4's tim-5 and tim-2 reject: a
+    // negative period, and a period or a unit arriving without its pair.
+    const period = fc.constantFrom("6", "0.5", "0", "-6", "+6", "007", "", "abc");
     const stamp = fc.constantFrom(
       "20260721",
       "20260724140000-0500",
@@ -229,8 +246,8 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
       start: stamp,
       end: stamp,
       priority: fc.constantFrom("", "S", "ZZ"),
-      condition: optToken,
-      instruction: optToken,
+      condition: optFreeText,
+      instruction: optFreeText,
       conjunction: fc.constantFrom("", "S"),
       count: fc.constantFrom("", "12"),
     });

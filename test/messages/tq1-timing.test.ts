@@ -275,6 +275,78 @@ describe("an RPT component the published map cannot ground", () => {
   });
 });
 
+// ── criterion 3, continued: an RPT.5 / RPT.6 shape a FHIR Timing cannot legally hold ─────────────
+
+describe("an RPT.5 / RPT.6 pair R4's own Timing invariants reject", () => {
+  // RPT.5 and RPT.6 are 0..1 each, so a period with no units, and a unit with no period, are both
+  // shapes the wire produces from components that are individually inside the expressible set. R4
+  // constrains Timing.repeat beyond its element types: `tim-2` ("if there's a period, there needs
+  // to be period units", `period.empty() or periodUnit.exists()`) and `tim-5` ("period SHALL be a
+  // non-negative value"). @cosyte/fhir models no Timing constraint at all, so neither the
+  // conservative-emit gate nor the property suite's validateResource can see one of these: the
+  // refusal happens here or it does not happen, and {"period":6} reads to a receiving system as a
+  // grounded repeat it will compute against.
+
+  it("refuses an RPT.5 that arrived with no RPT.6, rather than a repeat that breaks tim-2", () => {
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: "Q4H^^^^6", 7: "20260721" }));
+    // No partial Timing AND no boundsPeriod, even though TQ1-7 alone would have grounded one.
+    expect(present(dosage(result), "timing")).toBe(false);
+    const raised = issuesAt(result, "TQ1.3.5");
+    expect(raised.length).toBe(1);
+    expect(raised[0]?.code).toBe(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED);
+    expect(raised[0]?.fhirPath).toBe("MedicationRequest.dosageInstruction.timing.repeat.period");
+  });
+
+  it("refuses an RPT.6 that arrived with no RPT.5, which grounds no interval at all", () => {
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: "Q4H^^^^^h" }));
+    expect(present(dosage(result), "timing")).toBe(false);
+    const raised = issuesAt(result, "TQ1.3.6");
+    expect(raised.length).toBe(1);
+    expect(raised[0]?.code).toBe(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED);
+    expect(raised[0]?.fhirPath).toBe(
+      "MedicationRequest.dosageInstruction.timing.repeat.periodUnit",
+    );
+  });
+
+  it("refuses a negative RPT.5, which tim-5 forbids however faithfully it is written", () => {
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: "Q4H^^^^-6^h" }));
+    expect(present(dosage(result), "timing")).toBe(false);
+    const raised = issuesAt(result, "TQ1.3.5");
+    expect(raised.length).toBe(1);
+    expect(raised[0]?.code).toBe(ISSUE_CODES.TRANSFORM_QUANTITY_VALUE_INVALID);
+  });
+
+  it("carries a zero RPT.5, which tim-5 admits, rather than altering the sender's magnitude", () => {
+    const timing = at(dosage(pharmacyOrder(seg("TQ1", { 1: "1", 3: "Q4H^^^^0^h" }))), "timing");
+    expect(value(timing, "repeat.period")).toBe("0");
+    expect(value(timing, "repeat.periodUnit")).toBe("h");
+  });
+
+  it("raises one issue, not two, when the half that arrived is unusable on its own terms", () => {
+    // "+6" is not a faithful FHIR decimal and "hr" is not a UnitsOfTime code, so each component is
+    // already refused by name: the pairing rule must not stack a second issue on the same one.
+    const badPeriod = pharmacyOrder(seg("TQ1", { 1: "1", 3: "Q4H^^^^+6" }));
+    expect(present(dosage(badPeriod), "timing")).toBe(false);
+    expect(issuesAt(badPeriod, "TQ1.3.5").map((i) => i.code)).toEqual([
+      ISSUE_CODES.TRANSFORM_QUANTITY_VALUE_INVALID,
+    ]);
+    const badUnit = pharmacyOrder(seg("TQ1", { 1: "1", 3: "Q4H^^^^^hr" }));
+    expect(present(dosage(badUnit), "timing")).toBe(false);
+    expect(issuesAt(badUnit, "TQ1.3.6").map((i) => i.code)).toEqual([
+      ISSUE_CODES.TRANSFORM_CODE_UNMAPPED,
+    ]);
+  });
+
+  it("refuses all three shapes on the ServiceRequest path too", () => {
+    for (const rpt of ["Q4H^^^^6", "Q4H^^^^^h", "Q4H^^^^-6^h"]) {
+      const result = serviceOrder(OBR_NO_OCCURRENCE, seg("TQ1", { 1: "1", 3: rpt }));
+      expect(present(service(result), "occurrenceTiming")).toBe(false);
+      expect(tq1Issues(result).length).toBe(1);
+      expect(tq1Issues(result)[0]?.fhirPath).toMatch(/^ServiceRequest\.occurrenceTiming\.repeat\./);
+    }
+  });
+});
+
 // ── criterion 4: the six schedule-narrowing fields ───────────────────────────────────────────────
 
 describe("a schedule-narrowing TQ1 field", () => {
@@ -305,6 +377,24 @@ describe("a schedule-narrowing TQ1 field", () => {
     expect(issuesAt(result, "TQ1.4").length).toBe(1);
     expect(issuesAt(result, "TQ1.12").length).toBe(1);
     expect(issuesAt(result, "TQ1.14").length).toBe(1);
+  });
+
+  it("names the R4 element each dropped field would have reached", () => {
+    const timing = "MedicationRequest.dosageInstruction.timing";
+    const expected: readonly (readonly [field: number, raw: string, path: string])[] = [
+      [4, "0800", `${timing}.event`],
+      [5, "30^min", `${timing}.repeat.offset`],
+      // R4 puts every `bounds[x]` on Timing.repeat, so `timing.boundsDuration` resolves to nothing
+      // and a consumer routing on fhirPath would be sent to an element that does not exist.
+      [6, "3^d", `${timing}.repeat.boundsDuration`],
+      [12, "S", timing],
+      [13, "30^min", `${timing}.repeat.duration`],
+      [14, "12", `${timing}.repeat.countMax`],
+    ];
+    for (const [field, raw, path] of expected) {
+      const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: RPT_EXPRESSIBLE, [field]: raw }));
+      expect(issuesAt(result, `TQ1.${String(field)}`)[0]?.fhirPath).toBe(path);
+    }
   });
 });
 
@@ -399,6 +489,40 @@ describe("TQ1-10 condition text and TQ1-11 text instruction", () => {
     const result = pharmacyOrder(seg("TQ1", { 1: "1", 11: "hold if HR < 50 \\T\\ BP > 90" }));
     expect(value(medication(result), "text.div")).toBe(
       '<div xmlns="http://www.w3.org/1999/xhtml">hold if HR &lt; 50 &amp; BP &gt; 90</div>',
+    );
+  });
+
+  it("carries a raw v2 delimiter inside either row as content, never truncating at it", () => {
+    // TQ1-10 and TQ1-11 are TX: a v2 PRIMITIVE with no component structure, so a raw `^`, `&` or
+    // `~` inside one is content by definition. Reading only the first subcomponent would deliver
+    // "2 tabs" for a taper, and "hold if HR " for a hold rule, with nothing at all to say so.
+    const raw = "2 tabs^then 1 tab & hold if HR & BP low~unless febrile";
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 10: raw, 11: raw }));
+    expect(value(dosage(result), "additionalInstruction.0.text")).toBe(raw);
+    expect(value(medication(result), "text.div")).toBe(
+      '<div xmlns="http://www.w3.org/1999/xhtml">' +
+        "2 tabs^then 1 tab &amp; hold if HR &amp; BP low~unless febrile</div>",
+    );
+  });
+
+  it("escapes the XML metacharacters that follow a raw delimiter, not just the ones before it", () => {
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 11: 'give <2 mg & note "stop"' }));
+    expect(value(medication(result), "text.div")).toBe(
+      '<div xmlns="http://www.w3.org/1999/xhtml">give &lt;2 mg &amp; note &quot;stop&quot;</div>',
+    );
+  });
+
+  it("resolves the v2 formatting escapes a narrative carries and fabricates nothing for the rest", () => {
+    // `\.br\` is a line break and `\H\`/`\N\` are highlight boundaries: v2 section 2.7 display
+    // markup, not content, and a raw sentinel reaching a human in a FHIR narrative is misread. A
+    // vendor `\Z99\` has no defined rendering, so its literal characters are preserved as they
+    // stand rather than guessed at or dropped.
+    const result = pharmacyOrder(
+      seg("TQ1", { 1: "1", 10: "line1\\.br\\line2", 11: "see \\H\\NOW\\N\\ then \\Z99\\" }),
+    );
+    expect(value(dosage(result), "additionalInstruction.0.text")).toBe("line1\nline2");
+    expect(value(medication(result), "text.div")).toBe(
+      '<div xmlns="http://www.w3.org/1999/xhtml">see NOW then \\Z99\\</div>',
     );
   });
 

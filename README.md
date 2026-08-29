@@ -136,10 +136,14 @@ An order's **`TQ1`** becomes the schedule that order carries: `dosageInstruction
 `repeat.period`, `repeat.periodUnit` and `repeat.when` from the HL70528 rows the guide gives a
 `v3-TimingEvent` target; `TQ1-7` / `TQ1-8` give `repeat.boundsPeriod`; `TQ1-10` and `TQ1-11` are
 carried verbatim to the two different targets the guide names, `dosageInstruction.additionalInstruction.text`
-and the resource's own `text` narrative. **A schedule is fully grounded or absent and flagged**: a
+and the resource's own `text` narrative. Both are `TX`, a v2 primitive with no component structure,
+so they are read **whole**: a raw `^`, `&` or `~` inside a free-text instruction is content, and a
+taper written `2 tabs^then 1 tab` arrives with its second half intact rather than truncated at the
+first delimiter. **A schedule is fully grounded or absent and flagged**: a
 repeat component the guide gives no target for, a code outside its published table, a value that
 would need a unit rescale or an invented date, a field that narrows the schedule (`TQ1-4`, `TQ1-5`,
-`TQ1-6`, `TQ1-12`, `TQ1-13`, `TQ1-14`), an unusable or inverted bound, or a second `TQ1` on one
+`TQ1-6`, `TQ1-12`, `TQ1-13`, `TQ1-14`), an unusable or inverted bound, a period quantity arriving
+without its units or a negative one (R4's `tim-2` and `tim-5` reject both), or a second `TQ1` on one
 order, each withholds the whole `Timing` and raises a value-free diagnostic naming the cause. A
 half-built timing would read to the receiving system as a complete dosing instruction, which is the
 one outcome this library will not produce.
