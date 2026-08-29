@@ -26,6 +26,11 @@
  * - **MedicationRequest**: `status` (1..1 code), `intent` (1..1 code), `subject` (1..1 Reference), and
  *   `medication[x]` (1..1) are all required; the assembler only ever emits the `medicationCodeableConcept`
  *   form, so it is required here, and a pharmacy order with no give code (no `medication[x]`) is withheld.
+ * - **AllergyIntolerance**: `patient` (1..1 Reference) is required, and the three coded elements the IG
+ *   value maps target (`type`, `category`, `criticality`) carry their R4 **required** bindings, so a map
+ *   row that ever produced a non-member code would withhold the resource rather than ship an allergy a
+ *   consumer's value set does not admit. `clinicalStatus` is modelled so the element the guide fixes is
+ *   not read as unknown; its presence is separately enforced by `@cosyte/fhir`'s own ait-1 check.
  *
  * @packageDocumentation
  */
@@ -95,6 +100,41 @@ export const EMIT_SCHEMAS: readonly ResourceSchema[] = Object.freeze([
       vaccineCode: { min: 1, max: 1, types: ["CodeableConcept"] },
       patient: { min: 1, max: 1, types: ["Reference"] },
       occurrenceDateTime: { min: 1, max: 1, types: ["dateTime"] },
+    },
+  },
+  {
+    // AllergyIntolerance: patient (1..1 Reference) is required, so an AL1 with no bundle Patient to
+    // anchor is withheld rather than emitted with a dangling reference. The three coded elements carry
+    // their R4 required bindings: an unmapped code leaves its element absent (never a neighbour), and a
+    // value-absent element carrying only the IG's alternate-codes extension is not a code to check.
+    type: "AllergyIntolerance",
+    elements: {
+      clinicalStatus: { min: 0, max: 1, types: ["CodeableConcept"] },
+      type: {
+        min: 0,
+        max: 1,
+        types: ["code"],
+        binding: { strength: "required", codes: ["allergy", "intolerance"] },
+      },
+      category: {
+        min: 0,
+        max: UNBOUNDED,
+        types: ["code"],
+        binding: {
+          strength: "required",
+          codes: ["food", "medication", "environment", "biologic"],
+        },
+      },
+      criticality: {
+        min: 0,
+        max: 1,
+        types: ["code"],
+        binding: { strength: "required", codes: ["low", "high", "unable-to-assess"] },
+      },
+      code: { min: 0, max: 1, types: ["CodeableConcept"] },
+      patient: { min: 1, max: 1, types: ["Reference"] },
+      onsetDateTime: { min: 0, max: 1, types: ["dateTime"] },
+      reaction: { min: 0, max: UNBOUNDED, types: ["BackboneElement"] },
     },
   },
   {

@@ -17,12 +17,13 @@ grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fh
 > **Status:** pre-alpha (`0.0.x`). The package **is published on npm**, but it **cannot be installed
 > from npm yet**: see [Installation](./installation). This release ships the
 > six safety-critical datatype converters and the value-free diagnostic channel, and
-> message-level assembly via `toFhir(msg)` for HL7 v2 **ADT → Patient + Encounter**,
-> **ORU^R01 → DiagnosticReport + Observation**, the order-entry graph **ORM_O01 / OML_O21 →
-> ServiceRequest** and **RXO → MedicationRequest**, and the thin IG singles **VXU_V04 →
-> Immunization**, **SIU_S12 → Appointment**, and **MDM_T02 → DocumentReference**, plus
-> **terminology value translation** of coded fields: route/site, appointment type, order
-> priority, and substitution translated through their IG `mappedVia` ConceptMaps. The
+> message-level assembly via `toFhir(msg)` for HL7 v2 **ADT → Patient + Encounter**
+> (+ **AL1 → AllergyIntolerance**), **ORU^R01 → DiagnosticReport + Observation**, the order-entry
+> graph **ORM_O01 / OML_O21 → ServiceRequest** and **RXO → MedicationRequest**, and the thin IG
+> singles **VXU_V04 → Immunization**, **SIU_S12 → Appointment**, and **MDM_T02 →
+> DocumentReference**, plus **terminology value translation** of coded fields: route/site,
+> appointment type, order priority, substitution, and the AL1 allergy tables, translated through
+> their IG `mappedVia` ConceptMaps. The
 > v2→FHIR direction is feature-complete for the IG-covered message set. A **narrow reverse path**
 > also ships, FHIR → v2: `toV2Patient(patient, trigger)` and `toV2Observation(observation, trigger)`
 > emit a complete v2 message carrying a `PID` or an `OBX`, lossy by design and never a round-trip.

@@ -86,8 +86,9 @@ of issues as a FHIR `OperationOutcome` with `toOperationOutcome(issues)`.
 ## Assemble a message
 
 `toFhir(msg)` takes a parsed `@cosyte/hl7` **ADT** message and returns a FHIR R4 **message `Bundle`**:
-a `MessageHeader`, then the `Patient` and `Encounter` (and `RelatedPerson`) it describes, plus the
-value-free issues, each map grounded firsthand on the IG's segment/table ConceptMaps.
+a `MessageHeader`, then the `Patient` and `Encounter` (and `RelatedPerson`, and one
+`AllergyIntolerance` per `AL1`) it describes, plus the value-free issues, each map grounded firsthand
+on the IG's segment/table ConceptMaps.
 
 ```ts
 import { parseHL7 } from "@cosyte/hl7";
@@ -99,12 +100,26 @@ const { bundle, issues } = toFhir(parseHL7(raw), {
 // bundle.type === "message"; every reference resolves to a urn:uuid: fullUrl inside the bundle.
 ```
 
-| Segment | FHIR resource   | key maps                                                                 |
-| ------- | --------------- | ------------------------------------------------------------------------ |
-| MSH     | `MessageHeader` | MSH-9 → `eventCoding`; MSH-7/10 → `Bundle.timestamp`/`.identifier`       |
-| PID     | `Patient`       | PID-3/5/7/8/11 → `identifier`/`name`/`birthDate`/`gender`/`address`      |
-| PV1     | `Encounter`     | PV1-2 → `class`/`status` (HL70004); PV1-19/44/45 → `identifier`/`period` |
-| NK1     | `RelatedPerson` | NK1-2/3/4 → `name`/`relationship`/`address`                              |
+| Segment | FHIR resource        | key maps                                                                            |
+| ------- | -------------------- | ----------------------------------------------------------------------------------- |
+| MSH     | `MessageHeader`      | MSH-9 → `eventCoding`; MSH-7/10 → `Bundle.timestamp`/`.identifier`                  |
+| PID     | `Patient`            | PID-3/5/7/8/11 → `identifier`/`name`/`birthDate`/`gender`/`address`                 |
+| PV1     | `Encounter`          | PV1-2 → `class`/`status` (HL70004); PV1-19/44/45 → `identifier`/`period`            |
+| NK1     | `RelatedPerson`      | NK1-2/3/4 → `name`/`relationship`/`address`                                         |
+| AL1     | `AllergyIntolerance` | AL1-2 → `category` + `type` (two maps); AL1-3/4/5 → `code`/`criticality`/`reaction` |
+
+An allergy is a field a downstream system may act on before prescribing, so the AL1 rows are read
+strictly. `clinicalStatus` is the `active` the IG assigns (its constraint ait-1 needs one, and no AL1
+component can say otherwise). AL1-2 resolves `category` and `type` against **two separate** IG maps
+over Table 0127, independently, so a `MA` gets the type `allergy` and no category at all; whatever
+either map translates, the original v2 code is carried beside it in the IG's `alternate-codes`
+extension, so nothing the sender wrote is lost. `criticality` is the only severity target
+(`AllergyIntolerance.reaction.severity` is a local variation the guide conditions on something no
+message states), so an HL70128 code the map has no target for leaves it absent and flagged. An AL1
+whose AL1-3 names no substance, or that arrives with no Patient to anchor, is withheld and declared
+rather than emitted: an allergy to nothing, or one pointing at nobody, is worse than a reported gap.
+AL1-6 is legacy input only, read as `onsetDateTime` for a message earlier than 2.7 (the version that
+withdrew the field) and dropped with a diagnostic otherwise.
 
 The fail-safe rule holds at the message level: an unmapped patient class, a naked timestamp, or an
 unresolvable authority becomes a typed issue, never a fabricated value. A trigger the IG has no
@@ -140,8 +155,10 @@ interpreted). Timezone-naked instants are dropped and flagged, never assigned a 
 
 `toFhirCodeableConceptVia(cwe, map)` applies a license-clean IG value ConceptMap
 (transcribed and verified firsthand against the raw published IG JSON): **RXR** route/site
-(HL70162/HL70550), **SCH-8** appointment type (HL70277), **RXO-9** substitution (HL70161), and **OBR-5**
-priority (HL70485), translating the source table code to its FHIR target coding, additively (the raw
+(HL70162/HL70550), **SCH-8** appointment type (HL70277), **RXO-9** substitution (HL70161), **OBR-5**
+priority (HL70485), and the five **AL1** allergy maps (HL70127 to category and to type, HL70128 to
+criticality, and the two original-code identity maps behind the alternate-codes extension),
+translating the source table code to its FHIR target coding, additively (the raw
 coding is preserved alongside the derived one). It is fail-safe by refusal: a code the IG map leaves in
 its `(unmapped)` group is flagged, never coerced to a neighbour. Fields whose IG target is **SNOMED CT**
 (RXR-4 method, SCH-7 reason) stay structural, because SNOMED is not bundled (BYO ConceptMap), and fields the

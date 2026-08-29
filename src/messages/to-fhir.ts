@@ -2,7 +2,8 @@
  * `toFhir`, the message-level entry point: assemble a parsed HL7 v2 message into a FHIR R4
  * **message Bundle** (a `MessageHeader` first, then the focal resources), grounded on the IG message
  * and segment maps. The **ADT** family becomes **Patient + Encounter** (+ `RelatedPerson`
- * from NK1); the **ORU^R01** results graph becomes `DiagnosticReport` + `Observation`; the
+ * from NK1, + one `AllergyIntolerance` per AL1); the **ORU^R01** results graph becomes
+ * `DiagnosticReport` + `Observation`; the
  * order-entry graph gives **ORM_O01 / OML_O21** ORC/OBR → `ServiceRequest` and **RXO** (+ RXR) →
  * `MedicationRequest`; and the thin IG singles give **VXU_V04** RXA/RXR/ORC → `Immunization`,
  * **SIU_S12** SCH/AIS/PID → `Appointment`, and **MDM_T02** TXA/OBX → `DocumentReference`.
@@ -47,6 +48,7 @@ import { ISSUE_CODES } from "../diagnostics/codes.js";
 import { issue, type TransformIssue } from "../diagnostics/issue.js";
 import { createNamingSystem } from "../terminology/naming-system.js";
 import type { TransformContext, TransformOptions } from "../terminology/context.js";
+import { collectAllergies, emitAllergyIntolerance } from "./allergy-intolerance.js";
 import { buildAppointment, collectAppointment } from "./appointment.js";
 import { buildDiagnosticReport } from "./diagnostic-report.js";
 import { buildDocumentReference, collectDocument } from "./document-reference.js";
@@ -142,17 +144,21 @@ interface Entry {
  * class-less/status-less Encounter from an unmapped patient class) is an error and withholds the
  * resource, while the resource's other elements degrade to warnings rather than false rejections.
  */
+function clearsEmitGate(resource: FhirComplex): boolean {
+  const result =
+    resourceType(resource) === "Patient"
+      ? validateResource(resource, { mode: "strict" })
+      : validateResource(resource, { mode: "lenient", schemas: EMIT_SCHEMAS });
+  return result.valid;
+}
+
 function passesEmitGate(
   resource: FhirComplex,
   v2Location: string,
   fhirPath: string,
   issues: TransformIssue[],
 ): boolean {
-  const result =
-    resourceType(resource) === "Patient"
-      ? validateResource(resource, { mode: "strict" })
-      : validateResource(resource, { mode: "lenient", schemas: EMIT_SCHEMAS });
-  if (result.valid) return true;
+  if (clearsEmitGate(resource)) return true;
   issues.push(issue(ISSUE_CODES.TRANSFORM_RESOURCE_INVALID, v2Location, fhirPath));
   return false;
 }
@@ -292,6 +298,39 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   } else if (nextOfKin.length > 0) {
     // No Patient to anchor RelatedPerson.patient: dropped rather than emitted with a dangling ref.
     issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "NK1", "RelatedPerson.patient"));
+  }
+
+  // AL1 → AllergyIntolerance, one per occurrence, patient wired to the bundle Patient. The IG's
+  // ADT_A01 message map fixes that wiring (AllergyIntolerance.patient.reference = Patient[1].id) and
+  // the segment map is reusable, so it is applied wherever an AL1 occurs. With no Patient there is
+  // nothing to anchor an allergy to: it is withheld and declared per occurrence, never emitted with
+  // a dangling reference to a patient the bundle does not carry.
+  const allergyFullUrls: string[] = [];
+  const allergies = collectAllergies(msg);
+  for (let i = 0; i < allergies.length; i++) {
+    const al1 = allergies[i];
+    if (al1 === undefined) continue;
+    const location = `AL1[${String(i)}]`;
+    if (patientFullUrl === undefined) {
+      issues.push(
+        issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, location, "AllergyIntolerance.patient"),
+      );
+      continue;
+    }
+    const emitted = emitAllergyIntolerance(
+      al1,
+      patientFullUrl,
+      msg.meta.version,
+      ctx,
+      clearsEmitGate,
+      location,
+    );
+    issues.push(...emitted.issues);
+    if (emitted.value === undefined) continue;
+    const url = ids.next();
+    allergyFullUrls.push(url);
+    focalEntries.push({ fullUrl: url, resource: emitted.value });
+    reach.mark(al1);
   }
 
   // ORU → the DiagnosticReport + Observation results graph (Phase 3). OBR anchors a DiagnosticReport;
@@ -478,6 +517,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   const focus = [
     patientFullUrl,
     encounterFullUrl,
+    ...allergyFullUrls,
     ...diagnosticReportFullUrls,
     ...orderResourceFullUrls,
     ...immunizationFullUrls,

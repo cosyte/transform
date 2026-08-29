@@ -31,6 +31,14 @@ as a trap is clinical-safety content.
 - **Phases 1-6 shipped**: datatype converters + diagnostic channel, ADT/ORU/ORM-OML/RXO/VXU/SIU/MDM
   message graphs, and the IG value-ConceptMap translation layer. Full per-phase inventory:
   `documentation/agent-notes.md#shipped-phase-history-phases-16`.
+- **`AL1` is now built, `IAM` is still not.** An AL1 in any message becomes an `AllergyIntolerance`
+  wired to the bundle Patient, so bundles carry a resource type they did not before and the
+  completeness diagnostic no longer flags an AL1 it emits. **▶ `AllergyIntolerance.reaction.severity`
+  IS DELIBERATELY NEVER POPULATED** and neither is a `category` the IG's own map has no target for:
+  the guide publishes TWO maps over Table 0127 with different unmapped sets, so `MA` yields a type
+  and no category and that is the answer, not a gap to fill. Why, and the fixed `clinicalStatus`,
+  the alternate-codes extension, the withheld cases and the withdrawn AL1-6:
+  `documentation/agent-notes.md#shipped-phase-history-phases-16`.
 - **Phase 7 (FHIR→v2) shipped NARROWLY, and the narrowness is the point**: `toV2Patient` and
   `toV2Observation` emit a **complete** v2 message (`ADT^<trigger>` + PID, `ORU^<trigger>` + OBX)
   from the subset of the IG segment maps whose **inverse is one-to-one**. The **trigger is a required
