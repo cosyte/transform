@@ -129,6 +129,21 @@ grounded on the HL70119 → request-status ConceptMap and withheld when it canno
 `MedicationRequest` whose IG-ungrounded status is the honest `unknown` rather than a guess. `RXE` has no
 STU1 IG map and is flagged, never assembled.
 
+An order's **`TQ1`** becomes the schedule that order carries: `dosageInstruction.timing` on the
+`MedicationRequest`, `occurrenceTiming` on the `ServiceRequest` (and a group that would also yield an
+`occurrenceDateTime` from `OBR-6` emits the timing alone and flags the dropped one, because
+`occurrence[x]` is a choice). `TQ1-3` grounds `Timing.code` from the HL70335 repeat-pattern rows,
+`repeat.period`, `repeat.periodUnit` and `repeat.when` from the HL70528 rows the guide gives a
+`v3-TimingEvent` target; `TQ1-7` / `TQ1-8` give `repeat.boundsPeriod`; `TQ1-10` and `TQ1-11` are
+carried verbatim to the two different targets the guide names, `dosageInstruction.additionalInstruction.text`
+and the resource's own `text` narrative. **A schedule is fully grounded or absent and flagged**: a
+repeat component the guide gives no target for, a code outside its published table, a value that
+would need a unit rescale or an invented date, a field that narrows the schedule (`TQ1-4`, `TQ1-5`,
+`TQ1-6`, `TQ1-12`, `TQ1-13`, `TQ1-14`), an unusable or inverted bound, or a second `TQ1` on one
+order, each withholds the whole `Timing` and raises a value-free diagnostic naming the cause. A
+half-built timing would read to the receiving system as a complete dosing instruction, which is the
+one outcome this library will not produce.
+
 The thin single-trigger families complete the IG-covered message set: **VXU_V04** RXA (+
 RXR route, ORC) → `Immunization` (status via the IG's three conditioned rows: a delete action →
 `entered-in-error`, an unvalued RXA-20 → `completed`, else the HL70322 → event-status ConceptMap, with a

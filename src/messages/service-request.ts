@@ -15,8 +15,10 @@
  * | ORC-9 Date/Time of Order Event | `authoredOn` | {@link toFhirDateTime}, *IF ORC-1 = `NW`* |
  * | OBR-4 Universal Service Identifier (CWE) | `ServiceRequest.code` | {@link toFhirCodeableConcept} |
  * | OBR-5 Priority (v2-0485) | `ServiceRequest.priority` | {@link SERVICE_REQUEST_PRIORITY_MAP} (HL70485) |
- * | OBR-6 Requested Date/Time | `occurrenceDateTime` | {@link toFhirDateTime} |
+ * | OBR-6 Requested Date/Time | `occurrenceDateTime` | {@link toFhirDateTime}, *IF no TQ1 timing* |
  * | OBR-31 Reason for Study (CWE) | `reasonCode` | {@link toFhirCodeableConcept} |
+ * | TQ1-3 Repeat Pattern (RPT) | `occurrenceTiming` | {@link readTq1} (RPT[Timing], all-or-nothing) |
+ * | TQ1-7 / TQ1-8 Start / End date-time | `occurrenceTiming.repeat.boundsPeriod.start`/`.end` | {@link readTq1} |
  * | (order message context) | `intent` = `order` | see below |
  * | (message-map wiring) | `subject` / `encounter` | the bundle's Patient / Encounter |
  *
@@ -37,6 +39,13 @@
  *   OBR-11-conditioned intent refinement is deferred.
  * - **`subject` (required 1..1).** Wired to the bundle's Patient; a request with no resolvable Patient
  *   is withheld rather than emitted with a dangling/absent subject.
+ * - **`occurrence[x]` is a choice, so exactly one member is ever emitted.** OBR-6 grounds an
+ *   `occurrenceDateTime` and a TQ1 grounds an `occurrenceTiming`; a group that would yield both
+ *   emits the **timing** (the richer statement, and the one the sender wrote a whole segment for)
+ *   and flags the dropped OBR-6. Emitting both would be structurally invalid FHIR, and silently
+ *   preferring the single instant would throw away the schedule. The timing itself is
+ *   all-or-nothing: see {@link readTq1}, whose every refusal leaves `occurrenceTiming` absent and
+ *   therefore hands the choice back to OBR-6 with no issue raised about it.
  *
  * - **`priority` (0..1), value-translated.** OBR-5 → `ServiceRequest.priority` via the IG
  *   **Table HL70485 to Request Priority** ConceptMap ({@link SERVICE_REQUEST_PRIORITY_MAP}): only
@@ -64,6 +73,7 @@ import { issue, type TransformIssue } from "../diagnostics/issue.js";
 import type { ConvertResult } from "../diagnostics/result.js";
 import type { TransformContext } from "../terminology/context.js";
 import { orderIdentifier, reference } from "./reference.js";
+import type { Tq1Reading } from "./tq1-timing.js";
 
 /**
  * HL7 v2 Table 0119 (Order Control Codes) → FHIR `request-status` (`ServiceRequest.status`), per the
@@ -128,6 +138,7 @@ function fieldValue(seg: Segment | undefined, index: number): string {
  *
  * @param orc - The `ORC` `@cosyte/hl7` `Segment`, when the order carries one.
  * @param obr - The `OBR` `@cosyte/hl7` `Segment`, when the order carries one.
+ * @param tq1 - What the order's `TQ1` occurrences grounded ({@link readTq1}), when it carries any.
  * @param subjectFullUrl - The bundle's Patient fullUrl → `ServiceRequest.subject` (required 1..1).
  * @param encounterFullUrl - The bundle's Encounter fullUrl → `ServiceRequest.encounter`.
  * @param ctx - The transform context (naming-system registry + timezone policy).
@@ -136,17 +147,20 @@ function fieldValue(seg: Segment | undefined, index: number): string {
  * import { parseHL7 } from "@cosyte/hl7";
  * // const orc = parseHL7(raw).segments("ORC")[0];
  * // const obr = parseHL7(raw).segments("OBR")[0];
- * // const { value } = buildServiceRequest(orc, obr, "urn:uuid:pat", undefined, {});
+ * // const { value } = buildServiceRequest(orc, obr, undefined, "urn:uuid:pat", undefined, {});
  * ```
  */
 export function buildServiceRequest(
   orc: Segment | undefined,
   obr: Segment | undefined,
+  tq1: Tq1Reading | undefined,
   subjectFullUrl: string | undefined,
   encounterFullUrl: string | undefined,
   ctx: TransformContext,
 ): ConvertResult<FhirComplex> {
   const issues: TransformIssue[] = [];
+  // The TQ1 diagnostics are raised whatever becomes of the request (see the MedicationRequest note).
+  if (tq1 !== undefined) issues.push(...tq1.issues);
   if (orc === undefined && obr === undefined) return { value: undefined, issues };
 
   const props: { name: string; value: FhirNode }[] = [
@@ -222,12 +236,21 @@ export function buildServiceRequest(
       props.push({ name: "authoredOn", value: primitive(authored.value) });
   }
 
-  // OBR-6 → occurrenceDateTime (Requested Date/Time).
+  // occurrence[x]: the TQ1 timing when the order grounded one, else OBR-6's requested date/time.
+  // Never both members of the choice; a dropped OBR-6 is flagged rather than silently overwritten.
   if (obr !== undefined && obr.field(6).value !== "") {
     const occurrence = toFhirDateTime(obr.field(6).asTs(), ctx.options);
     issues.push(...occurrence.issues);
-    if (occurrence.value !== undefined)
+    if (occurrence.value !== undefined && tq1?.timing === undefined) {
       props.push({ name: "occurrenceDateTime", value: primitive(occurrence.value) });
+    } else if (occurrence.value !== undefined) {
+      issues.push(
+        issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "OBR.6", "ServiceRequest.occurrenceDateTime"),
+      );
+    }
+  }
+  if (tq1?.timing !== undefined) {
+    props.push({ name: "occurrenceTiming", value: tq1.timing });
   }
 
   // OBR-31 → reasonCode (Reason for Study).

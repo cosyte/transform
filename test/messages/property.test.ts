@@ -190,6 +190,120 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
     );
   });
 
+  it("never throws and holds every invariant over order messages carrying a TQ1", () => {
+    // The TQ1 rows are generated across the whole space the schedule path branches on: expressible
+    // and unpublished repeat-pattern codes, in-binding and out-of-binding period units, both
+    // HL70528 groups, faithful and unfaithful decimals, valid/invalid/inverted bounds, the six
+    // schedule-narrowing fields, and free text carrying the leak sentinel into the two rows that
+    // DO reach the resource. What must hold is the same four invariants: never throw, only
+    // registered value-free codes, references resolve, and every emitted resource is valid.
+    const patternCode = fc.constantFrom(
+      "Q4H",
+      "BID",
+      "PRN",
+      "ACM",
+      "5ID",
+      "U 0 8 * * *",
+      "",
+      "ZZZ",
+    );
+    const periodUnit = fc.constantFrom("h", "d", "min", "hr", "HOURS", "");
+    const eventCode = fc.constantFrom("AC", "PCV", "HS", "IC", "ICM", "ZZ", "");
+    const period = fc.constantFrom("6", "0.5", "+6", "007", "", "abc");
+    const stamp = fc.constantFrom(
+      "20260721",
+      "20260724140000-0500",
+      "20260721140000",
+      "notadate",
+      "",
+    );
+    const narrowing = fc.constantFrom("", "0800", "30^min", "S", "12");
+    const tq1Arb = fc.record({
+      quantity: fc.constantFrom("", "2^tab"),
+      pattern: patternCode,
+      alignment: fc.constantFrom("", "DW"),
+      period,
+      units: periodUnit,
+      event: eventCode,
+      explicitTime: narrowing,
+      start: stamp,
+      end: stamp,
+      priority: fc.constantFrom("", "S", "ZZ"),
+      condition: optToken,
+      instruction: optToken,
+      conjunction: fc.constantFrom("", "S"),
+      count: fc.constantFrom("", "12"),
+    });
+    const arb = fc.record({
+      code: fc.constantFrom("OMP^O09", "OMG^O19", "ORM^O01", "OML^O21"),
+      detail: fc.constantFrom("RXO", "OBR"),
+      obr6: stamp,
+      tq1s: fc.array(tq1Arb, { maxLength: 2 }),
+    });
+
+    fc.assert(
+      fc.property(arb, (p) => {
+        const lines = [
+          `MSH|^~\\&|CPOE|F|LAB|H|20260101120000-0500||${p.code}|MSGID1|P|2.5.1`,
+          "PID|1||MRN1^^^HOSP^MR||Doe^Jane||19900101|F",
+          "ORC|NW|PLAC1|FILL1||||||20260101110000-0500",
+        ];
+        for (const t of p.tq1s) {
+          const rpt = [
+            t.pattern,
+            t.alignment,
+            "",
+            "",
+            t.period,
+            t.units,
+            "",
+            t.event,
+            "",
+            "",
+            "",
+          ].join("^");
+          lines.push(
+            [
+              "TQ1",
+              "1",
+              t.quantity,
+              rpt,
+              t.explicitTime,
+              "",
+              "",
+              t.start,
+              t.end,
+              t.priority,
+              t.condition ?? "",
+              t.instruction ?? "",
+              t.conjunction,
+              "",
+              t.count,
+            ].join("|"),
+          );
+        }
+        lines.push(
+          p.detail === "RXO"
+            ? "RXO|197361^Amox^RXNORM|250|500|mg^milligram^UCUM"
+            : `OBR|1|||24331-1^Panel^LN|R|${p.obr6}`,
+        );
+        let result: TransformResult;
+        try {
+          result = toFhir(parseHL7(lines.join("\r")), {
+            namingSystem: registry,
+            generateId: seqId,
+          });
+        } catch (err) {
+          throw new Error("toFhir threw on an order message with a TQ1 (fail-safe violated)", {
+            cause: err,
+          });
+        }
+        assertResult(result);
+      }),
+      { numRuns },
+    );
+  });
+
   it("never throws on hostile arbitrary input that still parses as HL7", () => {
     fc.assert(
       fc.property(fc.string({ maxLength: 400 }), (raw) => {

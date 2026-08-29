@@ -3,8 +3,8 @@
  * **message Bundle** (a `MessageHeader` first, then the focal resources), grounded on the IG message
  * and segment maps. The **ADT** family becomes **Patient + Encounter** (+ `RelatedPerson`
  * from NK1); the **ORU^R01** results graph becomes `DiagnosticReport` + `Observation`; the
- * order-entry graph gives **ORM_O01 / OML_O21** ORC/OBR → `ServiceRequest` and **RXO** (+ RXR) →
- * `MedicationRequest`; and the thin IG singles give **VXU_V04** RXA/RXR/ORC → `Immunization`,
+ * order-entry graph gives **ORM_O01 / OML_O21** ORC/OBR → `ServiceRequest` and **RXO** (+ RXR, + the
+ * order's **TQ1** schedule) → `MedicationRequest`; and the thin IG singles give **VXU_V04** RXA/RXR/ORC → `Immunization`,
  * **SIU_S12** SCH/AIS/PID → `Appointment`, and **MDM_T02** TXA/OBX → `DocumentReference`.
  *
  * The fail-safe rule holds at the message level. Two message-level fail-safes join the datatype ones:
@@ -63,6 +63,7 @@ import { buildRelatedPerson } from "./related-person.js";
 import { IdAllocator } from "./reference.js";
 import { SegmentReachLedger } from "./segment-completeness.js";
 import { buildServiceRequest } from "./service-request.js";
+import { readTq1 } from "./tq1-timing.js";
 
 /**
  * The immutable result of a message-level transform: the FHIR `Bundle` model and the value-free
@@ -359,9 +360,13 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
     for (const group of groups) {
       // ServiceRequest: an OBR order detail, or an ORC that opened a non-pharmacy order.
       if (group.obr !== undefined || (group.orc !== undefined && group.rxo === undefined)) {
+        // The order's TQ1 schedule, read once for this target: a refused one leaves the request's
+        // occurrence[x] to OBR-6 and leaves every TQ1 occurrence unreached, which is the point.
+        const tq1 = readTq1(group.tq1s, "ServiceRequest", ctx);
         const built = buildServiceRequest(
           group.orc,
           group.obr,
+          tq1,
           patientFullUrl,
           encounterFullUrl,
           ctx,
@@ -375,15 +380,17 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
           const url = ids.next();
           orderResourceFullUrls.push(url);
           focalEntries.push({ fullUrl: url, resource: built.value });
-          reach.mark(group.orc, group.obr);
+          reach.mark(group.orc, group.obr, tq1.contributes ? group.tq1s[0] : undefined);
         }
       }
       // MedicationRequest: an RXO pharmacy order detail (+ its first RXR route, its opening ORC).
       if (group.rxo !== undefined) {
+        const tq1 = readTq1(group.tq1s, "MedicationRequest", ctx);
         const built = buildMedicationRequest(
           group.rxo,
           group.rxrs[0],
           group.orc,
+          tq1,
           patientFullUrl,
           encounterFullUrl,
           ctx,
@@ -397,7 +404,13 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
           orderResourceFullUrls.push(url);
           focalEntries.push({ fullUrl: url, resource: built.value });
           // Only the FIRST RXR is incorporated into the request; a later one contributed nothing.
-          reach.mark(group.rxo, group.rxrs[0], group.orc);
+          // The TQ1 is marked only when it actually put a timing, an instruction or a narrative in.
+          reach.mark(
+            group.rxo,
+            group.rxrs[0],
+            group.orc,
+            tq1.contributes ? group.tq1s[0] : undefined,
+          );
         }
       }
     }

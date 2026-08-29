@@ -11,9 +11,16 @@
  * target** for (its `(unmapped)` group) is never coerced to a plausible neighbor. The caller flags it
  * and preserves the raw coding, or withholds the value, but a target is **never fabricated**.
  *
+ * Two of the maps below are consumed as **recognizers** rather than as translations, because their
+ * IG rows are identity in the source code: {@link isRepeatPatternCode} (RPT.1 → `Timing.code`) and
+ * {@link TIMING_EVENT_VALUE_MAP} (RPT.8 → `Timing.repeat.when`). What they decide is whether the
+ * published map has a row at all, so the caller can carry the message's own code verbatim or
+ * withhold the element; neither one ever rewrites a code into a different one.
+ *
  * **License posture.** Only maps whose target CodeSystem is **freely redistributable** are
- * shipped here: the HL7 THO v2 tables (`v2-0162`, `v2-0550`, `v2-0277`, `v2-0161`) and HL7 v3
- * (`v3-RouteOfAdministration`) are HL7's own, license-clean. The IG's `*-to-sct` value maps,
+ * shipped here: the HL7 THO v2 tables (`v2-0162`, `v2-0550`, `v2-0277`, `v2-0161`, `v2-0335`,
+ * `v2-0528`) and HL7 v3 (`v3-RouteOfAdministration`, `v3-TimingEvent`) are HL7's own, license-clean.
+ * The IG's `*-to-sct` value maps,
  * **RXR-4 method** (`table-hl70165-to-sct`) and **SCH-7 reason** (`table-hl70276-to-sct`), translate
  * **into SNOMED CT**, which is **license-encumbered and is NOT bundled**; those fields stay
  * structurally carried (BYO ConceptMap), never value-translated here (see their message modules).
@@ -53,6 +60,12 @@ export const V2_0550_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0550";
 export const V2_0277_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0277";
 /** HL7 v2 Table 0161 (Allow Substitution) THO CodeSystem URI. */
 export const V2_0161_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0161";
+/** HL7 v2 Table 0335 (Repeat Pattern) THO CodeSystem URI. */
+export const V2_0335_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0335";
+/** HL7 v2 Table 0528 (Event Related Period) THO CodeSystem URI. */
+export const V2_0528_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0528";
+/** HL7 v3 TimingEvent CodeSystem URI: the half of FHIR's `EventTiming` value set the IG targets. */
+export const V3_TIMING_EVENT_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-TimingEvent";
 
 /** A translated FHIR target coding: the target CodeSystem URI + code, and the IG's target display. */
 export interface CodedTarget {
@@ -677,6 +690,119 @@ export const SUBSTITUTION_VALUE_MAP: CodedValueMap = valueMap(
   ["HL70161", "0161"],
   identityTargets(V2_0161_SYSTEM, ["N", "G", "T"]),
 );
+
+/**
+ * **RPT.8 Event**: IG `ConceptMap/table-hl70528-to-v3-timingevent`, **Group 1 only**. The published
+ * map has two groups and only the first targets `v3-TimingEvent`: nine codes (`HS`, `AC`, `PC`,
+ * `ACM`, `ACD`, `ACV`, `PCM`, `PCD`, `PCV`, each `equivalent`, each keeping its own spelling). The
+ * second group (`IC`, `ICM`, `ICD`, `ICV`) targets `v2-0528` **back onto itself**, which is the map's
+ * own way of saying those four have no `v3-TimingEvent` equivalent, and `v3-TimingEvent` is the half
+ * of FHIR's required-bound `EventTiming` value set that a v2 event code can reach. So a Group 2 code
+ * carries **no target here**: writing one into a required-bound `code` element would emit invalid
+ * R4, and this library flags rather than emits. Any other code is unmapped and likewise flagged.
+ *
+ * @example
+ * ```ts
+ * // translateBound({ identifier: "ACM" }, TIMING_EVENT_VALUE_MAP)?.code; // "ACM"
+ * // translateBound({ identifier: "IC" }, TIMING_EVENT_VALUE_MAP);        // undefined (no v3 target)
+ * ```
+ */
+export const TIMING_EVENT_VALUE_MAP: CodedValueMap = valueMap(
+  "table-hl70528-to-v3-timingevent",
+  V2_0528_SYSTEM,
+  ["HL70528", "0528"],
+  identityTargets(V3_TIMING_EVENT_SYSTEM, [
+    "HS",
+    "AC",
+    "PC",
+    "ACM",
+    "ACD",
+    "ACV",
+    "PCM",
+    "PCD",
+    "PCV",
+  ]),
+);
+
+/**
+ * The **literal** source codes of IG `ConceptMap/table-hl70335-to-v2-0335` (RPT.1 Repeat Pattern):
+ * the rows whose source code is a fixed token rather than a parameterized shape. Group 1 (identity
+ * into `v2-0335`) contributes `QAM`, `QSHIFT`, `QHS`, `QPM`, `C`, `PRN`, `Once` and the six
+ * meal-related building blocks `A`, `P`, `I`, `M`, `D`, `V`; Group 2 (into `v3-GTSAbbreviation`)
+ * contributes `BID`, `TID`, `QID`, `QOD`. Both groups are recognized here because
+ * {@link isRepeatPatternCode} answers *"does this code have a row"*, not *"which system does its
+ * target live in"*.
+ */
+const REPEAT_PATTERN_LITERALS: ReadonlySet<string> = Object.freeze(
+  new Set([
+    "QAM",
+    "QSHIFT",
+    "QHS",
+    "QPM",
+    "C",
+    "PRN",
+    "Once",
+    "A",
+    "P",
+    "I",
+    "M",
+    "D",
+    "V",
+    "BID",
+    "TID",
+    "QID",
+    "QOD",
+  ]),
+);
+
+/**
+ * The **parameterized** source rows of the same map, each transcribed as the shape its published
+ * placeholder text defines, so an instantiation of the row is recognized as the row it instantiates:
+ *
+ * - `Q<integer>S|M|H|D|W|L` (every `<integer>` seconds / minutes / hours / days / weeks / lunar months)
+ * - `Q<integer>J<day#>` (repeats on a particular day of the week)
+ * - `xID` ("X" times per day at institution-specified times, **where X is a numeral 5 or greater**)
+ * - `U <spec>` (an interval specification in the UNIX cron form the row names)
+ * - `<timing>C<meal>`, the row published as *Meal Related Timings*, composed from the `A`/`P`/`I`
+ *   timing letters and the `M`/`D`/`V` meal letters the map lists as its own rows.
+ *
+ * `PRNxxx` ("where xxx is some frequency code") is not here: it is a prefix over another row, and is
+ * resolved recursively by {@link isRepeatPatternCode} so that the suffix must itself be a row.
+ */
+const REPEAT_PATTERN_SHAPES: readonly RegExp[] = Object.freeze([
+  /^Q[0-9]+[SMHDWL]$/,
+  /^Q[0-9]+J[1-7]$/,
+  /^(?:[5-9]|[1-9][0-9]+)ID$/,
+  /^U .+$/,
+  /^[API]C[MDV]$/,
+]);
+
+/** Whether `code` matches a literal row or a parameterized row shape (the non-recursive rows). */
+function isRepeatPatternRow(code: string): boolean {
+  return REPEAT_PATTERN_LITERALS.has(code) || REPEAT_PATTERN_SHAPES.some((s) => s.test(code));
+}
+
+/**
+ * Whether the IG **Table HL70335 to v2-0335** ConceptMap publishes a row for this repeat-pattern
+ * code, transcribed firsthand from the published STU1 map and applied as a **positive** test: a code
+ * this returns `false` for has no row, and the caller withholds the schedule rather than asserting an
+ * unpublished concept. Nothing is translated here: the map's mapped rows are all identity in the
+ * source code, so the code a caller emits is the code the message sent, verbatim.
+ *
+ * @param code - The RPT.1 code exactly as the message sent it (case-sensitive, as the table is).
+ * @example
+ * ```ts
+ * // isRepeatPatternCode("Q4H");    // true  (the Q<integer>H row)
+ * // isRepeatPatternCode("BID");    // true  (a literal row)
+ * // isRepeatPatternCode("PRNQ4H"); // true  (the PRNxxx row over the Q<integer>H row)
+ * // isRepeatPatternCode("ZZZ");    // false (no row: never asserted as a v2-0335 concept)
+ * ```
+ */
+export function isRepeatPatternCode(code: string): boolean {
+  if (isRepeatPatternRow(code)) return true;
+  // PRNxxx: the PRN row taken over another frequency row, so the suffix must itself be a row.
+  return code.startsWith("PRN") && code.length > 3 && isRepeatPatternRow(code.slice(3));
+}
 
 // ── Application: the $translate-shaped, additive, fail-safe engine ────────────────────────────────
 
