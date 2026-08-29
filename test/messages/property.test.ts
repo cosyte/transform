@@ -51,7 +51,12 @@ const freeTextToken = fc
     fc.stringMatching(/^[A-Za-z0-9 ]{0,6}$/),
   )
   .map(([head, delim, tail]) => `${SENTINEL}${head}${delim}${tail}`);
-const optFreeText = fc.option(freeTextToken, { nil: undefined });
+/**
+ * The same, plus the HL7 **explicit null** (`""`): the wire saying a field carries no value. It is
+ * generated here because it is the one free-text input that must reach NO resource element at all,
+ * and it carries no sentinel, so only the null-marker invariant below can see it.
+ */
+const optFreeText = fc.option(fc.oneof(freeTextToken, fc.constant('""')), { nil: undefined });
 const sexCode = fc.constantFrom("F", "M", "O", "U", "A", "N", "ZZ", "", "X");
 const classCode = fc.constantFrom("I", "O", "E", "P", "R", "B", "C", "N", "U", "Z", "");
 const trigger = fc.constantFrom("A01", "A02", "A05", "A08", "A31", "A40");
@@ -225,8 +230,9 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
     const periodUnit = fc.constantFrom("h", "d", "min", "hr", "HOURS", "");
     const eventCode = fc.constantFrom("AC", "PCV", "HS", "IC", "ICM", "ZZ", "");
     // "-6" and the independent "" on units cover the two shapes R4's tim-5 and tim-2 reject: a
-    // negative period, and a period or a unit arriving without its pair.
-    const period = fc.constantFrom("6", "0.5", "0", "-6", "+6", "007", "", "abc");
+    // negative period, and a period or a unit arriving without its pair. "-1e-400" and "-0" are the
+    // negatives no double distinguishes from zero, so a numeric sign test lets them through.
+    const period = fc.constantFrom("6", "0.5", "0", "-6", "-0", "-1e-400", "+6", "007", "", "abc");
     const stamp = fc.constantFrom(
       "20260721",
       "20260724140000-0500",
@@ -316,6 +322,15 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
           });
         }
         assertResult(result);
+        // Two invariants only the SERIALIZED bytes can carry, because parsing hides both. JSON.parse
+        // normalizes `-1e-400` to `0`, so a parsed probe cannot see a lexically negative period at
+        // all. And no generated token carries a quotation mark, so an adjacent PAIR of them in the
+        // emitted text (escaped in JSON, entity-escaped in the XHTML narrative) can only be an HL7
+        // explicit null read as though it were a clinical instruction.
+        const wire = serializeResource(result.bundle);
+        expect(wire).not.toContain('\\"\\"');
+        expect(wire).not.toContain("&quot;&quot;");
+        expect(wire).not.toContain('"period":-');
       }),
       { numRuns },
     );

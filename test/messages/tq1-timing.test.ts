@@ -26,9 +26,16 @@ import {
   type FhirNode,
 } from "@cosyte/fhir";
 
+import { DEFAULT_ENCODING_CHARACTERS, type RawRepetition } from "@cosyte/hl7";
+
 import { ISSUE_CODES, type TransformIssue, type TransformResult } from "../../src/index.js";
 import { isRepeatPatternCode } from "../../src/terminology/concept-map.js";
-import { endPrecedesStart, escapeXml, UNITS_OF_TIME } from "../../src/messages/tq1-timing.js";
+import {
+  endPrecedesStart,
+  escapeXml,
+  restoreStructuralEmpties,
+  UNITS_OF_TIME,
+} from "../../src/messages/tq1-timing.js";
 import { NO_TQ1_ORDER, runOrderFixture } from "../_support/tq1-fixtures.js";
 
 // ── fixture plumbing ─────────────────────────────────────────────────────────────────────────────
@@ -322,6 +329,28 @@ describe("an RPT.5 / RPT.6 pair R4's own Timing invariants reject", () => {
     expect(value(timing, "repeat.periodUnit")).toBe("h");
   });
 
+  it("refuses a negative RPT.5 whose magnitude no double distinguishes from zero", () => {
+    // `Number(raw) < 0` is not the test this needs. IEEE-754 underflows any negative magnitude
+    // below about 5e-324 to `-0`, which is not less than zero, so `-1e-400` passes it; and
+    // @cosyte/fhir's decimal preserves the sender's lexical form, so what reaches the wire is a
+    // literally negative period. The assertion is on the SERIALIZED bytes because JSON.parse
+    // normalizes `-1e-400` to `0`: a parsed probe cannot see this at all.
+    for (const raw of ["-1e-400", "-1e-999", `-0.${"0".repeat(400)}1`, "-0", "-0.0e-400"]) {
+      const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: `Q4H^^^^${raw}^h` }));
+      expect(serializeResource(result.bundle)).not.toContain('"period"');
+      expect(issuesAt(result, "TQ1.3.5").map((i) => i.code)).toEqual([
+        ISSUE_CODES.TRANSFORM_QUANTITY_VALUE_INVALID,
+      ]);
+    }
+    // Not vacuous: an unsigned magnitude, zero included, still reaches the wire unaltered.
+    expect(
+      serializeResource(pharmacyOrder(seg("TQ1", { 1: "1", 3: "Q4H^^^^6^h" })).bundle),
+    ).toContain('"period":6');
+    expect(
+      serializeResource(pharmacyOrder(seg("TQ1", { 1: "1", 3: "Q4H^^^^0^h" })).bundle),
+    ).toContain('"period":0');
+  });
+
   it("raises one issue, not two, when the half that arrived is unusable on its own terms", () => {
     // "+6" is not a faithful FHIR decimal and "hr" is not a UnitsOfTime code, so each component is
     // already refused by name: the pairing rule must not stack a second issue on the same one.
@@ -526,12 +555,108 @@ describe("TQ1-10 condition text and TQ1-11 text instruction", () => {
     );
   });
 
+  it("keeps a delimiter the field's canonical form drops, wherever it sits", () => {
+    // A field's canonical wire text is structurally normalized: each component's trailing empty
+    // subcomponents and each repetition's trailing empty components are dropped, so `2 tabs^`
+    // projects as `2 tabs` and `a&^b` as `a^b`. On a composite field those are absent positions;
+    // on a TX primitive they are characters of a clinical instruction, and "verbatim" covers the
+    // last one as much as the first. A trailing `~` was never dropped, so the loss was not even
+    // uniform across the three delimiters.
+    for (const raw of ["2 tabs^", "with food&", "a&b&", "with food~", "a&^b", "^leading"]) {
+      const result = pharmacyOrder(seg("TQ1", { 1: "1", 10: raw, 11: raw }));
+      expect(value(dosage(result), "additionalInstruction.0.text")).toBe(raw);
+      expect(value(medication(result), "text.div")).toBe(
+        `<div xmlns="http://www.w3.org/1999/xhtml">${escapeXml(raw)}</div>`,
+      );
+    }
+  });
+
   it("sends the two rows to their two distinct targets at once", () => {
     const result = pharmacyOrder(
       seg("TQ1", { 1: "1", 3: RPT_EXPRESSIBLE, 10: "if pain persists", 11: "with water" }),
     );
     expect(value(dosage(result), "additionalInstruction.0.text")).toBe("if pain persists");
     expect(value(medication(result), "text.div")).toContain("with water");
+  });
+});
+
+// ── criteria 7, 8 and 13: an HL7 explicit null is not a value ────────────────────────────────────
+
+describe("an HL7 explicit null in TQ1-10 or TQ1-11", () => {
+  // `""` (two literal quotation marks) is the wire saying this field carries NO value: it is not
+  // text, and reading a field whole makes it look like text, because the marker IS the field's
+  // characters. AC7 and AC8 are both conditioned on the row being "valued", so neither authorises
+  // a write here, and what would be written is not the sender's instruction but the null marker,
+  // into the narrative a viewer renders before any structured element.
+  const NULL = '""';
+
+  it("writes nothing to either target", () => {
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 10: NULL, 11: NULL }));
+    expect(present(dosage(result), "additionalInstruction")).toBe(false);
+    expect(present(medication(result), "text")).toBe(false);
+    expect(serializeResource(result.bundle)).not.toContain('\\"\\"');
+  });
+
+  it("raises no diagnostic, because a field that carries nothing dropped nothing", () => {
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 10: NULL, 11: NULL }));
+    expect(tq1Issues(result)).toEqual([]);
+    // The same TQ1 read for a ServiceRequest agrees: one isValued test, one answer, both arms.
+    const svc = serviceOrder(OBR_NO_OCCURRENCE, seg("TQ1", { 1: "1", 10: NULL, 11: NULL }));
+    expect(tq1Issues(svc)).toEqual([]);
+  });
+
+  it("reports the TQ1 unreached when a null was all it carried", () => {
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 10: NULL, 11: NULL }));
+    expect(
+      result.issues
+        .filter((i) => i.code === ISSUE_CODES.TRANSFORM_SEGMENT_NOT_EMITTED)
+        .map((i) => i.v2Location),
+    ).toEqual(["TQ1[1]"]);
+  });
+
+  it("leaves a schedule the same TQ1 did ground exactly as it was", () => {
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: RPT_EXPRESSIBLE, 10: NULL, 11: NULL }));
+    expect(present(dosage(result), "timing")).toBe(true);
+    expect(present(dosage(result), "additionalInstruction")).toBe(false);
+    expect(present(medication(result), "text")).toBe(false);
+  });
+
+  it("still carries a valued row beside a null one, and text that merely contains quotes", () => {
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 10: NULL, 11: "give 2 tabs" }));
+    expect(present(dosage(result), "additionalInstruction")).toBe(false);
+    expect(value(medication(result), "text.div")).toContain("give 2 tabs");
+    // `""x` is not the null marker: it is a field whose content begins with two quotation marks.
+    const quoted = pharmacyOrder(seg("TQ1", { 1: "1", 10: '""x' }));
+    expect(value(dosage(quoted), "additionalInstruction.0.text")).toBe('""x');
+  });
+});
+
+describe("restoreStructuralEmpties", () => {
+  const enc = DEFAULT_ENCODING_CHARACTERS;
+  const rep = (...components: readonly (readonly string[])[]): RawRepetition => ({
+    components: components.map((subcomponents) => ({ subcomponents })),
+  });
+
+  it("pads a component back to the subcomponent count the wire carried", () => {
+    expect(restoreStructuralEmpties("a^b", [rep(["a", ""], ["b"])], enc)).toBe("a&^b");
+    expect(restoreStructuralEmpties("a", [rep(["a", "", ""])], enc)).toBe("a&&");
+  });
+
+  it("puts back a component the canonical form dropped whole, with its own subcomponents", () => {
+    expect(restoreStructuralEmpties("2 tabs", [rep(["2 tabs"], [""])], enc)).toBe("2 tabs^");
+    expect(restoreStructuralEmpties("", [rep([""], ["", ""])], enc)).toBe("^&");
+  });
+
+  it("adds nothing when the text already carries every empty the tree records", () => {
+    expect(restoreStructuralEmpties("a~b", [rep(["a"]), rep(["b"])], enc)).toBe("a~b");
+    expect(restoreStructuralEmpties("a~", [rep(["a"]), rep([""])], enc)).toBe("a~");
+  });
+
+  it("leaves a stretch of text a shorter tree cannot account for exactly as it stands", () => {
+    // Only delimiters are ever added and content is copied across, so a tree that does not line up
+    // with the text (nothing observed produces one) can never cost a character of the message.
+    expect(restoreStructuralEmpties("a~b~c", [rep(["a"])], enc)).toBe("a~b~c");
+    expect(restoreStructuralEmpties("a^b", [], enc)).toBe("a^b");
   });
 });
 
