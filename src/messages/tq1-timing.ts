@@ -15,8 +15,8 @@
  * | TQ1-3 Repeat Pattern (RPT) | `dosageInstruction.timing` / `occurrenceTiming` | the RPT rows below |
  * | TQ1-7 Start date/time (DTM) | that Timing's `repeat.boundsPeriod.start` | {@link toFhirDateTime} |
  * | TQ1-8 End date/time (DTM) | that Timing's `repeat.boundsPeriod.end` | {@link toFhirDateTime} |
- * | TQ1-10 Condition text (TX) | `dosageInstruction.additionalInstruction.text` | verbatim |
- * | TQ1-11 Text instruction (TX) | `MedicationRequest.text` (a `Narrative`) | verbatim, XML-escaped |
+ * | TQ1-10 Condition text (TX) | `dosageInstruction.additionalInstruction.text` | whole field, verbatim |
+ * | TQ1-11 Text instruction (TX) | `MedicationRequest.text` (a `Narrative`) | whole field, XML-escaped |
  *
  * and inside TQ1-3, the **expressible RPT components and only those**:
  *
@@ -26,6 +26,11 @@
  * | RPT.5 Period Quantity | `Timing.repeat.period` (decimal) | precision-exact, never rescaled |
  * | RPT.6 Period Units | `Timing.repeat.periodUnit` (code) | {@link UNITS_OF_TIME} membership |
  * | RPT.8 Event | `Timing.repeat.when` (code) | {@link TIMING_EVENT_VALUE_MAP} |
+ *
+ * **RPT.5 and RPT.6 are a pair, not two independent rows**, because R4 constrains `Timing.repeat`
+ * beyond its element types: `tim-2` requires period units wherever a period exists, and `tim-5`
+ * requires the period to be non-negative. So a period with no units, a unit with no period, and a
+ * negative period are each refused whole rather than emitted, for the reason below.
  *
  * **A schedule is fully grounded or absent and flagged.** Everything here is all-or-nothing, because
  * a half-built timing reads to the receiving system as a complete instruction: an order whose TQ1
@@ -42,6 +47,13 @@
  * - An `RPT.1` with no HL70335 row, an `RPT.8` with no HL70528 row targeting `v3-TimingEvent`, an
  *   `RPT.5` that is not a faithful FHIR `decimal`, or an `RPT.6` outside FHIR's required-bound
  *   `UnitsOfTime`. Each would need a value invented to be carried.
+ * - An `RPT.5` **without** an `RPT.6`, an `RPT.6` **without** an `RPT.5`, or a **negative** `RPT.5`.
+ *   The two are `0..1` each on the wire, so all three shapes arrive in real traffic, and every one of
+ *   them produces a `Timing.repeat` that **fails a published R4 invariant**: `tim-2`
+ *   (`period.empty() or periodUnit.exists()`) and `tim-5` ("period SHALL be a non-negative value").
+ *   `@cosyte/fhir` models no `Timing` constraint, so the conservative-emit gate cannot catch any of
+ *   them and a receiving system would be handed `{"period": 6}` or `{"period": -6}` as a grounded
+ *   repeat to compute against. "Every minus six hours" is not a schedule.
  * - A **schedule-narrowing** field is valued: TQ1-4 Explicit Time, TQ1-5 Relative Time and Units,
  *   TQ1-6 Service Duration, TQ1-12 Conjunction, TQ1-13 Occurrence duration, TQ1-14 Total
  *   occurrences. Each one *narrows* the schedule, so a Timing built without it is not a subset of
@@ -158,6 +170,22 @@ function subcomponent(seg: Segment, field: number, component: number, sub: numbe
 }
 
 /**
+ * The **whole** content of a `TX` free-text field, as display text.
+ *
+ * TQ1-10 and TQ1-11 are `TX`: a v2 **primitive**, with no component or subcomponent structure at
+ * all, so a raw `^`, `&` or `~` inside one is *content* by definition. `Field.value` is documented
+ * as the "first-repetition, first-component, first-subcomponent value" and would therefore truncate
+ * `2 tabs^then 1 tab` to `2 tabs`, delivering a dosing instruction that lost its taper with nothing
+ * to say so. `Field.render()` is the parser's documented reader for a clinical narrative: a read
+ * projection over the field's byte-verbatim wire text that resolves the v2 escape sequences (`\T\`
+ * to a literal `&`, `\.br\` to a line break) and **never fabricates**, preserving any sequence it
+ * cannot render rather than guessing at it.
+ */
+function freeText(seg: Segment, field: number): string {
+  return seg.field(field).render().text;
+}
+
+/**
  * The six TQ1 fields that each **narrow** a schedule, paired with the IG target they would have
  * reached. A valued one withholds the whole timing (see the module note), because a Timing built
  * without it would read as a complete instruction that is strictly wider than the one sent.
@@ -165,7 +193,10 @@ function subcomponent(seg: Segment, field: number, component: number, sub: numbe
 const SCHEDULE_NARROWING: readonly (readonly [field: number, path: string])[] = Object.freeze([
   [4, ".event"],
   [5, ".repeat.offset"],
-  [6, ".boundsDuration"],
+  // R4 places every `bounds[x]` on `Timing.repeat`, not on `Timing`, so the element the IG's
+  // TQ1-6 rows would have reached is `...timing.repeat.boundsDuration`: a consumer routing on
+  // `fhirPath` must not be handed a path that resolves to nothing.
+  [6, ".repeat.boundsDuration"],
   [12, ""],
   [13, ".repeat.duration"],
   [14, ".repeat.countMax"],
@@ -281,16 +312,25 @@ function readRepeatPattern(
   }
 
   // RPT.5 → Timing.repeat.period, precision-exact. A magnitude FHIR's decimal cannot hold in the
-  // sender's own lexical form is refused, never canonicalized (which would alter it).
+  // sender's own lexical form is refused, never canonicalized (which would alter it); and so is a
+  // negative one, which R4's tim-5 ("period SHALL be a non-negative value") forbids on the target
+  // element whatever its lexical form. Zero is not refused: tim-5 admits it and carrying the
+  // sender's own magnitude unaltered is this library's standing rule.
   if (componentValued(tq1, 3, 5)) {
     const raw = subcomponent(tq1, 3, 5, 1);
+    let period: FhirNode | undefined;
     try {
-      draft.period = primitive(decimal(raw));
+      period = primitive(decimal(raw));
     } catch {
+      period = undefined;
+    }
+    if (period === undefined || Number(raw) < 0) {
       issues.push(
         issue(ISSUE_CODES.TRANSFORM_QUANTITY_VALUE_INVALID, "TQ1.3.5", `${base}.repeat.period`),
       );
       draft.refused = true;
+    } else {
+      draft.period = period;
     }
   }
 
@@ -307,6 +347,24 @@ function readRepeatPattern(
       );
       draft.refused = true;
     }
+  }
+
+  // RPT.5 and RPT.6 are one carry, not two. R4's tim-2 ("if there's a period, there needs to be
+  // period units") makes a lone period an INVALID repeat rather than a narrower one, and a lone unit
+  // grounds no interval at all; either way the half that did arrive cannot be placed. The one the
+  // message valued is named, so the diagnostic points at content the sender actually sent. Skipped
+  // when that half was already refused above: its own issue already names the component.
+  const periodValued = componentValued(tq1, 3, 5);
+  const unitValued = componentValued(tq1, 3, 6);
+  if (periodValued && !unitValued && draft.period !== undefined) {
+    issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.3.5", `${base}.repeat.period`));
+    draft.refused = true;
+  }
+  if (unitValued && !periodValued && draft.periodUnit !== undefined) {
+    issues.push(
+      issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.3.6", `${base}.repeat.periodUnit`),
+    );
+    draft.refused = true;
   }
 
   // RPT.8 → Timing.repeat.when, a required-bound code: only the IG rows that target v3-TimingEvent.
@@ -479,8 +537,12 @@ export function readTq1(
   let conditionText: string | undefined;
   let instructionText: string | undefined;
   if (target === "MedicationRequest") {
-    if (tq1.field(10).value !== "") conditionText = tq1.field(10).value;
-    if (tq1.field(11).value !== "") instructionText = tq1.field(11).value;
+    // Read whole, never truncated at the first raw delimiter: see freeText. "Verbatim" is the
+    // claim these two rows make, and a TX field's delimiters are content, not structure.
+    const condition = freeText(tq1, 10);
+    const instruction = freeText(tq1, 11);
+    if (condition !== "") conditionText = condition;
+    if (instruction !== "") instructionText = instruction;
   } else {
     if (isValued(tq1, 10))
       issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.10", "ServiceRequest"));
