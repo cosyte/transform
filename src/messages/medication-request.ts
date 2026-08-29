@@ -58,6 +58,9 @@
  *   resource's own `text` narrative; it targets `dosageInstruction.text` from nothing at all, so
  *   nothing is written there. Both carry the sender's words verbatim and both survive a refused
  *   timing: a "with food" that arrived is still true when the frequency could not be grounded.
+ *   Verbatim is the whole field including a trailing delimiter, and **only a valued field is
+ *   written**: a row the wire says carries nothing (absent, or the HL7 explicit null `""`) puts no
+ *   text on the resource and no marker in its place.
  * - **Substitution.** RXO-9 → `substitution.allowedCodeableConcept` via
  *   {@link SUBSTITUTION_VALUE_MAP} (HL70161 `N`/`G`/`T` identity into `v2-0161`). A valued RXO-9 the map
  *   has no target for is flagged and the **substitution backbone is withheld**: a substitution

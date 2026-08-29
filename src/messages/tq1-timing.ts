@@ -66,10 +66,17 @@
  * them to the dose and the priority, both of which the RXO/OBR path already grounds. They are flagged
  * dropped and neither field is touched, so a TQ1 that carries them still contributes its schedule.
  *
+ * **Only a valued field is read, and "valued" is one test for the whole module.** An absent field
+ * and the HL7 explicit null (the two-character literal `""`, the wire saying this field carries no
+ * value) are both read as carrying nothing: no FHIR element is written from either, no diagnostic is
+ * raised about either, and a TQ1 whose only content was a null contributed nothing and is reported
+ * as unreached. The null marker is *text* to a projection that reads a field whole, so reading one
+ * as a value would put two quotation marks into a dosing narrative as though a clinician wrote them.
+ *
  * @packageDocumentation
  */
 
-import type { Segment } from "@cosyte/hl7";
+import { renderText, type EncodingCharacters, type RawRepetition, type Segment } from "@cosyte/hl7";
 import { complex, decimal, list, primitive, type FhirComplex, type FhirNode } from "@cosyte/fhir";
 
 import { toFhirDateTime } from "../datatypes/datetime.js";
@@ -170,19 +177,86 @@ function subcomponent(seg: Segment, field: number, component: number, sub: numbe
 }
 
 /**
- * The **whole** content of a `TX` free-text field, as display text.
+ * A field's wire text with the **structural empties** its canonical form drops put back, so a `TX`
+ * primitive that ends in (or contains) a raw delimiter arrives with every character the sender sent.
+ *
+ * `Field.text` is byte-verbatim for content but structurally canonical: it strips each component's
+ * trailing empty subcomponents and each repetition's trailing empty components (the parser's D-02),
+ * so the wire `2 tabs^` projects as `2 tabs` and `a&^b` as `a^b`. On a composite field those empties
+ * are absent positions and dropping them is right; on a `TX` primitive they are the last characters
+ * of a clinical instruction. This walks the field's own repetition tree, which still records every
+ * empty, and pads each surviving component back to the subcomponent count the wire carried and each
+ * repetition back to its component count. **Only delimiter characters are ever added**: content is
+ * copied across untouched, so every escape keeps the exact bytes the sender wrote, and a tree that
+ * does not line up with the text (nothing observed produces one) leaves that stretch exactly as it
+ * was rather than dropping any of it.
+ *
+ * @param text - The field's canonical wire text (`Field.text`).
+ * @param repetitions - That same field's repetition tree (`Field.repetitions`).
+ * @param enc - The message's encoding characters.
+ * @example
+ * ```ts
+ * // restoreStructuralEmpties("2 tabs", field.repetitions, enc); // "2 tabs^"
+ * ```
+ */
+export function restoreStructuralEmpties(
+  text: string,
+  repetitions: readonly RawRepetition[],
+  enc: EncodingCharacters,
+): string {
+  const padded = (part: string, count: number): string => {
+    const subs = part.split(enc.subcomponent);
+    if (subs.length >= count) return part;
+    return [...subs, ...Array.from({ length: count - subs.length }, () => "")].join(
+      enc.subcomponent,
+    );
+  };
+  return text
+    .split(enc.repetition)
+    .map((repetition, r) => {
+      const components = repetitions[r]?.components ?? [];
+      const parts = repetition.split(enc.component);
+      const restored = parts.map((part, c) =>
+        padded(part, components[c]?.subcomponents.length ?? 0),
+      );
+      // Components the canonicalization dropped whole: each contributes its own separator, plus the
+      // separators between the empty subcomponents it carried.
+      for (const dropped of components.slice(parts.length))
+        restored.push(padded("", dropped.subcomponents.length));
+      return restored.join(enc.component);
+    })
+    .join(enc.repetition);
+}
+
+/**
+ * The **whole** content of a `TX` free-text field as display text, or `undefined` when the field
+ * carries no value to place.
  *
  * TQ1-10 and TQ1-11 are `TX`: a v2 **primitive**, with no component or subcomponent structure at
  * all, so a raw `^`, `&` or `~` inside one is *content* by definition. `Field.value` is documented
  * as the "first-repetition, first-component, first-subcomponent value" and would therefore truncate
  * `2 tabs^then 1 tab` to `2 tabs`, delivering a dosing instruction that lost its taper with nothing
- * to say so. `Field.render()` is the parser's documented reader for a clinical narrative: a read
- * projection over the field's byte-verbatim wire text that resolves the v2 escape sequences (`\T\`
- * to a literal `&`, `\.br\` to a line break) and **never fabricates**, preserving any sequence it
- * cannot render rather than guessing at it.
+ * to say so. So the whole field is read, through the parser's own renderer for a clinical narrative:
+ * a read projection over byte-verbatim wire text that resolves the v2 escape sequences (`\T\` to a
+ * literal `&`, `\.br\` to a line break) and **never fabricates**, preserving any sequence it cannot
+ * render rather than guessing at it, over the text {@link restoreStructuralEmpties} repairs.
+ *
+ * **An HL7 explicit null is not a value.** The two-character literal `""` is the wire's way of
+ * saying this field carries nothing, and it projects as text as the two characters it is. It is
+ * read here exactly as an absent field is: nothing to carry, and nothing dropped to flag, which is
+ * also how the `ServiceRequest` path's {@link isValued} test has always read it.
  */
-function freeText(seg: Segment, field: number): string {
-  return seg.field(field).render().text;
+function freeText(seg: Segment, field: number): string | undefined {
+  if (!isValued(seg, field)) return undefined;
+  const f = seg.field(field);
+  // The message's OWN delimiters, off the segment, never the defaults: a sender declares them in
+  // MSH-2, and a repair that assumed "^~&" would put a character into a narrative that the message
+  // never used as a separator.
+  const rendered = renderText(
+    restoreStructuralEmpties(f.text, f.repetitions, seg.enc),
+    seg.enc,
+  ).text;
+  return rendered === "" ? undefined : rendered;
 }
 
 /**
@@ -314,8 +388,15 @@ function readRepeatPattern(
   // RPT.5 → Timing.repeat.period, precision-exact. A magnitude FHIR's decimal cannot hold in the
   // sender's own lexical form is refused, never canonicalized (which would alter it); and so is a
   // negative one, which R4's tim-5 ("period SHALL be a non-negative value") forbids on the target
-  // element whatever its lexical form. Zero is not refused: tim-5 admits it and carrying the
-  // sender's own magnitude unaltered is this library's standing rule.
+  // element whatever its lexical form. Unsigned zero is not refused: tim-5 admits it and carrying
+  // the sender's own magnitude unaltered is this library's standing rule.
+  //
+  // The sign test is LEXICAL, on the digits the sender wrote, because the emitted value is lexical:
+  // `decimal` preserves the sender's form, so the guard has to answer the same question the wire
+  // will. `Number(raw) < 0` answers a different one and is false for a whole class of negatives: any
+  // magnitude under about 5e-324 underflows to `-0`, so `-1e-400` passed that test and reached the
+  // resource as `"period":-1e-400`, invisible to a JSON-parsing probe because parsing normalizes the
+  // literal to `0`. A minus sign in front of a magnitude is a negative period, at every magnitude.
   if (componentValued(tq1, 3, 5)) {
     const raw = subcomponent(tq1, 3, 5, 1);
     let period: FhirNode | undefined;
@@ -324,7 +405,7 @@ function readRepeatPattern(
     } catch {
       period = undefined;
     }
-    if (period === undefined || Number(raw) < 0) {
+    if (period === undefined || raw.startsWith("-")) {
       issues.push(
         issue(ISSUE_CODES.TRANSFORM_QUANTITY_VALUE_INVALID, "TQ1.3.5", `${base}.repeat.period`),
       );
@@ -537,12 +618,11 @@ export function readTq1(
   let conditionText: string | undefined;
   let instructionText: string | undefined;
   if (target === "MedicationRequest") {
-    // Read whole, never truncated at the first raw delimiter: see freeText. "Verbatim" is the
-    // claim these two rows make, and a TX field's delimiters are content, not structure.
-    const condition = freeText(tq1, 10);
-    const instruction = freeText(tq1, 11);
-    if (condition !== "") conditionText = condition;
-    if (instruction !== "") instructionText = instruction;
+    // Read whole, never truncated at the first raw delimiter, and read only where the field is
+    // valued by the same test the service path applies: see freeText. "Verbatim" is the claim these
+    // two rows make, and a TX field's delimiters are content, not structure.
+    conditionText = freeText(tq1, 10);
+    instructionText = freeText(tq1, 11);
   } else {
     if (isValued(tq1, 10))
       issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.10", "ServiceRequest"));
