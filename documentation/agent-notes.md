@@ -68,6 +68,38 @@ flagged, never coerced; SNOMED-target maps (RXR-4 method, SCH-7 reason) stay str
 SNOMED bundled; and fields with no IG value map (TXA-2, RXA-5) are documented as structural, never
 invented.
 
+**`AL1` to `AllergyIntolerance` landed after those phases, and it is the first change to ADD a
+resource type to an existing bundle.** A consumer who saw no `AllergyIntolerance` begins to see one,
+per AL1 occurrence, wired to the bundle Patient by the IG's own ADT_A01 message-map row
+(`AllergyIntolerance.patient.reference=Patient[1].id`). Five value maps came with it, transcribed
+firsthand from the published ConceptMaps at guide 1.0.0 (published 2025-10-07), retrieved
+2026-08-28, and exported beside `IG_ALLERGY_VALUE_MAPS_VERSION`. Four things about it are decisions
+rather than omissions, and each one would look like a bug to someone who did not read the guide:
+
+- **The guide publishes TWO maps over Table 0127**, one to `category` and one to `type`, with
+  different unmapped sets. They are applied independently, so `MA` yields the type `allergy` and NO
+  category, and `MC` yields neither. A category is never borrowed from the type map or from a
+  neighbouring code; the element the map has no target for is omitted and flagged.
+- **`AllergyIntolerance.reaction.severity` is never populated.** The IG names `criticality` the base
+  target for AL1-4 and offers `reaction.severity` only as a LOCAL VARIATION, conditioned on "If
+  severity was not used equivalent to criticality", which no v2 message states. Emitting both from
+  one CWE would assert a clinical grading the source does not carry, so an AL1-4 of `MO` or `U`
+  leaves `criticality` absent and flagged instead. Do not "fix" that by reaching for the reaction.
+- **The original v2 code always survives.** The IG makes the `alternate-codes` extension `1..1`
+  wherever AL1-2 or AL1-4 is valued, so an untranslated code is still on the resource in its own v2
+  code system. An unmapped category is therefore a `category` element carrying the extension and no
+  code value, not an absent element.
+- **AL1-6 is legacy input.** The map's own comment reads "Withdrawn as of 2.7", so `onsetDateTime` is
+  carried only for a message whose MSH-12 is readable and earlier than 2.7. Absent and unreadable
+  both fail closed, dropped with a diagnostic.
+
+**And the completeness baselines were superseded, not recaptured.** `completeness-goldens.json` is a
+capture of one commit and recapturing it from a tree that carries the change would launder the
+evidence it exists to be. The three recorded inputs carrying an AL1 are declared in
+`test/messages/segment-completeness.test.ts` instead, and the assertions prove their bundles are the
+recorded ones once the new allergies are removed, and that every recorded issue is still raised in
+its recorded order. Add to that declaration when a later change legitimately moves another one.
+
 Phase 7 opened the **reverse direction, narrowly**: `toV2Patient` and `toV2Observation` emit a
 complete v2 message carrying a `PID` or an `OBX`, each requiring a caller-supplied trigger. Two of
 the three shapes the phase scoped shipped; the `Patient` + `Encounter` visit-carrying ADT did not.

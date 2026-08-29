@@ -49,9 +49,24 @@ resource values; those carry PHI.
 - **Message families: the IG-covered set.** `toFhir(msg)` assembles ADT → Patient + Encounter,
   ORU^R01 → DiagnosticReport + Observation, ORM_O01 / OML_O21 → ServiceRequest and
   RXO → MedicationRequest, and the thin IG singles VXU_V04 → Immunization, SIU_S12 →
-  Appointment, and MDM_T02 → DocumentReference. The v2→FHIR direction is
+  Appointment, and MDM_T02 → DocumentReference. An AL1 in any of them becomes an
+  AllergyIntolerance. The v2→FHIR direction is
   feature-complete for the IG-covered message set; terminology depth and profiles are not
   implemented.
+- **Allergy scope: AL1 only, and `criticality` only.** `IAM` is not read (it keeps reporting
+  `TRANSFORM_SEGMENT_NOT_EMITTED`), and `AllergyIntolerance.reaction.severity` is never populated:
+  the IG names `criticality` the base target for AL1-4 and offers `reaction.severity` only as a
+  local variation, conditioned on a severity that was not used equivalently to criticality, which no
+  v2 message states. So an AL1-4 of `MO` or `U` leaves `criticality` absent with a
+  `TRANSFORM_CODE_UNMAPPED`, rather than reappearing as a reaction grading. AL1-2 resolves
+  `category` and `type` against two separate IG maps with different unmapped sets: `MA` yields a
+  type and no category, `MC` yields neither, and each absence is flagged on its own. The original
+  AL1-2 / AL1-4 code is always carried in the IG's `alternate-codes` extension, so an untranslated
+  code is still on the resource. Two conditions withhold the whole allergy, each with a
+  `TRANSFORM_ELEMENT_DROPPED` naming it: no Patient in the bundle to anchor `patient`, and an AL1-3
+  that grounds no allergen code and no allergen text. AL1-6 is read as `onsetDateTime` only for a
+  message whose version identifier is readable and earlier than 2.7, the version that withdrew the
+  field; on 2.7 or later, or when the version cannot be read, it is dropped and flagged.
 - **Reverse (FHIR → v2) scope: two shapes, deliberately.** `toV2Patient` emits an `ADT`-shaped
   message carrying a `PID`, `toV2Observation` an `ORU`-shaped message carrying an `OBX`. Both
   require the caller to pass the v2 trigger (no resource carries one, so it is never inferred: a
@@ -87,7 +102,9 @@ resource values; those carry PHI.
   `valueString` and flags it, never a fabricated typed value.
 - **Terminology value translation**: coded fields with an IG `mappedVia` value ConceptMap
   are value-translated via `toFhirCodeableConceptVia`, covering RXR route/site (HL70162/HL70550), SCH-8
-  appointment type (HL70277), RXO-9 substitution (HL70161), and OBR-5 priority (HL70485). Each map is
+  appointment type (HL70277), RXO-9 substitution (HL70161), OBR-5 priority (HL70485), and the AL1
+  allergy tables (HL70127 to category and to type, HL70128 to criticality, plus the two
+  original-code identity maps). Each map is
   transcribed and verified firsthand against the raw published IG ConceptMap JSON; a source code the IG
   leaves in its `(unmapped)` group is flagged (`TRANSFORM_CODE_UNMAPPED`), never coerced. Two fields the
   IG maps into **SNOMED CT** (RXR-4 method, SCH-7 reason) stay structural (SNOMED is not bundled; BYO

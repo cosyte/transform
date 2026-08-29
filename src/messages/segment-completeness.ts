@@ -4,7 +4,7 @@
  * each one that did not.
  *
  * The library already refuses to produce a confident wrong FHIR value at the datatype and resource
- * levels. This is the same rule one level up. A message can carry an `AL1`, a `DG1` or an `IN1` that
+ * levels. This is the same rule one level up. A message can carry an `IAM`, a `DG1` or an `IN1` that
  * nothing here reads, and until now the consumer got a bundle with nothing in it about the allergy
  * and an issues list with nothing in it about the omission: silence read as completeness, which is a
  * claim this library cannot make. After this, a consumer reads the issues list and learns which

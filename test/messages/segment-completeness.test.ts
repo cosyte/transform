@@ -48,6 +48,77 @@ const LIBRARY_GAP = ISSUE_CODES.TRANSFORM_SEGMENT_NOT_EMITTED;
 const STANDARD_GAP = ISSUE_CODES.TRANSFORM_SEGMENT_NO_IG_MAP;
 const NEW_CODES: ReadonlySet<string> = new Set([LIBRARY_GAP, STANDARD_GAP]);
 
+/**
+ * The recorded inputs whose baseline this tree has since **superseded**, with the change that did
+ * it. The baselines in `completeness-goldens.json` are a capture of one commit and are never
+ * recaptured: recapturing from a tree that already carries the change would launder the very
+ * evidence they exist to be. So a later change that legitimately alters what one of these inputs
+ * produces is declared here instead, and the two whole-corpus baseline assertions below prove the
+ * difference is exactly that change rather than skipping the input.
+ *
+ * `AL1` to `AllergyIntolerance` is the first such change: an AL1 that used to reach nothing now
+ * builds a resource, so every input carrying one gains an entry, and the entries after it shift by
+ * one identity. Nothing else about these inputs moved, and that is what is asserted.
+ */
+const ALLERGY_SUPERSEDED: ReadonlyMap<string, string> = new Map([
+  ["ig-mapped-unhandled", "its AL1 now becomes an AllergyIntolerance"],
+  ["eleven-silent-segments", "its AL1 now becomes an AllergyIntolerance"],
+  ["unique-field-tokens", "its AL1 now becomes an AllergyIntolerance"],
+]);
+
+interface RawBundleEntry {
+  fullUrl?: string;
+  resource?: { resourceType?: string; focus?: { reference?: string }[] };
+}
+
+/**
+ * The same bundle with every `AllergyIntolerance` entry, and every reference to one, removed: what
+ * the input produced before this library read AL1 at all.
+ */
+function withoutAllergies(bundleJson: string): string {
+  const bundle = JSON.parse(bundleJson) as { entry?: RawBundleEntry[] };
+  const all = bundle.entry ?? [];
+  const removed = new Set(
+    all
+      .filter((e) => e.resource?.resourceType === "AllergyIntolerance")
+      .map((e) => e.fullUrl ?? ""),
+  );
+  if (removed.size === 0) return bundleJson;
+  const kept = all.filter((e) => !removed.has(e.fullUrl ?? ""));
+  for (const entry of kept) {
+    const focus = entry.resource?.focus;
+    if (entry.resource !== undefined && focus !== undefined) {
+      entry.resource.focus = focus.filter((f) => !removed.has(f.reference ?? ""));
+    }
+  }
+  bundle.entry = kept;
+  return JSON.stringify(bundle);
+}
+
+/**
+ * The same bundle with its `urn:uuid:` identities renumbered by order of first appearance, so two
+ * bundles that differ only in how many identities were minted before each one still compare. The
+ * identities are opaque by construction; their VALUES carry no meaning to preserve here, only their
+ * agreement between a reference and the entry it points at, which renumbering keeps exactly.
+ */
+function canonicalIdentities(bundleJson: string): string {
+  const seen = new Map<string, string>();
+  return bundleJson.replace(/urn:uuid:[0-9a-fA-F-]+/g, (id) => {
+    const already = seen.get(id);
+    if (already !== undefined) return already;
+    const token = `urn:uuid:#${String(seen.size + 1)}`;
+    seen.set(id, token);
+    return token;
+  });
+}
+
+/** Whether `sub` appears in `all` in order, with anything at all between the entries. */
+function isSubsequence(sub: readonly string[], all: readonly string[]): boolean {
+  let i = 0;
+  for (const item of all) if (i < sub.length && item === sub[i]) i++;
+  return i === sub.length;
+}
+
 interface GoldenIssue {
   readonly code: string;
   readonly severity: string;
@@ -300,22 +371,22 @@ describe("enumeration excludes a position that carries no segment, wherever it s
 // ── The trigger predicate and the two codes ─────────────────────────────────────────────────────
 
 describe("a segment the IG maps that reached nothing is a library gap", () => {
-  it("reports an AL1 and a DG1 the assembly never reads, one issue each", () => {
-    expect(addedLabels(run("ig-mapped-unhandled"))).toEqual([
-      `${LIBRARY_GAP}@AL1[1]`,
-      `${LIBRARY_GAP}@DG1[1]`,
-    ]);
+  it("reports the DG1 the assembly never reads, and not the AL1 it now emits", () => {
+    // The AL1 of this input became an AllergyIntolerance in the bundle, so it reached a resource
+    // and is no longer a gap. The DG1 still reaches nothing and still reports.
+    expect(addedLabels(run("ig-mapped-unhandled"))).toEqual([`${LIBRARY_GAP}@DG1[1]`]);
   });
 
   it("reports an ADT OBX although the library emits Observation on another path", () => {
     expect(addedLabels(run("adt-obx"))).toEqual([`${LIBRARY_GAP}@OBX[1]`]);
   });
 
-  it("reports the eleven names the assembly never reads, in message order", () => {
+  it("reports the ten names the assembly still never reads, in message order", () => {
+    // Ten of the eleven: the AL1 of this input now reaches an AllergyIntolerance. The IAM beside it
+    // does not, and is the one the guide maps and this library still does not build.
     expect(addedLabels(run("eleven-silent-segments"))).toEqual([
       `${LIBRARY_GAP}@SFT[1]`,
       `${LIBRARY_GAP}@EVN[1]`,
-      `${LIBRARY_GAP}@AL1[1]`,
       `${LIBRARY_GAP}@IAM[1]`,
       `${LIBRARY_GAP}@DG1[1]`,
       `${LIBRARY_GAP}@PR1[1]`,
@@ -525,13 +596,13 @@ describe("the invariants that hold across the whole corpus", () => {
     expect(i.severity).toBe("information");
     expect(i.message).toBe(ISSUE_REGISTRY[LIBRARY_GAP].message);
     expect(i.fhirPath).toBeUndefined();
-    expect(i.v2Location).toBe("AL1[1]");
+    expect(i.v2Location).toBe("DG1[1]");
 
     const rendered = serializeResource(toOperationOutcome([i]));
     expect(rendered).toContain(`"code":"${LIBRARY_GAP}"`);
     expect(rendered).toContain(`"code":"${fhirIssueTypeFor(LIBRARY_GAP)}"`);
     expect(rendered).toContain('"severity":"information"');
-    expect(rendered).toContain('"diagnostics":"AL1[1]"');
+    expect(rendered).toContain('"diagnostics":"DG1[1]"');
   });
 
   it("produces identical issue sequences for identical input bytes", () => {
@@ -578,6 +649,7 @@ describe("the pre-change baselines still hold for every recorded input", () => {
 
   it("returns the same resources with the same contents for every recorded input", () => {
     for (const fixture of COMPLETENESS_FIXTURES) {
+      if (ALLERGY_SUPERSEDED.has(fixture.id)) continue;
       const result = run(fixture.id);
       expect([fixture.id, serializeResource(result.bundle)]).toEqual([
         fixture.id,
@@ -586,8 +658,19 @@ describe("the pre-change baselines still hold for every recorded input", () => {
     }
   });
 
+  it("returns a superseded input's baseline bundle exactly, once its allergies are removed", () => {
+    for (const id of ALLERGY_SUPERSEDED.keys()) {
+      const produced = withoutAllergies(serializeResource(run(id).bundle));
+      expect([id, canonicalIdentities(produced)]).toEqual([
+        id,
+        canonicalIdentities(goldenFor(id).bundle),
+      ]);
+    }
+  });
+
   it("keeps every pre-existing issue first, in its recorded order, with the new ones appended", () => {
     for (const fixture of COMPLETENESS_FIXTURES) {
+      if (ALLERGY_SUPERSEDED.has(fixture.id)) continue;
       const result = run(fixture.id);
       const baseline = goldenFor(fixture.id).issues;
       const head = result.issues.slice(0, baseline.length).map((i) => {
@@ -601,6 +684,50 @@ describe("the pre-change baselines still hold for every recorded input", () => {
       expect([fixture.id, head]).toEqual([fixture.id, [...baseline]]);
       const tail = result.issues.slice(baseline.length);
       expect([fixture.id, tail.every((i) => NEW_CODES.has(i.code))]).toEqual([fixture.id, true]);
+    }
+  });
+
+  it("keeps every recorded issue of a superseded input, in its recorded order", () => {
+    // Reading an AL1 raises the datatype diagnostics of the components it reads, so a superseded
+    // input's new issues interleave rather than append. Every recorded one is still there, still in
+    // order: none was dropped, replaced or reordered by the resource that now gets built.
+    const label = (i: {
+      code: string;
+      severity: string;
+      v2Location: string;
+      fhirPath?: string;
+    }): string => `${i.code}@${i.v2Location}#${i.fhirPath ?? ""}@${i.severity}`;
+    for (const id of ALLERGY_SUPERSEDED.keys()) {
+      const produced = run(id).issues.map(label);
+      expect([id, isSubsequence(goldenFor(id).issues.map(label), produced)]).toEqual([id, true]);
+    }
+  });
+
+  it("adds exactly the allergy diagnostics to a superseded input, and nothing else", () => {
+    // The whole delta, written out rather than characterized, so a later change to it is reviewed.
+    const added: Readonly<Record<string, readonly string[]>> = {
+      "ig-mapped-unhandled": [`${ISSUE_CODES.TRANSFORM_CODE_SYSTEM_UNRESOLVED}@CWE.3`],
+      "eleven-silent-segments": [`${ISSUE_CODES.TRANSFORM_CODE_SYSTEM_UNRESOLVED}@CWE.3`],
+      // Its AL1-2 is a token in no v2 table, so both Table 0127 maps refuse it (one issue each)
+      // and the identity map behind the alternate-codes extension refuses it too (the CWE.1 one).
+      "unique-field-tokens": [
+        `${ISSUE_CODES.TRANSFORM_CODE_SYSTEM_UNRESOLVED}@CWE.3`,
+        `${ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}@AL1.2`,
+        `${ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}@CWE.1`,
+        `${ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}@AL1.2`,
+      ],
+    };
+    for (const id of ALLERGY_SUPERSEDED.keys()) {
+      const recorded = goldenFor(id).issues.map((i) => `${i.code}@${i.v2Location}`);
+      const produced = run(id)
+        .issues.filter((i) => !NEW_CODES.has(i.code))
+        .map((i) => `${i.code}@${i.v2Location}`);
+      const delta = [...produced];
+      for (const one of recorded) {
+        const at = delta.indexOf(one);
+        if (at >= 0) delta.splice(at, 1);
+      }
+      expect([id, delta]).toEqual([id, added[id]]);
     }
   });
 
@@ -659,7 +786,11 @@ describe("the diagnostic observes the assembly and does not steer it", () => {
       namingSystem: createNamingSystem(),
       generateId: () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`,
     });
-    expect(serializeResource(direct.bundle)).toBe(goldenFor("eleven-silent-segments").bundle);
+    // A superseded input (its AL1 is an AllergyIntolerance now), so the baseline is recovered the
+    // way the corpus assertions above recover it, not by recapturing it.
+    expect(canonicalIdentities(withoutAllergies(serializeResource(direct.bundle)))).toBe(
+      canonicalIdentities(goldenFor("eleven-silent-segments").bundle),
+    );
   });
 
   it("registers both codes so the property suite's registered-code check still passes", () => {

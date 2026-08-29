@@ -121,6 +121,17 @@ export {
 export { IMMUNIZATION_STATUS_MAP } from "./messages/immunization.js";
 export { APPOINTMENT_STATUS_MAP } from "./messages/appointment.js";
 
+// ── Message-level assembly: AL1 → AllergyIntolerance, wired to the bundle Patient ────────────────
+export {
+  ALLERGY_CLINICAL_STATUS_CODE,
+  ALLERGY_CLINICAL_STATUS_SYSTEM,
+  ALTERNATE_CODES_EXTENSION_URL,
+  AL1_ONSET_WITHDRAWN_AT,
+  carriesLegacyOnsetDate,
+  collectAllergies,
+} from "./messages/allergy-intolerance.js";
+export type { AllergyBuildOptions } from "./messages/allergy-intolerance.js";
+
 // ── Terminology value translation: the $translate-shaped ConceptMap engine + maps (Phase 6) ──────
 export {
   toFhirCodeableConceptVia,
@@ -130,11 +141,25 @@ export {
   SITE_VALUE_MAP,
   APPOINTMENT_TYPE_VALUE_MAP,
   SUBSTITUTION_VALUE_MAP,
+  ALLERGY_CATEGORY_VALUE_MAP,
+  ALLERGY_TYPE_VALUE_MAP,
+  ALLERGY_CRITICALITY_VALUE_MAP,
+  ALLERGY_ORIGINAL_CATEGORY_VALUE_MAP,
+  ALLERGY_ORIGINAL_CRITICALITY_VALUE_MAP,
+  IG_ALLERGY_VALUE_MAPS_PUBLISHED,
+  IG_ALLERGY_VALUE_MAPS_RETRIEVED,
+  IG_ALLERGY_VALUE_MAPS_SOURCE,
+  IG_ALLERGY_VALUE_MAPS_VERSION,
   V2_0162_SYSTEM,
   V3_ROUTE_OF_ADMINISTRATION_SYSTEM,
   V2_0550_SYSTEM,
   V2_0277_SYSTEM,
   V2_0161_SYSTEM,
+  V2_0127_SYSTEM,
+  V2_0128_SYSTEM,
+  ALLERGY_INTOLERANCE_CATEGORY_SYSTEM,
+  ALLERGY_INTOLERANCE_TYPE_SYSTEM,
+  ALLERGY_INTOLERANCE_CRITICALITY_SYSTEM,
 } from "./terminology/concept-map.js";
 export type { CodedTarget, CodedValueMap } from "./terminology/concept-map.js";
 export { SERVICE_REQUEST_PRIORITY_MAP } from "./messages/service-request.js";

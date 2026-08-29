@@ -12,7 +12,10 @@
  *
  * So `raw` is the exact wire bytes, trailing segment terminator included or deliberately absent, and
  * a fixture is never edited in place: a changed input is a new id, because the baseline was captured
- * from the old bytes and cannot be recaptured from a tree that already carries the change.
+ * from the old bytes and cannot be recaptured from a tree that already carries the change. The `what`
+ * line is prose about the input rather than part of it, and is kept true as the library grows: an
+ * input whose baseline a later change supersedes is declared in `segment-completeness.test.ts`,
+ * which proves the difference is exactly that change.
  *
  * **Every person-identifying literal here is drawn from `scripts/phi-allow-list.txt`**, and the one
  * fixture that needs unique values per field builds them by template interpolation, which the PHI
@@ -96,7 +99,7 @@ const UNIQUE_TOKEN_MESSAGE = message([
 export const COMPLETENESS_FIXTURES: readonly CompletenessFixture[] = Object.freeze([
   {
     id: "ig-mapped-unhandled",
-    what: "an ADT carrying an AL1 and a DG1: two segments the IG maps and this library never reads",
+    what: "an ADT carrying an AL1 and a DG1: two segments the IG maps, of which the DG1 is still unread",
     raw: message([MSH_ADT_A01, PID_JANE, "AL1|1|DA|PEN^Penicillin^L", "DG1|1|I9|250.00^Diab^I9"]),
   },
   {
@@ -240,7 +243,7 @@ export const COMPLETENESS_FIXTURES: readonly CompletenessFixture[] = Object.free
   },
   {
     id: "eleven-silent-segments",
-    what: "the eleven segment names the assembly never reads at all, in one message",
+    what: "eleven segment names the assembly did not read when this input was recorded, in one message",
     raw: message([
       MSH_ADT_A01,
       "SFT|VENDOR|1.0|PRODUCT",

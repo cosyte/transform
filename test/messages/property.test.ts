@@ -3,10 +3,14 @@
  * hostile) parsed ADT messages, `toFhir` must:
  *   1. **never throw** (the fail-safe rule at the message level);
  *   2. raise only **registered**, **value-free** issue codes (a sentinel threaded through every PID/
- *      PV1/NK1 value must never reach the diagnostic channel);
+ *      PV1/NK1/AL1 value must never reach the diagnostic channel);
  *   3. produce a bundle whose **references all resolve within it** (no dangling `urn:uuid:`); and
  *   4. emit only **structurally-valid** focal resources, every `Patient` entry validates strict under
  *      `@cosyte/fhir` (an invalid one is withheld, never shipped).
+ *
+ * The AL1 boundary carries a fifth, because an allergy is acted on clinically: no emitted
+ * `AllergyIntolerance` may carry a `category`, `type` or `criticality` code the IG maps did not
+ * produce. A malformed AL1 must cost the element or the resource, never buy a guessed value.
  */
 
 import { describe, it, expect } from "vitest";
@@ -19,6 +23,8 @@ import {
   getProperty,
   isList,
   isComplex,
+  isPrimitive,
+  type FhirComplex,
 } from "@cosyte/fhir";
 
 import {
@@ -70,6 +76,13 @@ function build(p: Parts): string {
     lines.push(`NK1|1|${p.nkName ?? ""}^X|${p.nkRel ?? ""}`);
   }
   return lines.join("\r");
+}
+
+/** The string value of a primitive property of `node`, or `undefined` when it carries none. */
+function readString(node: FhirComplex, name: string): string | undefined {
+  const found = getProperty(node, name);
+  if (found === undefined || !isPrimitive(found)) return undefined;
+  return typeof found.value === "string" ? found.value : undefined;
 }
 
 /** Every `reference` and every `fullUrl` string in the serialized bundle. */
@@ -185,6 +198,99 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
           });
         }
         assertResult(result);
+      }),
+      { numRuns },
+    );
+  });
+
+  it("never throws and grounds every allergy element over structurally hostile AL1 segments", () => {
+    // The IG target sets, in full: the only values an emitted AllergyIntolerance may carry in these
+    // three elements. Anything else would be a guess, whatever the AL1 looked like.
+    const CATEGORIES = new Set(["food", "medication", "environment", "biologic"]);
+    const TYPES = new Set(["allergy", "intolerance"]);
+    const CRITICALITIES = new Set(["low", "high", "unable-to-assess"]);
+    // Table 0127 / 0128 codes, near-misses, a foreign coding system, and shapes the parser
+    // publishes for a damaged field: an empty component structure, a bare separator, repetitions.
+    const al1Field = fc.constantFrom(
+      "DA",
+      "MA",
+      "MC",
+      "ZZ",
+      "SV",
+      "MO",
+      "",
+      "^",
+      "^^",
+      "^^^",
+      "~",
+      "DA^^99LOCAL",
+      "^Text only",
+      `${SENTINEL}^${SENTINEL}^${SENTINEL}`,
+      "DA~FA",
+      "20240115",
+      "not-a-date",
+    );
+    const arb = fc.record({
+      hasPid: fc.boolean(),
+      version: fc.constantFrom("2.5.1", "2.7", "2.3", "", "V2", "2.7.1"),
+      al1s: fc.array(
+        fc.record({
+          type: al1Field,
+          allergen: al1Field,
+          severity: al1Field,
+          reaction: al1Field,
+          onset: al1Field,
+          trailing: fc.constantFrom("", "|", "|||||||"),
+        }),
+        { maxLength: 3 },
+      ),
+    });
+    fc.assert(
+      fc.property(arb, (p) => {
+        const lines = [
+          `MSH|^~\\&|APP|FAC|RCV|RFAC|20260101120000-0500||ADT^A01|MSGID1|P|${p.version}`,
+        ];
+        if (p.hasPid) lines.push(`PID|1||MRN1^^^HOSP^MR||Doe^Jane||19900101|F`);
+        for (const [i, a] of p.al1s.entries()) {
+          lines.push(
+            `AL1|${String(i + 1)}|${a.type}|${a.allergen}|${a.severity}|${a.reaction}|${a.onset}${a.trailing}`,
+          );
+        }
+        lines.push("AL1"); // an AL1 with no fields at all
+        let result: TransformResult;
+        try {
+          result = toFhir(parseHL7(lines.join("\r")), {
+            namingSystem: registry,
+            generateId: seqId,
+          });
+        } catch (err) {
+          throw new Error("toFhir threw on an AL1-carrying message", { cause: err });
+        }
+        assertResult(result);
+
+        const parsed = parseResource(serializeResource(result.bundle)).resource;
+        const entry = getProperty(parsed, "entry");
+        if (entry === undefined || !isList(entry)) return;
+        for (const e of entry.items) {
+          const res = isComplex(e) ? getProperty(e, "resource") : undefined;
+          if (res === undefined || !isComplex(res)) continue;
+          if (readString(res, "resourceType") !== "AllergyIntolerance") continue;
+          // Every coded element the maps fill is either absent or an IG target, never a guess.
+          const type = readString(res, "type");
+          if (type !== undefined) expect(TYPES.has(type)).toBe(true);
+          const criticality = readString(res, "criticality");
+          if (criticality !== undefined) expect(CRITICALITIES.has(criticality)).toBe(true);
+          const category = getProperty(res, "category");
+          const items =
+            category === undefined ? [] : isList(category) ? category.items : [category];
+          for (const item of items) {
+            if (!isPrimitive(item)) continue;
+            if (typeof item.value === "string") expect(CATEGORIES.has(item.value)).toBe(true);
+          }
+          // An emitted allergy always says what it is to, and always resolves to a patient.
+          expect(getProperty(res, "code")).toBeDefined();
+          expect(getProperty(res, "patient")).toBeDefined();
+        }
       }),
       { numRuns },
     );

@@ -12,7 +12,9 @@
  * and preserves the raw coding, or withholds the value, but a target is **never fabricated**.
  *
  * **License posture.** Only maps whose target CodeSystem is **freely redistributable** are
- * shipped here: the HL7 THO v2 tables (`v2-0162`, `v2-0550`, `v2-0277`, `v2-0161`) and HL7 v3
+ * shipped here: the HL7 THO v2 tables (`v2-0162`, `v2-0550`, `v2-0277`, `v2-0161`, `v2-0127`,
+ * `v2-0128`), the FHIR R4 core code systems (`allergy-intolerance-category`,
+ * `allergy-intolerance-type`, `allergy-intolerance-criticality`) and HL7 v3
  * (`v3-RouteOfAdministration`) are HL7's own, license-clean. The IG's `*-to-sct` value maps,
  * **RXR-4 method** (`table-hl70165-to-sct`) and **SCH-7 reason** (`table-hl70276-to-sct`), translate
  * **into SNOMED CT**, which is **license-encumbered and is NOT bundled**; those fields stay
@@ -53,6 +55,18 @@ export const V2_0550_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0550";
 export const V2_0277_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0277";
 /** HL7 v2 Table 0161 (Allow Substitution) THO CodeSystem URI. */
 export const V2_0161_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0161";
+/** HL7 v2 Table 0127 (Allergen Type) THO CodeSystem URI. */
+export const V2_0127_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0127";
+/** HL7 v2 Table 0128 (Allergy Severity) THO CodeSystem URI. */
+export const V2_0128_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0128";
+/** FHIR R4 `AllergyIntoleranceCategory` CodeSystem URI (the IG's AL1-2 category target). */
+export const ALLERGY_INTOLERANCE_CATEGORY_SYSTEM =
+  "http://hl7.org/fhir/allergy-intolerance-category";
+/** FHIR R4 `AllergyIntoleranceType` CodeSystem URI (the IG's AL1-2 type target). */
+export const ALLERGY_INTOLERANCE_TYPE_SYSTEM = "http://hl7.org/fhir/allergy-intolerance-type";
+/** FHIR R4 `AllergyIntoleranceCriticality` CodeSystem URI (the IG's AL1-4 criticality target). */
+export const ALLERGY_INTOLERANCE_CRITICALITY_SYSTEM =
+  "http://hl7.org/fhir/allergy-intolerance-criticality";
 
 /** A translated FHIR target coding: the target CodeSystem URI + code, and the IG's target display. */
 export interface CodedTarget {
@@ -676,6 +690,176 @@ export const SUBSTITUTION_VALUE_MAP: CodedValueMap = valueMap(
   V2_0161_SYSTEM,
   ["HL70161", "0161"],
   identityTargets(V2_0161_SYSTEM, ["N", "G", "T"]),
+);
+
+/**
+ * The published version of the HL7 Version 2 to FHIR Implementation Guide the five **AL1 allergy**
+ * value maps below were transcribed from.
+ *
+ * Recorded per map family rather than once for the file, because the earlier value maps here were
+ * transcribed on their own date and this constant must not backdate or forward-date them.
+ *
+ * @example
+ * ```ts
+ * import { IG_ALLERGY_VALUE_MAPS_VERSION } from "@cosyte/transform";
+ * IG_ALLERGY_VALUE_MAPS_VERSION; // "1.0.0"
+ * ```
+ */
+export const IG_ALLERGY_VALUE_MAPS_VERSION = "1.0.0";
+
+/**
+ * The publication date of {@link IG_ALLERGY_VALUE_MAPS_VERSION}, so a later release of the guide can
+ * be told apart from a defect in this library.
+ *
+ * @example
+ * ```ts
+ * import { IG_ALLERGY_VALUE_MAPS_PUBLISHED } from "@cosyte/transform";
+ * IG_ALLERGY_VALUE_MAPS_PUBLISHED; // "2025-10-07"
+ * ```
+ */
+export const IG_ALLERGY_VALUE_MAPS_PUBLISHED = "2025-10-07";
+
+/**
+ * The date the five AL1 allergy ConceptMaps were retrieved and transcribed into the maps below. A
+ * target that surprises a reader is answered by re-reading the guide at this date: each map is a
+ * transcription of a published document at a moment, not a live query.
+ *
+ * @example
+ * ```ts
+ * import { IG_ALLERGY_VALUE_MAPS_RETRIEVED } from "@cosyte/transform";
+ * IG_ALLERGY_VALUE_MAPS_RETRIEVED; // "2026-08-28"
+ * ```
+ */
+export const IG_ALLERGY_VALUE_MAPS_RETRIEVED = "2026-08-28";
+
+/**
+ * The IG segment map the five AL1 allergy value maps hang off, so a reader can audit any row: it is
+ * the page that names which vocabulary map applies to which AL1 field.
+ *
+ * @example
+ * ```ts
+ * import { IG_ALLERGY_VALUE_MAPS_SOURCE } from "@cosyte/transform";
+ * IG_ALLERGY_VALUE_MAPS_SOURCE.startsWith("https://"); // true
+ * ```
+ */
+export const IG_ALLERGY_VALUE_MAPS_SOURCE =
+  "https://hl7.org/fhir/uv/v2mappings/ConceptMap-segment-al1-to-allergyintolerance.html";
+
+/**
+ * **AL1-2 Allergen Type to category**: IG `ConceptMap/table-hl70127-to-allergy-intolerance-category`.
+ * One **mapped** group of six rows into the FHIR R4 `AllergyIntoleranceCategory` code system (`DA`
+ * drug to `medication`, `FA` food to `food`, `EA` environmental to `environment`, `AA` animal to
+ * `biologic`, `PA` plant to `environment`, `LA` pollen to `environment`, each `equivalent`, with the
+ * IG target displays), and an `(unmapped)` group of two: **`MA` and `MC` have no category target**.
+ *
+ * The IG applies this map to `AllergyIntolerance.category` **only**; `AllergyIntolerance.type` has
+ * its own map ({@link ALLERGY_TYPE_VALUE_MAP}) over the same source table, and the two are resolved
+ * independently. `MA` therefore yields a type and no category, which is the guide's answer and not a
+ * gap to be filled: a category is never borrowed from the type map or from a neighbouring code.
+ */
+export const ALLERGY_CATEGORY_VALUE_MAP: CodedValueMap = valueMap(
+  "table-hl70127-to-allergy-intolerance-category",
+  V2_0127_SYSTEM,
+  ["HL70127", "0127"],
+  {
+    DA: { system: ALLERGY_INTOLERANCE_CATEGORY_SYSTEM, code: "medication", display: "Medication" },
+    FA: { system: ALLERGY_INTOLERANCE_CATEGORY_SYSTEM, code: "food", display: "Food" },
+    EA: {
+      system: ALLERGY_INTOLERANCE_CATEGORY_SYSTEM,
+      code: "environment",
+      display: "Environment",
+    },
+    AA: { system: ALLERGY_INTOLERANCE_CATEGORY_SYSTEM, code: "biologic", display: "Biologic" },
+    PA: {
+      system: ALLERGY_INTOLERANCE_CATEGORY_SYSTEM,
+      code: "environment",
+      display: "Environment",
+    },
+    LA: {
+      system: ALLERGY_INTOLERANCE_CATEGORY_SYSTEM,
+      code: "environment",
+      display: "Environment",
+    },
+  },
+);
+
+/**
+ * **AL1-2 Allergen Type to type**: IG `ConceptMap/table-hl70127-to-allergy-intolerance-type`. One
+ * **mapped** group of seven rows into the FHIR R4 `AllergyIntoleranceType` code system (`DA`, `FA`,
+ * `MA`, `EA`, `AA`, `PA`, `LA` all to `allergy`, each `equivalent`, display `Allergy`), and an
+ * `(unmapped)` group of one: **`MC` miscellaneous contraindication has no type target**.
+ *
+ * Read beside {@link ALLERGY_CATEGORY_VALUE_MAP}: the guide publishes two maps over Table 0127 with
+ * different unmapped sets, so a code can be mapped by one and not the other. `MC` is the only code
+ * neither map carries.
+ */
+export const ALLERGY_TYPE_VALUE_MAP: CodedValueMap = valueMap(
+  "table-hl70127-to-allergy-intolerance-type",
+  V2_0127_SYSTEM,
+  ["HL70127", "0127"],
+  {
+    DA: { system: ALLERGY_INTOLERANCE_TYPE_SYSTEM, code: "allergy", display: "Allergy" },
+    FA: { system: ALLERGY_INTOLERANCE_TYPE_SYSTEM, code: "allergy", display: "Allergy" },
+    MA: { system: ALLERGY_INTOLERANCE_TYPE_SYSTEM, code: "allergy", display: "Allergy" },
+    EA: { system: ALLERGY_INTOLERANCE_TYPE_SYSTEM, code: "allergy", display: "Allergy" },
+    AA: { system: ALLERGY_INTOLERANCE_TYPE_SYSTEM, code: "allergy", display: "Allergy" },
+    PA: { system: ALLERGY_INTOLERANCE_TYPE_SYSTEM, code: "allergy", display: "Allergy" },
+    LA: { system: ALLERGY_INTOLERANCE_TYPE_SYSTEM, code: "allergy", display: "Allergy" },
+  },
+);
+
+/**
+ * **AL1-4 Allergy Severity to criticality**: IG
+ * `ConceptMap/table-hl70128-to-allergy-intolerance-criticality`. One **mapped** group of two rows
+ * into the FHIR R4 `AllergyIntoleranceCriticality` code system (`SV` severe to `high`, `MI` mild to
+ * `low`, both `equivalent`, with the IG target displays), and an `(unmapped)` group of two: **`MO`
+ * moderate and `U` unknown have no criticality target**.
+ *
+ * The unmapped pair is the whole reason this field fails safe. `criticality` is an overall risk
+ * assessment a prescriber acts on, so a moderate severity is left absent and flagged rather than
+ * rounded to `low` or `high`, and `AllergyIntolerance.reaction.severity` is never populated from the
+ * same component instead: the IG offers that only as a local variation, conditioned on a severity
+ * that was **not** used equivalently to criticality, which no v2 message states.
+ */
+export const ALLERGY_CRITICALITY_VALUE_MAP: CodedValueMap = valueMap(
+  "table-hl70128-to-allergy-intolerance-criticality",
+  V2_0128_SYSTEM,
+  ["HL70128", "0128"],
+  {
+    SV: { system: ALLERGY_INTOLERANCE_CRITICALITY_SYSTEM, code: "high", display: "High Risk" },
+    MI: { system: ALLERGY_INTOLERANCE_CRITICALITY_SYSTEM, code: "low", display: "Low Risk" },
+  },
+);
+
+/**
+ * **AL1-2 original code**: IG `ConceptMap/table-hl70127-to-v2-0127`. A single **identity** group of
+ * all eight Table 0127 codes (`DA`, `FA`, `MA`, `MC`, `EA`, `AA`, `PA`, `LA` to themselves, each
+ * `equivalent`, source and target both `v2-0127`).
+ *
+ * This is the map behind the `alternate-codes` extension the IG puts on `category`: whatever the
+ * category map does or does not translate, the code the sender actually wrote survives on the
+ * resource in its own code system, so a consumer can always see what the message said.
+ */
+export const ALLERGY_ORIGINAL_CATEGORY_VALUE_MAP: CodedValueMap = valueMap(
+  "table-hl70127-to-v2-0127",
+  V2_0127_SYSTEM,
+  ["HL70127", "0127"],
+  identityTargets(V2_0127_SYSTEM, ["DA", "FA", "MA", "MC", "EA", "AA", "PA", "LA"]),
+);
+
+/**
+ * **AL1-4 original code**: IG `ConceptMap/table-hl70128-original-to-v2-0128`. A single **identity**
+ * group of all four Table 0128 codes (`SV`, `MO`, `MI`, `U` to themselves, each `equivalent`, source
+ * and target both `v2-0128`), the map behind the `alternate-codes` extension on `criticality`.
+ *
+ * Its four codes are a superset of the two {@link ALLERGY_CRITICALITY_VALUE_MAP} translates, which
+ * is the point: a `MO` that yields no criticality still yields the original severity code here.
+ */
+export const ALLERGY_ORIGINAL_CRITICALITY_VALUE_MAP: CodedValueMap = valueMap(
+  "table-hl70128-original-to-v2-0128",
+  V2_0128_SYSTEM,
+  ["HL70128", "0128"],
+  identityTargets(V2_0128_SYSTEM, ["SV", "MO", "MI", "U"]),
 );
 
 // ── Application: the $translate-shaped, additive, fail-safe engine ────────────────────────────────

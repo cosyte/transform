@@ -10,7 +10,7 @@
  * published index a reader can open themselves.
  *
  * **The set is the guide's, not this library's.** It says nothing about which of these segments the
- * transform actually reads: `AL1` is on it and is not transformed, `RXE` is off it and is read and
+ * transform actually reads: `IAM` is on it and is not transformed, `RXE` is off it and is read and
  * refused. Whether an occurrence is reported at all is decided elsewhere, by whether it reached an
  * emitted resource; this set only chooses which of the two codes the report carries.
  *
@@ -89,7 +89,7 @@ export const IG_SEGMENT_MAPS_SOURCE = "https://hl7.org/fhir/uv/v2mappings/segmen
  * @example
  * ```ts
  * import { IG_MAPPED_SEGMENT_NAMES } from "@cosyte/transform";
- * IG_MAPPED_SEGMENT_NAMES.has("AL1"); // true
+ * IG_MAPPED_SEGMENT_NAMES.has("IAM"); // true
  * IG_MAPPED_SEGMENT_NAMES.has("RXE"); // false
  * ```
  */
