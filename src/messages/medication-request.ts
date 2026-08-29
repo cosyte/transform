@@ -17,6 +17,10 @@
  * | RXR-4 Method (CWE) | `dosageInstruction.method` | {@link toFhirCodeableConcept} (structural: SNOMED target, BYO) |
  * | RXO-9 Allow Substitutions (CWE) | `substitution.allowedCodeableConcept` | {@link SUBSTITUTION_VALUE_MAP} (HL70161) |
  * | ORC-9 Date/Time of Order Event | `authoredOn` | {@link toFhirDateTime}, *IF ORC-1 = `NW`* |
+ * | TQ1-3 Repeat Pattern (RPT) | `dosageInstruction.timing` | {@link readTq1} (RPT[Timing], all-or-nothing) |
+ * | TQ1-7 / TQ1-8 Start / End date-time | `dosageInstruction.timing.repeat.boundsPeriod.start`/`.end` | {@link readTq1} |
+ * | TQ1-10 Condition text (TX) | `dosageInstruction.additionalInstruction.text` | verbatim |
+ * | TQ1-11 Text instruction (TX) | `text` (a `Narrative`, `status` `additional`) | verbatim, XML-escaped |
  * | (order message context) | `intent` = `order` | see below |
  * | (message-map wiring) | `subject` / `encounter` | the bundle's Patient / Encounter |
  *
@@ -43,6 +47,17 @@
  *   `v2-0550`). Both are additive: the derived target coding is added and the raw coding preserved; a
  *   code outside the table is preserved + flagged, never coerced. RXR-4 method's IG target is SNOMED CT
  *   (encumbered, **not bundled**), so method stays structurally carried (BYO), never SNOMED-translated.
+ * - **The schedule is fully grounded or absent and flagged.** TQ1-3 becomes at most **one**
+ *   `dosageInstruction.timing`, and only over the RPT components {@link readTq1} can ground; any
+ *   component, schedule-narrowing TQ1 field, unresolvable bound, inverted period, or second TQ1
+ *   withholds the whole `Timing` and raises a value-free issue naming what caused it. A partially
+ *   built timing is the one failure mode that matters here: it reads to the receiving system as a
+ *   complete dosing instruction, and a wrong frequency is a dosing error no re-run undoes.
+ * - **The two free-text rows go to two different places, and neither is `dosageInstruction.text`.**
+ *   The IG maps TQ1-10 to `dosageInstruction.additionalInstruction.text` and TQ1-11 to the
+ *   resource's own `text` narrative; it targets `dosageInstruction.text` from nothing at all, so
+ *   nothing is written there. Both carry the sender's words verbatim and both survive a refused
+ *   timing: a "with food" that arrived is still true when the frequency could not be grounded.
  * - **Substitution.** RXO-9 → `substitution.allowedCodeableConcept` via
  *   {@link SUBSTITUTION_VALUE_MAP} (HL70161 `N`/`G`/`T` identity into `v2-0161`). A valued RXO-9 the map
  *   has no target for is flagged and the **substitution backbone is withheld**: a substitution
@@ -75,6 +90,7 @@ import {
 } from "../terminology/concept-map.js";
 import type { TransformContext } from "../terminology/context.js";
 import { reference } from "./reference.js";
+import { narrative, type Tq1Reading } from "./tq1-timing.js";
 
 /** The `medicationrequest-status` code emitted when the IG grounds no status (an honest "not known"). */
 const STATUS_UNKNOWN = "unknown";
@@ -137,14 +153,31 @@ function doseEndpoint(
   return q.value;
 }
 
-/** Build the single `dosageInstruction` (route/site/method + dose range), or `undefined` when empty. */
+/**
+ * Build the single `dosageInstruction` (TQ1 additional instruction + timing, then route/site/method
+ * and the dose range), or `undefined` when nothing grounds one. The TQ1 parts lead because that is
+ * the R4 `Dosage` element order; when the order carries no TQ1 they are simply absent and the
+ * remaining elements keep exactly the shape and order the RXO/RXR path has always produced.
+ */
 function buildDosageInstruction(
   rxo: Segment | undefined,
   rxr: Segment | undefined,
+  tq1: Tq1Reading | undefined,
   ctx: TransformContext,
   issues: TransformIssue[],
 ): FhirComplex | undefined {
   const props: { name: string; value: FhirNode }[] = [];
+
+  if (tq1?.conditionText !== undefined) {
+    // TQ1-10 → additionalInstruction[0].text, verbatim. Emitted whether or not a timing was.
+    props.push({
+      name: "additionalInstruction",
+      value: list([complex([{ name: "text", value: primitive(tq1.conditionText) }])]),
+    });
+  }
+  if (tq1?.timing !== undefined) {
+    props.push({ name: "timing", value: tq1.timing });
+  }
 
   if (rxr !== undefined) {
     // RXR-1 route / RXR-2 site are value-translated via the license-clean HL70162 / HL70550 maps.
@@ -224,6 +257,7 @@ function buildDispenseRequest(
  * @param rxo - The `RXO` `@cosyte/hl7` `Segment` (the pharmacy order detail).
  * @param rxr - The first `RXR` route `Segment` beneath the order, when present.
  * @param orc - The `ORC` `Segment` that opened the order, when present (supplies `authoredOn`).
+ * @param tq1 - What the order's `TQ1` occurrences grounded ({@link readTq1}), when it carries any.
  * @param subjectFullUrl - The bundle's Patient fullUrl → `MedicationRequest.subject` (required 1..1).
  * @param encounterFullUrl - The bundle's Encounter fullUrl → `MedicationRequest.encounter`.
  * @param ctx - The transform context (naming-system registry + timezone policy).
@@ -231,18 +265,23 @@ function buildDispenseRequest(
  * ```ts
  * import { parseHL7 } from "@cosyte/hl7";
  * // const rxo = parseHL7(raw).segments("RXO")[0];
- * // const { value } = buildMedicationRequest(rxo, undefined, undefined, "urn:uuid:pat", undefined, {});
+ * // const { value } = buildMedicationRequest(rxo, undefined, undefined, undefined, "urn:uuid:pat", undefined, {});
  * ```
  */
 export function buildMedicationRequest(
   rxo: Segment | undefined,
   rxr: Segment | undefined,
   orc: Segment | undefined,
+  tq1: Tq1Reading | undefined,
   subjectFullUrl: string | undefined,
   encounterFullUrl: string | undefined,
   ctx: TransformContext,
 ): ConvertResult<FhirComplex> {
   const issues: TransformIssue[] = [];
+
+  // The TQ1 diagnostics are raised whatever becomes of the request: a refused schedule is news even
+  // when the order turns out to have no give code to prescribe.
+  if (tq1 !== undefined) issues.push(...tq1.issues);
 
   // RXO-1 → medicationCodeableConcept (required 1..1). Absent → nothing emittable.
   if (rxo === undefined || rxo.field(1).value === "") return { value: undefined, issues };
@@ -253,6 +292,12 @@ export function buildMedicationRequest(
   const props: { name: string; value: FhirNode }[] = [
     { name: "resourceType", value: primitive("MedicationRequest") },
   ];
+
+  // TQ1-11 → text (DomainResource.text, which precedes the resource's own elements in R4). The
+  // sender's instruction verbatim inside an XHTML div, never placed in dosageInstruction.text.
+  if (tq1?.instructionText !== undefined) {
+    props.push({ name: "text", value: narrative(tq1.instructionText) });
+  }
 
   // status (required) = unknown: the IG grounds no MedicationRequest status; an honest "not known".
   props.push({ name: "status", value: primitive(STATUS_UNKNOWN) });
@@ -279,7 +324,7 @@ export function buildMedicationRequest(
       props.push({ name: "authoredOn", value: primitive(authored.value) });
   }
 
-  const dosage = buildDosageInstruction(rxo, rxr, ctx, issues);
+  const dosage = buildDosageInstruction(rxo, rxr, tq1, ctx, issues);
   if (dosage !== undefined) props.push({ name: "dosageInstruction", value: list([dosage]) });
 
   const dispense = buildDispenseRequest(rxo, ctx, issues);

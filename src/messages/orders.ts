@@ -7,10 +7,19 @@
  * following **ORDER_DETAIL** segment is *incorporated into that same request*, so `OBR` →
  * `ServiceRequest` and `RXO` (+ `RXR` route) → `MedicationRequest`. One order group is an `ORC`
  * anchor plus at most one order-detail segment (an `OBR` for a service order, an `RXO` for a
- * pharmacy order) and the `RXR` route segments beneath a pharmacy order. This walks the segments in
+ * pharmacy order), the `RXR` route segments beneath a pharmacy order, and the `TQ1` timing segments
+ * the order's TIMING group carries. This walks the segments in
  * document order and buckets each detail segment under the most recent `ORC`: the same positional
- * grouping `@cosyte/hl7`'s `orders()` performs, done here so the raw `ORC`/`OBR`/`RXO`/`RXR`
- * `Segment`s (the request/dose fields the lean `Order` view omits) are available.
+ * grouping `@cosyte/hl7`'s `orders()` performs, done here so the raw `ORC`/`OBR`/`RXO`/`RXR`/`TQ1`
+ * `Segment`s (the request/dose/schedule fields the lean `Order` view omits) are available.
+ *
+ * **`TQ1` is bucketed positionally, like `RXR`, and that is the wiring the schedule arrives on.** No
+ * published STU1 *message* map wires a `TQ1` into a `MedicationRequest`: the ORM_O01 map carries no
+ * `TQ1` row at all and the OML_O21 map's only `TQ1` row targets a `ServiceRequest`. The `RXO`-plus-
+ * `TQ1` pairing therefore reaches this library on the segment-assembled path (`OMP_O09` and its
+ * relatives, already flagged), so this positional grouping is what pairs a timing with the order it
+ * times. Every occurrence is kept, in document order and never collapsed, because a second `TQ1` on
+ * one order is a fact the request builder has to refuse rather than a duplicate to discard here.
  *
  * A detail segment that precedes any `ORC` still anchors its own group (a bare `OBR`/`RXO` order),
  * and any `RXE` (for which the IG ships **no** segment map at all, verified against the STU1
@@ -32,6 +41,8 @@ export interface OrderGroup {
   readonly rxo: Segment | undefined;
   /** The `RXR` route segments beneath a pharmacy order (in document order). */
   readonly rxrs: readonly Segment[];
+  /** The `TQ1` timing segments this order carries (in document order); every occurrence, uncollapsed. */
+  readonly tq1s: readonly Segment[];
 }
 
 /** The result of grouping an order message: the order groups plus the count of un-mappable `RXE`s. */
@@ -47,6 +58,7 @@ interface MutableGroup {
   obr: Segment | undefined;
   rxo: Segment | undefined;
   rxrs: Segment[];
+  tq1s: Segment[];
 }
 
 /**
@@ -67,7 +79,13 @@ export function collectOrderGroups(msg: Hl7Message): OrderGrouping {
   let rxeCount = 0;
 
   const open = (): MutableGroup => {
-    const g: MutableGroup = { orc: undefined, obr: undefined, rxo: undefined, rxrs: [] };
+    const g: MutableGroup = {
+      orc: undefined,
+      obr: undefined,
+      rxo: undefined,
+      rxrs: [],
+      tq1s: [],
+    };
     groups.push(g);
     current = g;
     return g;
@@ -92,6 +110,11 @@ export function collectOrderGroups(msg: Hl7Message): OrderGrouping {
         // Route belongs to the current pharmacy order; harmless (unused) if the group has no RXO.
         if (current !== undefined) current.rxrs.push(seg);
         break;
+      case "TQ1":
+        // The TIMING group's schedule belongs to the order that is open. A TQ1 that precedes every
+        // ORC/OBR/RXO has no order to time, reaches no resource, and is reported as such.
+        if (current !== undefined) current.tq1s.push(seg);
+        break;
       case "RXE":
         // No IG segment map exists for RXE: surfaced for a flag, never assembled.
         rxeCount += 1;
@@ -102,7 +125,13 @@ export function collectOrderGroups(msg: Hl7Message): OrderGrouping {
   }
 
   return {
-    groups: groups.map((g) => ({ orc: g.orc, obr: g.obr, rxo: g.rxo, rxrs: g.rxrs })),
+    groups: groups.map((g) => ({
+      orc: g.orc,
+      obr: g.obr,
+      rxo: g.rxo,
+      rxrs: g.rxrs,
+      tq1s: g.tq1s,
+    })),
     rxeCount,
   };
 }
