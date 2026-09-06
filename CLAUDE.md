@@ -110,49 +110,21 @@ a summary.
 - **Runtime deps:** **Zero third-party.** `@cosyte/hl7` + `@cosyte/fhir` are peer deps (ADR 0001).
 - **License:** MIT.
 
-## Branch protection, in one screen
+## Branch protection
 
-Full section, with every measurement and provenance:
-`documentation/agent-notes.md#branch-protection-and-the-limits-of-this-claim`. The traps:
-
-- **Having a ruleset is not the same as being protected.** This repo had one that required a single
-  context while `ci / verify`, `ci / actionlint` and `codeql` stayed advisory on the branch that
-  publishes.
-- **One ruleset per repo means one place to audit.** Fold new contexts into `19914044`; never add a
-  second. `ncpdp` is the cautionary case: it read as "pinned" because _one_ of its rulesets was.
-- **Pin every required context to `integration_id: 15368`**, or any actor with write access can post
-  a same-named commit status and satisfy it.
-- **▶ Read context names off REAL CHECK RUNS, never off a workflow's `name:` field.** The workflow
-  named `Public-surface gate` emits the context `no-internal-refs`. Requiring a context nothing emits
-  does not fail a PR: it leaves it **pending and unmergeable forever**.
-- **Never require `scorecard / analysis` or `release / release`** (neither runs on `pull_request`;
-  requiring them strands every PR), **nor the Advanced-Security `CodeQL` check** (id `57789`): it
-  reports alert state, not that the analysis ran.
-- **A required job gates all of its steps.** Splitting a step out of `ci / verify` into its own job
-  silently un-requires it, no error and no warning. Banner on `ci.yml`.
-- **Three of the five names are set upstream, on a floating ref** (`cosyte/.github@main` defaults).
-  Change a default there and every PR here strands pending, with nothing local to warn you.
-- **▶ THE GATE CAN LEAVE THE JOB.** Requiring `ci / verify` pins that `pnpm test` runs, not _what_ it
-  runs: the `include` glob in `vitest.config.ts` **and** the `test`/`test:coverage` script bodies in
-  `package.json` both drop suites invisibly to the ruleset, including the property/fuzz suites that
-  carry the fail-safe rule. Banner on `vitest.config.ts`.
-- **The coverage gate is a thin, incidental backstop, not a real one**: a **1.29-point** margin, and
-  it can never see the loss of the _properties_ themselves.
-- **PR #10 ("Version Packages") is structurally `BLOCKED`, not stale**: Changesets opens it as
-  `github-actions[bot]` with the default `GITHUB_TOKEN`, which starts no workflow runs, and
-  `bypass_actors: []` means nobody merges past it. Escape: one empty commit onto
-  `changeset-release/main`, written out on `release.yml`.
-- **▶ NOTHING INSIDE THIS REPOSITORY CAN OBSERVE ITS OWN RULESET.** Delete it and the suite,
-  `verify.sh`, and this section all stay green. Verify from outside, and check **every** ruleset
-  returned: `gh api 'repos/cosyte/transform/rulesets?includes_parents=true'`.
-- **Recorded unproven, not fine:** no fork PR has ever run here.
+**▶ EVERY TRAP HERE, WITH ITS MEASUREMENT AND PROVENANCE:
+`documentation/agent-notes.md#branch-protection-and-the-limits-of-this-claim`. Read it before you
+touch the ruleset, a required context, or a workflow that emits one**: the one ruleset (`19914044`)
+and never a second, contexts pinned to `integration_id: 15368`, names read off real check runs and
+not off a workflow's `name:`, what must never be required, the required job that gates only the
+steps it still runs, the gate that can leave the job, the thin coverage backstop, the structurally
+`BLOCKED` release PR and its escape, and that **nothing here can observe its own ruleset**.
 
 ## Dependency watching
 
-Weekly `npm` + `github-actions` via `.github/dependabot.yml`. **Two limits leave the vendored
-`@cosyte/hl7` / `@cosyte/fhir` tarballs, the versions the tests actually exercise, unwatched on both
-routes**, so they stay a `pnpm vendor:refresh` job by hand:
-`documentation/agent-notes.md#dependency-watching`.
+Weekly `npm` + `github-actions` via `.github/dependabot.yml`. **Two limits leave a vendored tarball,
+the version the tests actually exercise, unwatched on both routes**, so it stays a by-hand
+`pnpm vendor:refresh` job, and WHICH sibling: `documentation/agent-notes.md#dependency-watching`.
 
 ## Engineering Guardrails
 
@@ -226,6 +198,9 @@ Measurements, the grid, the refuters, and the `--staged` ARGV traps (`--diff-fil
   `EMAIL` is FILE-blind. **Named, never scrubbed.**
 - **An exemption is a LITERAL PATH, never a predicate, and reaches the ALL route only**: the vendored
   gzip tarballs are the whole list, and `<path>` still reads them.
+- **▶ `--allow-fixture` IS RECORDED AND REFUSED, NEVER HONORED**: unlogged, rejected before a target
+  is read; logged, still `2` after reporting every target it did not withdraw. **Exit 0 in NO mode.**
+  Only the allow-list can clear one: `documentation/agent-notes.md#the-bypass-recorded-and-refused`.
 - **Exit `2` is every failure to complete; `1` is HITS FOUND. A regular-file root is `2` HERE,
   derived from this contract; siblings differ, never port one.** A non-directory root refuses first,
   because **`existsSync` FOLLOWS**: a dangling one printed clean over an off-disk corpus. An

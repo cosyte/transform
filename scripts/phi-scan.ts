@@ -190,8 +190,8 @@
  *   allow-list (`scripts/phi-allow-list.txt`): a positive declaration that a
  *   fixture's identifiers are fake. Byte-strict formats cannot carry an inline
  *   `# synthetic: true` header, so the allow-list is the proven substitute
- *   (same approach every sibling uses). A whole-file bypass needs
- *   `--allow-fixture <path>` AND a logged entry in `phi-scan-overrides.md`.
+ *   (same approach every sibling uses). It is the ONLY instrument that can
+ *   subtract a detection and still leave a run able to report clean.
  *
  *   ▶ AN ALLOW-LIST ENTRY IS GLOBAL AND ROUTE-BLIND. It clears that literal on
  *     the commit-blocking `--staged` route too, and on `<path>`. Adding one is
@@ -200,18 +200,52 @@
  *     out by name in `scripts/phi-allow-list.txt`.
  * ===========================================================================
  *
+ * ===========================================================================
+ * ██  `--allow-fixture` IS RECORDED AND REFUSED, NEVER HONOURED  ████████████
+ * ===========================================================================
+ *
+ *   A WHOLE-FILE BYPASS STILL EXISTS AND STILL NEEDS ITS LOGGED `### <path>`
+ *   ENTRY IN `phi-scan-overrides.md`. What it buys is an audit trail, and
+ *   NOTHING ELSE: the flag CANNOT REACH EXIT 0 IN ANY MODE. A run carrying one
+ *   reads and reports every target it did not withdraw, and then exits 2, the
+ *   could-not-complete code, naming what it withdrew.
+ *
+ *   ▶ WHY A SUBTRACTION CANNOT BE ALLOWED TO REPORT CLEAN. A withdrawn target
+ *   is a file the run ENUMERATED and then never opened, and a scan that did not
+ *   open a file has no verdict about it. Honouring the bypass left no trace in
+ *   the exit code at all, so the SAME argv over a corpus whose only violator is
+ *   withdrawn reported clean and exited 0, which is the false-clean shape this
+ *   whole scanner exists to refuse. The refusal is the same answer the walk
+ *   already gives for a tracked path it never opened and for an entry that is
+ *   not a regular file: there is something here the scan cannot account for.
+ *
+ *   ▶ IT KEYS ON THE FLAG, NOT ON WHAT THE FLAG HAPPENED TO REMOVE. A bypass
+ *   that named a path this run never enumerated is refused too: whether a
+ *   subtraction bit depends on the route and the corpus, and a rule that fires
+ *   only sometimes is one a caller cannot rely on. NO ROUTE THAT PASSES NO
+ *   `--allow-fixture` CHANGES: the pre-commit hook is `phi-scan --staged` and
+ *   the sweep CI runs is `phi-scan`, and both still exit 0 clean, 1 on hits.
+ *
+ *   ▶ AND THE DETECTION SIDE IS UNTOUCHED. Nothing here narrows what is read or
+ *   what is reported. To declare a genuinely-synthetic value, use the
+ *   allow-list; there is no longer any argv that silences a whole file and
+ *   still lets the run come back clean.
+ * ===========================================================================
+ *
  * Modes:
  *   --staged                 - scan only files staged in `git diff --cached`
- *   --allow-fixture <path>   - bypass one path; rejected unless logged in
- *                              phi-scan-overrides.md
+ *   --allow-fixture <path>   - withdraw one path from this run; rejected unless
+ *                              logged in phi-scan-overrides.md, and REFUSES the
+ *                              run (exit 2) even when it is logged
  *   <path> [<path>...]       - scan specific paths
  *   (no args)                - scan all in-scope working-tree files
  *
  * Exit codes: 0 (clean), 1 (hits found), 2 (could not complete: a bad
- * invocation, or an in-scope entry the scan cannot account for). EVERY failure
- * to complete is 2, including one thrown before the scan starts: an uncaught
- * throw exits 1, which is this scanner's code for HITS FOUND, so the two used to
- * be indistinguishable on the wrong side. See `run()` at the foot of the file.
+ * invocation, an in-scope entry the scan cannot account for, or a target
+ * withdrawn by `--allow-fixture`). EVERY failure to complete is 2, including
+ * one thrown before the scan starts: an uncaught throw exits 1, which is this
+ * scanner's code for HITS FOUND, so the two used to be indistinguishable on the
+ * wrong side. See `run()` at the foot of the file.
  *
  * ---------------------------------------------------------------------------
  * AN IN-SCOPE ENTRY THAT IS NOT A REGULAR FILE REFUSES THE SCAN (exit 2), ON ALL
@@ -530,8 +564,8 @@ function parseArgs(argv: string[]): Args {
 
   // An `--allow-fixture` path is a *subtractive* acknowledgement on a broader
   // scan, never a scan target on its own, so it also seeds the positional path
-  // set. That makes `--allow-fixture X` mean "scan X, but allow it" (proving the
-  // override gate actually subtracts a scanned target) instead of a silent no-op.
+  // set. That makes `--allow-fixture X` mean "enumerate X, then withdraw it"
+  // instead of a silent no-op, which is the state `main` then refuses over.
   const scanPaths = paths.length > 0 ? paths : [...allowFixtures];
 
   let mode: Args["mode"];
@@ -642,6 +676,16 @@ function loadOverrideLog(): Set<string> {
   return out;
 }
 
+/**
+ * The FIRST of the two refusals a `--allow-fixture` meets, and the one that
+ * fires earliest: an UNLOGGED bypass never reaches the corpus at all.
+ *
+ * It is not made redundant by the second one (`reportWithdrawal`, which refuses
+ * the run whether or not the bypass was logged). This one keeps the audit trail
+ * mandatory: the log entry is what a reader has afterwards to see which path was
+ * withdrawn and who signed for it, and a refusal that arrives only at the end of
+ * the run would let an unlogged bypass read a whole corpus first.
+ */
 function validateAllowFixtures(allowFixtures: string[]): void {
   if (allowFixtures.length === 0) return;
   const overrides = loadOverrideLog();
@@ -1506,9 +1550,15 @@ function scanTarget(target: Target, allow: AllowList, hits: Hit[]): void {
 // Reporting
 // ---------------------------------------------------------------------------
 
-function report(hits: Hit[]): void {
+/**
+ * `announceClean` is false on a run that is about to refuse for a reason the
+ * hit list cannot express, and it exists so that "OK" NEVER prints on a run that
+ * is not OK. A withdrawn target leaves nothing in `hits` (it was never read), so
+ * without this the refusal below would arrive underneath the word OK.
+ */
+function report(hits: Hit[], announceClean: boolean): void {
   if (hits.length === 0) {
-    process.stdout.write("[phi-scan] OK: no hits\n");
+    if (announceClean) process.stdout.write("[phi-scan] OK: no hits\n");
     return;
   }
   const byPath = new Map<string, Hit[]>();
@@ -1527,8 +1577,40 @@ function report(hits: Hit[]): void {
   }
   process.stderr.write(
     `[phi-scan] ${String(hits.length)} hit(s) across ${String(byPath.size)} file(s). ` +
-      `If a value is genuinely synthetic, declare it in scripts/phi-allow-list.txt OR ` +
-      `run with --allow-fixture <path> AND log it in phi-scan-overrides.md.\n`,
+      `If a value is genuinely synthetic, declare it in scripts/phi-allow-list.txt. ` +
+      `--allow-fixture is not the way out: a withdrawn target refuses the run.\n`,
+  );
+}
+
+/**
+ * The refusal a `--allow-fixture` earns once it is past the override log.
+ *
+ * BOTH LISTS ARE PRINTED, AND THE SECOND IS NOT AN EDGE CASE. A bypass whose
+ * path matched no target of this run subtracted nothing, and it is refused on
+ * the same terms: whether a withdrawal actually bit is a property of the route
+ * and of the corpus, so a rule that fired only when it bit would be one a caller
+ * could not rely on. Naming it separately is what keeps the two states legible.
+ *
+ * Only repo-relative paths are named, which is the same locus every hit already
+ * carries. Nothing read out of a target reaches this message.
+ */
+function reportWithdrawal(withdrawn: string[], unmatched: string[]): void {
+  process.stderr.write(
+    `[phi-scan] REFUSING the scan: --allow-fixture is recorded and refused, never honoured.\n`,
+  );
+  if (withdrawn.length > 0) {
+    for (const p of withdrawn) {
+      process.stderr.write(`  withdrawn after being enumerated, so never read: ${p}\n`);
+    }
+  }
+  for (const p of unmatched) {
+    process.stderr.write(`  named by --allow-fixture, but no target of this run: ${p}\n`);
+  }
+  process.stderr.write(
+    `[phi-scan] Every target this run did not withdraw was read and reported above. A file the ` +
+      `scan never opened has no clean verdict, so this run could not complete. Declare a ` +
+      `genuinely-synthetic value in scripts/phi-allow-list.txt instead; the logged entry in ` +
+      `phi-scan-overrides.md buys an audit trail, never a pass.\n`,
   );
 }
 
@@ -1565,7 +1647,19 @@ function main(): number {
     throw err;
   }
 
-  targets = targets.filter((t) => !allowed.has(t.path));
+  // THE WITHDRAWAL IS RECORDED HERE AND ANSWERED AFTER THE SCAN, NOT BEFORE IT.
+  // The order is the contract: every target this run did not withdraw is still
+  // read and still reported, and only then does the run refuse. Refusing up
+  // front would turn a bypass into a way of stopping the scanner from ever
+  // reading the corpus, which is a worse gate than the one being fixed.
+  const withdrawn: string[] = [];
+  targets = targets.filter((t) => {
+    if (!allowed.has(t.path)) return true;
+    withdrawn.push(t.path);
+    return false;
+  });
+  const withdrawnSet = new Set(withdrawn);
+  const unmatched = [...allowed].filter((p) => !withdrawnSet.has(p));
 
   const hits: Hit[] = [];
   for (const t of targets) {
@@ -1580,7 +1674,11 @@ function main(): number {
     }
   }
 
-  report(hits);
+  report(hits, allowed.size === 0);
+  if (allowed.size > 0) {
+    reportWithdrawal(withdrawn, unmatched);
+    return 2;
+  }
   return hits.length === 0 ? 0 : 1;
 }
 

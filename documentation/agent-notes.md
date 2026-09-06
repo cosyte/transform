@@ -463,6 +463,34 @@ are refused there too. It used to skip a regular `*.md` before reading a byte of
 exemption is gone** and the removal is purely additive (see the scope section below). `src/**.ts`
 was the **`--staged`** route's boundary, not the walk's, and that suffix bound is gone too.
 
+### The bypass, recorded and refused
+
+**▶ `--allow-fixture <path>` IS RECORDED AND REFUSED, NEVER HONORED, AND THAT IS TWO RULES.** An
+**unlogged** bypass is rejected (exit **2**) before any target is read, so the `### <path>` entry in
+`phi-scan-overrides.md` stays mandatory and the audit trail cannot be skipped. A **logged** bypass
+buys that trail and nothing else: the run reads and reports every target it did not withdraw, and
+then exits **2** naming what it withdrew. **The flag cannot reach exit 0 in any mode.**
+
+**Why a subtraction must not be allowed to report clean.** A withdrawn target is a file the run
+ENUMERATED and then never opened, and a scan that did not open a file has no verdict about it. While
+the flag was honored the withdrawal left **no trace in the exit code at all**, so the same argv over
+a corpus whose only violator was withdrawn printed `OK: no hits` and exited **0**. That is the same
+false-clean shape as the walk root that had never existed, one flag lower down. The refusal is the
+answer this scanner already gives for a tracked path it never opened and for an entry that is not a
+regular file: there is something here the scan cannot account for.
+
+**▶ IT KEYS ON THE FLAG, NOT ON WHAT THE FLAG HAPPENED TO REMOVE.** A bypass naming a path this run
+never enumerated subtracted nothing and is refused on the same terms, because whether a withdrawal
+BITES is a property of the route and of the corpus, and a rule that fired only when it bit would be
+one a caller could not rely on. The two states are named apart in the message, never merged.
+
+**▶ NO ROUTE THAT PASSES NO `--allow-fixture` MOVED.** The pre-commit hook is `phi-scan --staged`
+and the sweep CI runs is `phi-scan`; both still exit `0` clean and `1` on hits, and **nothing about
+what is detected changed**. `scripts/phi-allow-list.txt` is now the only instrument that can
+subtract a detection and still leave a run able to report clean. The suite pins the refusal, the
+unlogged refusal firing FIRST (observed by the violator's text being absent from the output, never
+by matching a message), and both unchanged routes as controls.
+
 ### The scan scope is the tracked corpus, and it is reconciled against git
 
 **▶ THE HEADLINE, MEASURED ON THIS REPOSITORY AT `daf75c3` RATHER THAN PORTED FROM A SIBLING.** Both

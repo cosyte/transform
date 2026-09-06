@@ -147,6 +147,127 @@ describe("phi-scan starter: the override-log gate", () => {
 });
 
 // ---------------------------------------------------------------------------
+// A LOGGED bypass is RECORDED AND REFUSED, never honoured
+// ---------------------------------------------------------------------------
+//
+// The state these cases pin: a run that ENUMERATES a target and then WITHDRAWS
+// it has not scanned that file, so it has no clean verdict about it. Measured on
+// this scanner before the change, the withdrawal left no trace in the exit code
+// at all: the run returned 0 when nothing else hit, and the SAME argv over a
+// corpus whose only violator was withdrawn reported "OK: no hits" and exited 0.
+//
+// The cases run against a THROWAWAY repository so the override log can name a
+// path, which the committed `phi-scan-overrides.md` deliberately never does.
+
+/** The log shape `loadOverrideLog` reads, written into a throwaway repo. */
+function writeOverrideLog(root: string, paths: string[]): void {
+  const entries = paths
+    .map((p) => `\n### ${p}\n\n- **Date:** test\n- **Reason:** test fixture\n`)
+    .join("");
+  writeFileSync(
+    join(root, "phi-scan-overrides.md"),
+    `# phi-scan bypass log\n\n## Entries\n${entries}`,
+  );
+}
+
+describe("phi-scan: a logged --allow-fixture is recorded and refused, never honoured", () => {
+  it("reads and reports the target it did NOT withdraw, then exits 2 (not 0, not 1)", () => {
+    // The graded shape exactly: two named targets, one of them withdrawn by a
+    // LOGGED bypass. The violator's hit text still has to reach the output, or
+    // the refusal could be one that arrived before anything was read.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    writeFileSync(join(root, "src", "decoy.ts"), "export const a = 1;\n");
+    writeOverrideLog(root, ["src/decoy.ts"]);
+
+    const r = runIn(root, ["src/violator.ts", "src/decoy.ts", "--allow-fixture", "src/decoy.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("src/violator.ts");
+    expect(r.stderr).toContain(SSN);
+    expect(r.stderr).toContain("src/decoy.ts");
+    expect(r.stderr).toMatch(/recorded and refused/);
+    expect(r.stdout).not.toMatch(/OK/);
+  });
+
+  it("the same argv whose ONLY violator is withdrawn does not report clean (a 0 -> 2)", () => {
+    // The false clean this closes, in one case: withdraw the one file carrying
+    // the payload and the run used to print "OK: no hits" and exit 0 over it.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    writeOverrideLog(root, ["src/violator.ts"]);
+
+    const r = runIn(root, ["src/violator.ts", "--allow-fixture", "src/violator.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("src/violator.ts");
+    expect(r.stdout).not.toMatch(/OK/);
+    expectNoPhi(r.stderr);
+  });
+
+  it("refuses a logged bypass that withdrew nothing, and says which state it was", () => {
+    // Whether a withdrawal BIT depends on the route and the corpus. A rule that
+    // fired only when it bit would be one a caller could not rely on, so the
+    // flag is what the refusal keys on, and the two states are named apart.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    git(root, ["add", "src/violator.ts"]);
+    writeOverrideLog(root, ["src/not-staged.ts"]);
+
+    const r = runIn(root, ["--staged", "--allow-fixture", "src/not-staged.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toContain("no target of this run");
+    expect(r.stderr).toContain("src/not-staged.ts");
+    // The staged violator was still read and still reported: the refusal comes
+    // after the scan, never instead of it.
+    expect(r.stderr).toContain("src/violator.ts");
+    expect(r.stderr).toContain(SSN);
+  });
+
+  it("the UNLOGGED refusal still fires first, before any target is read", () => {
+    // Not made redundant by the refusal above: the log entry is the audit trail,
+    // so an unlogged bypass must not get to read a corpus first. Observed rather
+    // than read off the message: the violator's text is absent from the output.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    writeFileSync(join(root, "src", "decoy.ts"), "export const a = 1;\n");
+    writeOverrideLog(root, ["src/some-other-file.ts"]);
+
+    const r = runIn(root, ["src/violator.ts", "src/decoy.ts", "--allow-fixture", "src/decoy.ts"]);
+    expect(r.code, `stderr: ${r.stderr}`).toBe(2);
+    expect(r.stderr).toMatch(/phi-scan-overrides\.md/);
+    expect(r.stderr).not.toContain(SSN);
+  });
+
+  it("CONTROL: with no --allow-fixture the clean route is still 0 and the hits route still 1", () => {
+    // The pre-commit hook passes no bypass, so this is the case that must not
+    // move. Both routes, in one repo, one run apart.
+    const root = makeRepo();
+    writeFileSync(join(root, "src", "decoy.ts"), "export const a = 1;\n");
+
+    const clean = runIn(root, ["src/decoy.ts"]);
+    expect(clean.code, `stderr: ${clean.stderr}`).toBe(0);
+    expect(clean.stdout).toMatch(/OK: no hits/);
+
+    writeFileSync(join(root, "src", "violator.ts"), SYNTHETIC_PHI);
+    const hits = runIn(root, ["src/violator.ts", "src/decoy.ts"]);
+    expect(hits.code, `stderr: ${hits.stderr}`).toBe(1);
+    expect(hits.stderr).toContain("src/violator.ts");
+    expect(hits.stderr).toContain(SSN);
+  });
+
+  it("CONTROL: the all-mode sweep and the --staged hook are untouched by this rule", () => {
+    // The whole-corpus routes, with no bypass on either: clean stays clean.
+    const root = makeRepo();
+    const all = runIn(root, []);
+    expect(all.code, `stderr: ${all.stderr}`).toBe(0);
+    expect(all.stdout).toMatch(/OK: no hits/);
+
+    git(root, ["add", "src/ordinary.ts"]);
+    const staged = runIn(root, ["--staged"]);
+    expect(staged.code, `stderr: ${staged.stderr}`).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Entries that are not regular files, on BOTH enumerating routes
 // ---------------------------------------------------------------------------
 //
