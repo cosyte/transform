@@ -1,0 +1,11 @@
+---
+"@cosyte/transform": patch
+---
+
+Refuse a PHI scan that withdrew a target it had enumerated. `scripts/phi-scan.ts` still requires a whole-file `--allow-fixture <path>` bypass to carry a logged `### <path>` entry in `phi-scan-overrides.md`, and an unlogged one is still rejected before any target is read. What changes is what a logged one buys: an audit trail, and nothing else. The run reads and reports every target it did not withdraw, and then exits `2`, the could-not-complete code, naming what it withdrew. The flag can no longer reach exit `0` in any mode.
+
+The reason is a false clean that the exit code could not express. A withdrawn target is a file the run enumerated and then never opened, and a scan that did not open a file has no verdict about it. While the bypass was honoured the withdrawal left no trace in the exit code at all, so the same invocation over a corpus whose only violator was withdrawn reported no hits and exited `0`. Nothing about what the scanner detects is narrowed, and no route that passes no bypass moves: the pre-commit hook and the whole-corpus sweep still exit `0` clean and `1` on hits, and the suite pins both as controls alongside the new refusal.
+
+The dependency override for `js-yaml` moves to the range the advisory now covers, `>=4.0.0 <4.3.0` resolved at `4.3.0`, and the superseded entry beside it is removed rather than left as a second answer to the same question. Install hardening is declared at the repository root, a 24 hour cooldown on newly published versions and a trust policy that fails an install when a package's trust evidence is weaker than an earlier version of the same package. Those two settings need a package manager that knows them, so the pinned `pnpm` is raised to the version that does; without that raise the file would have decorated rather than defended, and the pinned one refused to install with the file present at all.
+
+The agent instruction file is brought back under its declared size by pointing at the long form it already carries in `documentation/agent-notes.md`, which gains the bypass contract in full. No guidance is dropped, every required heading stays, and the checked contract between the two files stays green.

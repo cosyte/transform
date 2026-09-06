@@ -1,0 +1,26 @@
+# INSTALL HARDENING: the two supply-chain settings every @cosyte/* package repo owes.
+#
+# They live here rather than in `.npmrc` because this file is the settings file pnpm documents for
+# them, and `.npmrc` is not among the routes pnpm names for configuring either one.
+#
+# THIS REPOSITORY IS NOT A WORKSPACE, and the absence of a `packages:` key is deliberate: a
+# single-package repo uses this file for settings and declares no members. Adding a `packages:` key
+# here would turn one package into a workspace root, which is a different repository shape.
+#
+# BOTH CONTROLS SHIP SWITCHED OFF, so deleting either line does not fall back to a weaker setting,
+# it turns the control off: the cooldown defaults to 0 and the trust policy to `off`.
+#
+# ▶ AND A KEY ONLY DEFENDS AT A pnpm THAT KNOWS IT. `minimumReleaseAge` arrived in pnpm 10.16.0 and
+# `trustPolicy` in 10.21.0; an older pnpm ignores the key it does not know, silently, which is a
+# settings file that decorates rather than defends. `packageManager` in `package.json` is what
+# decides which pnpm runs, so read that line before claiming either setting is in force here.
+
+# 1440 minutes = 24 hours. pnpm's own rationale: "Since malware is usually detected quickly,
+# delaying updates by 24 hours will most likely prevent you from installing a bad version"
+# (https://pnpm.io/supply-chain-security).
+minimumReleaseAge: 1440
+
+# Fail the install when a package's trust evidence is weaker than that of an earlier-published
+# version of the same package. Exemptions would go in `trustPolicyExclude`, one entry per line,
+# each with a "# reason: ..." comment above it saying why the hole is acceptable. There are none.
+trustPolicy: no-downgrade
