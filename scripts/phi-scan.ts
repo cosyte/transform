@@ -694,7 +694,11 @@ function validateAllowFixtures(allowFixtures: string[]): void {
     const lines = missing.map((p) => `  - ${p}`).join("\n");
     throw new InvocationError(
       `--allow-fixture rejected: no matching entry in phi-scan-overrides.md for:\n${lines}\n` +
-        `Add a "### <path>" subsection to phi-scan-overrides.md and commit it.`,
+        `Adding a "### <path>" subsection there and committing it is MANDATORY, and it buys an ` +
+        `audit trail rather than a pass: --allow-fixture is recorded and refused, never ` +
+        `honoured, so this same argv still exits 2 once the entry is logged. Only ` +
+        `scripts/phi-allow-list.txt can declare a genuinely-synthetic value and still leave a ` +
+        `run able to report clean.`,
     );
   }
 }

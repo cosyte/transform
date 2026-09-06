@@ -235,6 +235,13 @@ describe("phi-scan: a logged --allow-fixture is recorded and refused, never hono
     expect(r.code, `stderr: ${r.stderr}`).toBe(2);
     expect(r.stderr).toMatch(/phi-scan-overrides\.md/);
     expect(r.stderr).not.toContain(SSN);
+    // The instruction it gives has to disclose where it leads: an entry in the
+    // override log is the mandatory audit trail and NOT a pass, so a caller who
+    // follows this message verbatim meets the second refusal and the same exit
+    // code. A remedy that reads as an offer of a bypass is the shape the whole
+    // "recorded and refused" contract exists to remove from committed prose.
+    expect(r.stderr).toMatch(/recorded and refused/);
+    expect(r.stderr).toMatch(/still exits 2/);
   });
 
   it("CONTROL: with no --allow-fixture the clean route is still 0 and the hits route still 1", () => {
