@@ -319,6 +319,72 @@ describe("an RPT component the published map cannot ground", () => {
     expect(present(dosage(result), "timing")).toBe(false);
     expect(issuesAt(result, "TQ1.3")[0]?.code).toBe(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED);
   });
+
+  it("refuses a second VALUED repetition however few components it carries", () => {
+    // The refusal is about a second schedule arriving, not about a second pattern code: a
+    // repetition carrying only a period and a unit is a second repeat this Timing cannot hold.
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: "Q4H~^^^^6^h" }));
+    expect(present(dosage(result), "timing")).toBe(false);
+    expect(issuesAt(result, "TQ1.3")[0]?.code).toBe(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED);
+  });
+});
+
+// ── criterion 1: a TQ1-3 repetition that carries no value is not a second repeat pattern ─────────
+
+describe("a TQ1-3 whose only valued repetition is the repeat pattern", () => {
+  // TQ1-3 is `0..-1`, so its wire text can carry repetition separators around content that is one
+  // schedule: a trailing `~`, a leading one, and a second repetition the sender explicitly nulled.
+  // Counting the raw repetitions read all three as "two repeat patterns" and withheld a schedule
+  // the message had grounded completely, which is the one field left in this module where a
+  // structural empty was read as content. AC1's trigger is met by every row below: RPT.1 = Q4H is
+  // the only valued component anywhere in the field.
+  const NULL = '""';
+
+  for (const [label, field3] of [
+    ["a trailing repetition separator", "Q4H~"],
+    ["a leading repetition separator", "~Q4H"],
+    ["a second repetition the sender nulled", `Q4H~${NULL}`],
+    ["a run of them on both sides", `~~Q4H~${NULL}~`],
+  ] as const) {
+    it(`carries the schedule beside ${label}`, () => {
+      const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: field3 }));
+      const timing = at(dosage(result), "timing");
+      expect(value(timing, "code.coding.system")).toBe(
+        "http://terminology.hl7.org/CodeSystem/v2-0335",
+      );
+      expect(value(timing, "code.coding.code")).toBe("Q4H");
+      expect(names(timing)).toEqual(["code"]);
+      expect(tq1Issues(result)).toEqual([]);
+    });
+  }
+
+  it("reads every component from the valued repetition, not from wire position zero", () => {
+    // `~Q4H^^^^6^h^^AC` puts the whole expressible set in repetition 1. Reading components off
+    // repetition 0 would have found an empty one and grounded nothing, so this pins WHICH
+    // repetition the RPT.1/5/6/8 reads walk, not just how many of them there are.
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: `~${RPT_EXPRESSIBLE}` }));
+    const timing = at(dosage(result), "timing");
+    expect(value(timing, "code.coding.code")).toBe("Q4H");
+    expect(value(timing, "repeat.period")).toBe("6");
+    expect(value(timing, "repeat.periodUnit")).toBe("h");
+    expect(value(timing, "repeat.when.0")).toBe("AC");
+    expect(tq1Issues(result)).toEqual([]);
+  });
+
+  it("still refuses a component it cannot ground when that repetition arrived second", () => {
+    // The refusals travel with the reads: an inexpressible RPT.2 in the valued repetition withholds
+    // the schedule exactly as it does in the first one, so nothing is waved through by arriving
+    // after a separator.
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: "~Q4H^CE" }));
+    expect(present(dosage(result), "timing")).toBe(false);
+    expect(issuesAt(result, "TQ1.3.2")[0]?.code).toBe(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED);
+  });
+
+  it("grounds no timing and raises nothing when every repetition is empty", () => {
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: `~${NULL}~` }));
+    expect(present(dosage(result), "timing")).toBe(false);
+    expect(tq1Issues(result)).toEqual([]);
+  });
 });
 
 // ── criterion 3, continued: an RPT.5 / RPT.6 shape a FHIR Timing cannot legally hold ─────────────
@@ -608,6 +674,39 @@ describe("TQ1-10 condition text and TQ1-11 text instruction", () => {
         `<div xmlns="http://www.w3.org/1999/xhtml">${escapeXml(raw)}</div>`,
       );
     }
+  });
+
+  it("carries a row that is nothing BUT raw delimiters, which are content by the same rule", () => {
+    // The rule above has no exception for a field where the delimiters are all there is. `^leading`
+    // and `2 tabs^` are carried whole, so `^` is too: it is the same characters with the letters
+    // removed, and it is what the sender put on the wire. Asking a TX row the COMPOSITE valued
+    // question ("is some subcomponent non-empty") answered no for every row here, because raw
+    // delimiters produce nothing but empty positions, and the row was dropped writing no element
+    // and raising no diagnostic, which is the one outcome this module treats as a defect.
+    for (const raw of ["^", "&", "~", "^^", "&&", "^&~", "~^&"]) {
+      const result = pharmacyOrder(seg("TQ1", { 1: "1", 10: raw, 11: raw }));
+      expect(value(dosage(result), "additionalInstruction.0.text")).toBe(raw);
+      expect(value(medication(result), "text.div")).toBe(
+        `<div xmlns="http://www.w3.org/1999/xhtml">${escapeXml(raw)}</div>`,
+      );
+      expect(tq1Issues(result)).toEqual([]);
+    }
+  });
+
+  it("flags a delimiter-only row on the service path, where neither row has a target", () => {
+    // One valued test, one answer, both arms: the arm that PLACES a row and the arm that only
+    // reports it dropped must never disagree about whether the sender sent one.
+    const svc = serviceOrder(OBR_NO_OCCURRENCE, seg("TQ1", { 1: "1", 10: "^", 11: "^&~" }));
+    expect(issuesAt(svc, "TQ1.10")[0]?.code).toBe(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED);
+    expect(issuesAt(svc, "TQ1.11")[0]?.code).toBe(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED);
+  });
+
+  it("reports a TQ1 whose only content was a delimiter-only row as reached", () => {
+    // It contributed an element, so AC13's first clause applies: the segment is not unread.
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 10: "^&~" }));
+    expect(
+      result.issues.filter((i) => i.code === ISSUE_CODES.TRANSFORM_SEGMENT_NOT_EMITTED),
+    ).toEqual([]);
   });
 
   it("sends the two rows to their two distinct targets at once", () => {

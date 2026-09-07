@@ -58,11 +58,20 @@ const freeTextToken = fc
   )
   .map(([head, delim, tail]) => `${SENTINEL}${head}${delim}${tail}`);
 /**
- * The same, plus the HL7 **explicit null** (`""`): the wire saying a field carries no value. It is
- * generated here because it is the one free-text input that must reach NO resource element at all,
- * and it carries no sentinel, so only the null-marker invariant below can see it.
+ * A `TX` row whose WHOLE content is raw v2 delimiters. It carries no sentinel deliberately: every
+ * one of these produces nothing but empty component and subcomponent positions, so the composite
+ * "is some subcomponent non-empty" question answers no for all of them while the datatype's own
+ * rule calls them content. They must reach the resource exactly as `^leading` does.
  */
-const optFreeText = fc.option(fc.oneof(freeTextToken, fc.constant('""')), { nil: undefined });
+const delimiterOnlyText = fc.constantFrom("^", "&", "~", "^^", "&&", "^&~", "~^&");
+/**
+ * The three of them together, plus the HL7 **explicit null** (`""`): the wire saying a field carries
+ * no value. It is generated because it is the one free-text input that must reach NO resource
+ * element at all, and it carries no sentinel, so only the null-marker invariant below can see it.
+ */
+const optFreeText = fc.option(fc.oneof(freeTextToken, fc.constant('""'), delimiterOnlyText), {
+  nil: undefined,
+});
 const sexCode = fc.constantFrom("F", "M", "O", "U", "A", "N", "ZZ", "", "X");
 const classCode = fc.constantFrom("I", "O", "E", "P", "R", "B", "C", "N", "U", "Z", "");
 const trigger = fc.constantFrom("A01", "A02", "A05", "A08", "A31", "A40");
@@ -321,7 +330,8 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
     // and unpublished repeat-pattern codes, in-binding and out-of-binding period units, both
     // HL70528 groups under a declared bound table and under a foreign one, a non-conformant twelfth
     // RPT component, faithful and unfaithful decimals, valid/invalid/inverted bounds, the six
-    // schedule-narrowing fields, and free text carrying the leak sentinel into the two rows that
+    // schedule-narrowing fields, every repetition shape TQ1-3's `0..-1` cardinality produces, and
+    // free text carrying the leak sentinel (or nothing but raw delimiters) into the two rows that
     // DO reach the resource. What must hold is the same four invariants: never throw, only
     // registered value-free codes, references resolve, and every emitted resource is valid.
     const patternCode = fc.constantFrom(
@@ -343,6 +353,10 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
     // A twelfth RPT component: non-conformant (RPT publishes eleven), and still content the wire
     // carried, so it must be flagged rather than read as absent.
     const twelfth = fc.constantFrom("", "ZZZ");
+    // How the generated RPT sits inside TQ1-3, which is `0..-1`. A trailing separator, a leading
+    // one and an explicitly nulled second repetition all arrive in real traffic and none of them is
+    // a second schedule; `~QHS` is one, and must still withhold the whole Timing.
+    const repetitionShape = fc.constantFrom("one", "trailing", "leading", "nulled", "second");
     // "-6" and the independent "" on units cover the two shapes R4's tim-5 and tim-2 reject: a
     // negative period, and a period or a unit arriving without its pair. "-1e-400" and "-0" are the
     // negatives no double distinguishes from zero, so a numeric sign test lets them through.
@@ -364,6 +378,7 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
       event: eventCode,
       eventSystem: codingSystem,
       twelfth,
+      repetitionShape,
       explicitTime: narrowing,
       start: stamp,
       end: stamp,
@@ -402,12 +417,19 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
             "",
             t.twelfth,
           ].join("^");
+          const field3 = {
+            one: rpt,
+            trailing: `${rpt}~`,
+            leading: `~${rpt}`,
+            nulled: `${rpt}~""`,
+            second: `${rpt}~QHS`,
+          }[t.repetitionShape];
           lines.push(
             [
               "TQ1",
               "1",
               t.quantity,
-              rpt,
+              field3,
               t.explicitTime,
               "",
               "",

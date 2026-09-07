@@ -154,7 +154,8 @@ carried verbatim to the two different targets the guide names, `dosageInstructio
 and the resource's own `text` narrative. Both are `TX`, a v2 primitive with no component structure,
 so they are read **whole**: a raw `^`, `&` or `~` inside a free-text instruction is content, and a
 taper written `2 tabs^then 1 tab` arrives with its second half intact rather than truncated at the
-first delimiter, right down to a delimiter the instruction ends on. Only a row that carries a value
+first delimiter, right down to a delimiter the instruction ends on, or a row that is nothing but
+delimiters. Only a row that carries a value
 is written, though: an HL7 explicit null (`""`) says the field carries none, so it reaches no
 element and puts no marker in one, and no diagnostic either, because nothing was dropped. A row that
 _did_ carry content the projection resolves away entirely (display markup alone), or a `TQ1-11` of
@@ -165,8 +166,10 @@ for (at any position, including one past the eleven the datatype defines), a cod
 published table or sent under a coding system that is not that table, a value that would need a unit
 rescale or an invented date, a field that narrows the schedule (`TQ1-4`, `TQ1-5`, `TQ1-6`, `TQ1-12`,
 `TQ1-13`, `TQ1-14`), an unusable or inverted bound, a period quantity arriving
-without its units or written with a minus sign (R4's `tim-2` and `tim-5` reject both), or a second `TQ1` on one
-order, each withholds the whole `Timing` and raises a value-free diagnostic naming the cause. A
+without its units or written with a minus sign (R4's `tim-2` and `tim-5` reject both), or a second
+`TQ1` on one order or a second repeat pattern in one `TQ1-3` (a repetition that carries no value is
+not one: `Q4H~` sends one schedule, and it is read wherever in the field it sat),
+each withholds the whole `Timing` and raises a value-free diagnostic naming the cause. A
 half-built timing would read to the receiving system as a complete dosing instruction, which is the
 one outcome this library will not produce.
 

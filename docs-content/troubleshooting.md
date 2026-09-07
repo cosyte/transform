@@ -53,7 +53,9 @@ would read as an open regimen the message never authorized.
 
 TQ1-10 and TQ1-11 are `TX`, a v2 primitive with no component structure, so they are read **whole**:
 a raw `^`, `&` or `~` inside one is content, and a taper written `2 tabs^then 1 tab` arrives intact
-rather than truncated at the first delimiter. Three cases still write nothing. An **absent** field
+rather than truncated at the first delimiter. That holds when the delimiters are all the row
+carries: `^&~` is the same characters as `^leading` with the letters removed, and it arrives as the
+text it is rather than vanishing. Three cases still write nothing. An **absent** field
 and the HL7 **explicit null** (`""`, the wire saying the field carries no value) both write nothing
 and say nothing, because neither carried anything to drop. A field that **did** carry content whose
 whole projection resolves away (display markup such as a `\H\` / `\N\` highlight pair with nothing
@@ -93,7 +95,10 @@ resource values; those carry PHI.
   not asserted to be the published "before meal" concept); a period arrives without its units, or
   written with a minus sign (R4's `tim-2` and `tim-5` reject both); a field narrows the schedule
   (TQ1-4, TQ1-5, TQ1-6, TQ1-12, TQ1-13, TQ1-14, each needing a rescale, an invented date or an
-  unbuilt element); a bound is unusable or inverted; or more than one TQ1 accompanies one order.
+  unbuilt element); a bound is unusable or inverted; or more than one TQ1 accompanies one order, or
+  one TQ1-3 carries more than one repeat pattern. A repetition of TQ1-3 that carries no value is not
+  a second pattern: `Q4H~`, `~Q4H` and a second repetition the sender explicitly nulled each send
+  one schedule, and it is read from whichever repetition carries it.
   TQ1-2 and TQ1-9 are the exception: they are flagged and the schedule still ships, because the dose
   and the priority already come from the RXO/OBR path and are left exactly as they were.
 - **Allergy scope: AL1 only, and `criticality` only.** `IAM` is not read (it keeps reporting

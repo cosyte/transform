@@ -64,19 +64,29 @@
  *   occurrences. Each one *narrows* the schedule, so a Timing built without it is not a subset of
  *   what the sender said, it is a different and larger instruction.
  * - A valued TQ1-7/TQ1-8 that yields no FHIR dateTime, or a TQ1-8 that precedes TQ1-7.
- * - More than one TQ1 on the order, or more than one repetition of TQ1-3: mapping one and discarding
- *   the rest would silently drop half a regimen.
+ * - More than one TQ1 on the order, or more than one **valued** repetition of TQ1-3: mapping one and
+ *   discarding the rest would silently drop half a regimen. A repetition that carries no value is
+ *   not one of them: `Q4H~`, `~Q4H` and `Q4H~""` each send exactly one repeat pattern, and the
+ *   single valued repetition is the one every component is read from, wherever on the wire it sat.
  *
  * **TQ1-2 Quantity and TQ1-9 Priority are different**, and do *not* withhold the timing: the IG maps
  * them to the dose and the priority, both of which the RXO/OBR path already grounds. They are flagged
  * dropped and neither field is touched, so a TQ1 that carries them still contributes its schedule.
  *
- * **Only a valued field is read, and "valued" is one test for the whole module.** An absent field
- * and the HL7 explicit null (the two-character literal `""`, the wire saying this field carries no
- * value) are both read as carrying nothing: no FHIR element is written from either, no diagnostic is
- * raised about either, and a TQ1 whose only content was a null contributed nothing and is reported
- * as unreached. The null marker is *text* to a projection that reads a field whole, so reading one
- * as a value would put two quotation marks into a dosing narrative as though a clinician wrote them.
+ * **Only a valued field is read, and "valued" is one question asked in the shape of the datatype it
+ * is asked about.** An absent field and the HL7 explicit null (the two-character literal `""`, the
+ * wire saying this position carries no value) are both read as carrying nothing, at every
+ * granularity: no FHIR element is written from either, no diagnostic is raised about either, and a
+ * TQ1 whose only content was a null contributed nothing and is reported as unreached. The null
+ * marker is *text* to a projection that reads a field whole, so reading one as a value would put two
+ * quotation marks into a dosing narrative as though a clinician wrote them.
+ *
+ * A **composite** field (every TQ1 field but the two `TX` rows) is valued when some subcomponent
+ * carries a value, which is also how a repetition and a component are decided, so a structural empty
+ * is never read as content anywhere in the composite path. A **primitive** `TX` row is valued when
+ * the wire put any character in the field at all, because that datatype has no positions to be empty
+ * (see {@link freeText}); asking it the composite question dropped a row of nothing but raw
+ * delimiters, which this module's own rule calls content.
  *
  * **A valued free-text row that cannot be placed is flagged, never dropped in silence**, which is
  * the difference between it and the two states above. Two shapes reach that arm: content the display
@@ -174,26 +184,46 @@ function timingPath(target: Tq1Target): string {
     : "ServiceRequest.occurrenceTiming";
 }
 
-/** Whether a field carries any content at all: one non-empty subcomponent anywhere in it. */
+/**
+ * The HL7 explicit null: the two literal quotation marks a sender writes to say "this position
+ * carries no value". The parser already answers it at FIELD granularity, collapsing a field written
+ * that way to zero repetitions; below that it survives as these two characters, so a repetition or a
+ * component written as one is decided here.
+ */
+const EXPLICIT_NULL = '""';
+
+/**
+ * Whether one subcomponent carries a value. This is the module's single answer to "did the wire say
+ * anything at this position", and every composite question below is built from it, so an explicit
+ * null reads the same way wherever it sits rather than only where the parser happened to fold it.
+ */
+function carriesValue(sub: string): boolean {
+  return sub !== "" && sub !== EXPLICIT_NULL;
+}
+
+/** Whether one repetition of a composite field carries a value anywhere inside it. */
+function repetitionValued(rep: RawRepetition): boolean {
+  return rep.components.some((c) => c.subcomponents.some(carriesValue));
+}
+
+/** Whether a composite field carries a value at all: one valued subcomponent in any repetition. */
 function isValued(seg: Segment, index: number): boolean {
-  return seg
-    .field(index)
-    .repetitions.some((r) => r.components.some((c) => c.subcomponents.some((s) => s !== "")));
+  return seg.field(index).repetitions.some(repetitionValued);
 }
 
-/** The subcomponents of a 1-based component of a composite field's first repetition. */
-function subcomponents(seg: Segment, field: number, component: number): readonly string[] {
-  return seg.field(field).repetitions[0]?.components[component - 1]?.subcomponents ?? [];
+/** The subcomponents of a 1-based component of one composite repetition. */
+function subcomponents(rep: RawRepetition, component: number): readonly string[] {
+  return rep.components[component - 1]?.subcomponents ?? [];
 }
 
-/** Whether a 1-based component of a composite field's first repetition carries any content. */
-function componentValued(seg: Segment, field: number, component: number): boolean {
-  return subcomponents(seg, field, component).some((s) => s !== "");
+/** Whether a 1-based component of one composite repetition carries a value. */
+function componentValued(rep: RawRepetition, component: number): boolean {
+  return subcomponents(rep, component).some(carriesValue);
 }
 
 /** A 1-based subcomponent of a 1-based component, or `""` when absent (a composite-encoded CWE part). */
-function subcomponent(seg: Segment, field: number, component: number, sub: number): string {
-  return subcomponents(seg, field, component)[sub - 1] ?? "";
+function subcomponent(rep: RawRepetition, component: number, sub: number): string {
+  return subcomponents(rep, component)[sub - 1] ?? "";
 }
 
 /**
@@ -272,18 +302,26 @@ type FreeTextReading =
  * literal `&`, `\.br\` to a line break) and **never fabricates**, preserving any sequence it cannot
  * render rather than guessing at it, over the text {@link restoreStructuralEmpties} repairs.
  *
+ * **"Valued" is the PRIMITIVE's own question here, not the composite one.** A composite field is
+ * valued when some subcomponent carries content, and asking that of a `TX` row contradicts the
+ * paragraph above: a field of nothing but raw delimiters (`^`, `&`, `~`, `^&~`) produces only empty
+ * positions, so the composite test calls it absent and drops the very characters this datatype
+ * defines as content. The question a primitive asks is "did the wire put anything in this field",
+ * and it is answered off the field's own repetition tree, which the parser leaves EMPTY for an
+ * absent field and for the HL7 explicit null alike.
+ *
  * **An HL7 explicit null is not a value.** The two-character literal `""` is the wire's way of
- * saying this field carries nothing, and it projects as text as the two characters it is. It is
- * read here exactly as an absent field is: nothing to carry, and nothing dropped to flag, which is
- * also how the `ServiceRequest` path's {@link isValued} test has always read it.
+ * saying this field carries nothing, and it projects as text as the two characters it is. The
+ * parser folds a field written that way to zero repetitions, so it arrives here already
+ * indistinguishable from an absent field: nothing to carry, and nothing dropped to flag.
  *
  * **A field that projects to nothing is not the same as either.** Display markup alone is still
  * content the sender put on the wire, so it yields `unplaceable` and its caller raises a value-free
  * diagnostic: silence there would be indistinguishable from a field that was never sent.
  */
 function freeText(seg: Segment, field: number): FreeTextReading {
-  if (!isValued(seg, field)) return { kind: "absent" };
   const f = seg.field(field);
+  if (f.repetitions.length === 0) return { kind: "absent" };
   // The message's OWN delimiters, off the segment, never the defaults: a sender declares them in
   // MSH-2, and a repair that assumed "^~&" would put a character into a narrative that the message
   // never used as a separator.
@@ -292,6 +330,15 @@ function freeText(seg: Segment, field: number): FreeTextReading {
     seg.enc,
   ).text;
   return rendered === "" ? { kind: "unplaceable" } : { kind: "text", text: rendered };
+}
+
+/**
+ * Whether a `TX` free-text row carries content, decided by the same read that places it, so the
+ * `ServiceRequest` arm (which has no target for either row and only flags them) and the
+ * `MedicationRequest` arm (which places them) never disagree about whether one arrived.
+ */
+function txValued(seg: Segment, field: number): boolean {
+  return freeText(seg, field).kind !== "absent";
 }
 
 /**
@@ -403,9 +450,16 @@ function readRepeatPattern(
   draft: Draft,
   issues: TransformIssue[],
 ): void {
-  const repetitions = tq1.field(3).repetitions;
-  if (repetitions.length === 0) return;
-  if (repetitions.length > 1) {
+  // The repetitions that carry a VALUE, never the raw ones the separators delimit. `Q4H~`, `~Q4H`
+  // and `Q4H~""` each send exactly one repeat pattern, so counting `~` characters instead of
+  // content refused a schedule the message had grounded completely, and it did so at the one place
+  // in this module that read a structural empty as content: every other emptiness question here is
+  // {@link carriesValue}. The valued one is the repetition every component below is read from, so a
+  // pattern that arrived second on the wire is read exactly as one that arrived first.
+  const valued = tq1.field(3).repetitions.filter(repetitionValued);
+  const rpt = valued[0];
+  if (rpt === undefined) return;
+  if (valued.length > 1) {
     // Timing.code is 0..1 and Timing carries one repeat: a second pattern cannot be placed, and
     // taking the first would emit a schedule the message did not send.
     issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.3", base));
@@ -416,19 +470,19 @@ function readRepeatPattern(
   // Every component position the wire actually carried, not a fixed list of the seven published
   // ones: a valued component past RPT.11 is content the sender sent and this library cannot ground,
   // so it withholds the schedule exactly as RPT.2 does rather than being read as absent.
-  const carried = repetitions[0]?.components.length ?? 0;
+  const carried = rpt.components.length;
   for (let component = 1; component <= carried; component += 1) {
     if (EXPRESSIBLE_RPT_COMPONENTS.has(component)) continue;
-    if (!componentValued(tq1, 3, component)) continue;
+    if (!componentValued(rpt, component)) continue;
     issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, `TQ1.3.${String(component)}`, base));
     draft.refused = true;
   }
 
   // RPT.1 → Timing.code. A foreign coding system is never asserted to be the v2-0335 concept, and a
   // code the published map has no row for is never asserted at all.
-  if (componentValued(tq1, 3, 1)) {
-    const code = subcomponent(tq1, 3, 1, 1);
-    const mnemonic = subcomponent(tq1, 3, 1, 3);
+  if (componentValued(rpt, 1)) {
+    const code = subcomponent(rpt, 1, 1);
+    const mnemonic = subcomponent(rpt, 1, 3);
     const fromTable = mnemonic === "" || HL70335_MNEMONICS.has(mnemonic);
     if (fromTable && isRepeatPatternCode(code)) {
       draft.code = timingCode(code);
@@ -450,8 +504,8 @@ function readRepeatPattern(
   // magnitude under about 5e-324 underflows to `-0`, so `-1e-400` passed that test and reached the
   // resource as `"period":-1e-400`, invisible to a JSON-parsing probe because parsing normalizes the
   // literal to `0`. A minus sign in front of a magnitude is a negative period, at every magnitude.
-  if (componentValued(tq1, 3, 5)) {
-    const raw = subcomponent(tq1, 3, 5, 1);
+  if (componentValued(rpt, 5)) {
+    const raw = subcomponent(rpt, 5, 1);
     let period: FhirNode | undefined;
     try {
       period = primitive(decimal(raw));
@@ -469,9 +523,9 @@ function readRepeatPattern(
   }
 
   // RPT.6 → Timing.repeat.periodUnit, a required-bound code: carried only when it already is one.
-  if (componentValued(tq1, 3, 6)) {
-    const unit = subcomponent(tq1, 3, 6, 1);
-    const mnemonic = subcomponent(tq1, 3, 6, 3);
+  if (componentValued(rpt, 6)) {
+    const unit = subcomponent(rpt, 6, 1);
+    const mnemonic = subcomponent(rpt, 6, 3);
     const fromUcum = mnemonic === "" || UCUM_MNEMONICS.has(mnemonic);
     if (fromUcum && UNITS_OF_TIME.has(unit)) {
       draft.periodUnit = unit;
@@ -488,8 +542,8 @@ function readRepeatPattern(
   // grounds no interval at all; either way the half that did arrive cannot be placed. The one the
   // message valued is named, so the diagnostic points at content the sender actually sent. Skipped
   // when that half was already refused above: its own issue already names the component.
-  const periodValued = componentValued(tq1, 3, 5);
-  const unitValued = componentValued(tq1, 3, 6);
+  const periodValued = componentValued(rpt, 5);
+  const unitValued = componentValued(rpt, 6);
   if (periodValued && !unitValued && draft.period !== undefined) {
     issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.3.5", `${base}.repeat.period`));
     draft.refused = true;
@@ -510,9 +564,9 @@ function readRepeatPattern(
   // "before meal". RPT.1 and RPT.6 above apply the same guard through their own mnemonic sets;
   // RPT.8's bound table is a real ConceptMap, so it is guarded by the map's declared mnemonics
   // rather than by a second copy of that list.
-  if (componentValued(tq1, 3, 8)) {
-    const event = subcomponent(tq1, 3, 8, 1);
-    const mnemonic = subcomponent(tq1, 3, 8, 3);
+  if (componentValued(rpt, 8)) {
+    const event = subcomponent(rpt, 8, 1);
+    const mnemonic = subcomponent(rpt, 8, 3);
     const target = translateBound(
       { identifier: event, nameOfCodingSystem: mnemonic },
       TIMING_EVENT_VALUE_MAP,
@@ -706,9 +760,9 @@ export function readTq1(
       else instructionText = instruction.text;
     }
   } else {
-    if (isValued(tq1, 10))
+    if (txValued(tq1, 10))
       issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.10", "ServiceRequest"));
-    if (isValued(tq1, 11))
+    if (txValued(tq1, 11))
       issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.11", "ServiceRequest.note"));
   }
 
