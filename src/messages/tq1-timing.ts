@@ -38,15 +38,20 @@
  * conditions below withholds the whole `Timing` (no partial repeat, no lone `boundsPeriod`) and
  * raises a value-free issue naming the offending component:
  *
- * - An RPT component **outside** the four expressible rows is valued. `RPT.2` Calendar Alignment,
- *   `RPT.7` Institution Specified Time and `RPT.11` General Timing Specification have **no FHIR
- *   target row at all** in the published map; `RPT.3`/`RPT.4` (the two ends of the day-of-week
- *   range) carry the narrative `/translate number to day/` with no published table behind it;
- *   `RPT.9`/`RPT.10` Event Offset carry `/convert to minutes based on RPT.10/`, a rescale this
- *   library never performs.
+ * - An RPT component **outside** the four expressible rows is valued, at **any** position the wire
+ *   carried, not just at one of the seven remaining published ones (see
+ *   {@link EXPRESSIBLE_RPT_COMPONENTS}). `RPT.2` Calendar Alignment, `RPT.7` Institution Specified
+ *   Time and `RPT.11` General Timing Specification have **no FHIR target row at all** in the
+ *   published map; `RPT.3`/`RPT.4` (the two ends of the day-of-week range) carry the narrative
+ *   `/translate number to day/` with no published table behind it; `RPT.9`/`RPT.10` Event Offset
+ *   carry `/convert to minutes based on RPT.10/`, a rescale this library never performs.
  * - An `RPT.1` with no HL70335 row, an `RPT.8` with no HL70528 row targeting `v3-TimingEvent`, an
  *   `RPT.5` that is not a faithful FHIR `decimal`, or an `RPT.6` outside FHIR's required-bound
  *   `UnitsOfTime`. Each would need a value invented to be carried.
+ * - An `RPT.1`, `RPT.6` or `RPT.8` the message declared under a **foreign coding system**. All three
+ *   are read against a bound table, and a site's local `AC` need not mean the published
+ *   `v3-TimingEvent` concept that shares its spelling; asserting it would be exactly the confident
+ *   wrong value this library exists to refuse.
  * - An `RPT.5` **without** an `RPT.6`, an `RPT.6` **without** an `RPT.5`, or a **negative** `RPT.5`.
  *   The two are `0..1` each on the wire, so all three shapes arrive in real traffic, and every one of
  *   them produces a `Timing.repeat` that **fails a published R4 invariant**: `tim-2`
@@ -72,6 +77,15 @@
  * raised about either, and a TQ1 whose only content was a null contributed nothing and is reported
  * as unreached. The null marker is *text* to a projection that reads a field whole, so reading one
  * as a value would put two quotation marks into a dosing narrative as though a clinician wrote them.
+ *
+ * **A valued free-text row that cannot be placed is flagged, never dropped in silence**, which is
+ * the difference between it and the two states above. Two shapes reach that arm: content the display
+ * projection resolves away entirely (a `\H\`/`\N\` highlight pair with nothing between it), and a
+ * TQ1-11 of nothing but whitespace, which R4's `txt-2` ("the narrative SHALL have some
+ * non-whitespace content") forbids as a `Narrative`. Each raises a value-free
+ * `TRANSFORM_ELEMENT_DROPPED` naming its own row and writes no element. TQ1-10 is not whitespace
+ * tested: its target is a plain `string`, which R4 constrains no further, so a whitespace-only one
+ * is carried exactly as sent.
  *
  * @packageDocumentation
  */
@@ -146,6 +160,12 @@ export interface Tq1Reading {
   /** Whether the TQ1 contributed anything to the request (what the completeness ledger marks on). */
   readonly contributes: boolean;
 }
+
+/** The R4 element TQ1-10 reaches on the medication path, for the diagnostics that name it. */
+const CONDITION_TEXT_PATH = "MedicationRequest.dosageInstruction.additionalInstruction.text";
+
+/** The R4 element TQ1-11 reaches on the medication path, for the diagnostics that name it. */
+const INSTRUCTION_TEXT_PATH = "MedicationRequest.text";
 
 /** The FHIR path of the timing element on each target: the `occurrence[x]`/`timing` choice differs. */
 function timingPath(target: Tq1Target): string {
@@ -229,8 +249,19 @@ export function restoreStructuralEmpties(
 }
 
 /**
- * The **whole** content of a `TX` free-text field as display text, or `undefined` when the field
- * carries no value to place.
+ * What a `TX` free-text row projects to. Three outcomes, and the third is the one a boolean
+ * `string | undefined` could not tell apart from the first: a field the wire **valued** whose whole
+ * content the display projection resolves away (a lone `\H\`/`\N\` highlight pair, say). That is not
+ * an absent field, it is content that arrived and cannot be placed, so it is flagged rather than
+ * dropped in silence.
+ */
+type FreeTextReading =
+  | { readonly kind: "absent" }
+  | { readonly kind: "unplaceable" }
+  | { readonly kind: "text"; readonly text: string };
+
+/**
+ * The **whole** content of a `TX` free-text field as display text.
  *
  * TQ1-10 and TQ1-11 are `TX`: a v2 **primitive**, with no component or subcomponent structure at
  * all, so a raw `^`, `&` or `~` inside one is *content* by definition. `Field.value` is documented
@@ -245,9 +276,13 @@ export function restoreStructuralEmpties(
  * saying this field carries nothing, and it projects as text as the two characters it is. It is
  * read here exactly as an absent field is: nothing to carry, and nothing dropped to flag, which is
  * also how the `ServiceRequest` path's {@link isValued} test has always read it.
+ *
+ * **A field that projects to nothing is not the same as either.** Display markup alone is still
+ * content the sender put on the wire, so it yields `unplaceable` and its caller raises a value-free
+ * diagnostic: silence there would be indistinguishable from a field that was never sent.
  */
-function freeText(seg: Segment, field: number): string | undefined {
-  if (!isValued(seg, field)) return undefined;
+function freeText(seg: Segment, field: number): FreeTextReading {
+  if (!isValued(seg, field)) return { kind: "absent" };
   const f = seg.field(field);
   // The message's OWN delimiters, off the segment, never the defaults: a sender declares them in
   // MSH-2, and a repair that assumed "^~&" would put a character into a narrative that the message
@@ -256,7 +291,7 @@ function freeText(seg: Segment, field: number): string | undefined {
     restoreStructuralEmpties(f.text, f.repetitions, seg.enc),
     seg.enc,
   ).text;
-  return rendered === "" ? undefined : rendered;
+  return rendered === "" ? { kind: "unplaceable" } : { kind: "text", text: rendered };
 }
 
 /**
@@ -276,8 +311,21 @@ const SCHEDULE_NARROWING: readonly (readonly [field: number, path: string])[] = 
   [14, ".repeat.countMax"],
 ]);
 
-/** The RPT components with no expressible FHIR target, paired with the reason recorded on the map. */
-const INEXPRESSIBLE_RPT_COMPONENTS: readonly number[] = Object.freeze([2, 3, 4, 7, 9, 10, 11]);
+/**
+ * The RPT components this library can ground, by 1-based position: `RPT.1` Repeat Pattern Code,
+ * `RPT.5` Period Quantity, `RPT.6` Period Units and `RPT.8` Event. The refusal is written as the
+ * **complement** of this set rather than as a list of the components to refuse, so it is closed over
+ * whatever the wire actually carries: the published RPT datatype defines eleven components, and a
+ * message that values a twelfth is non-conformant content the transform must still not drop in
+ * silence. Refusing by enumeration would have read that twelfth as absent.
+ *
+ * Why each of the other published components is not here, on the IG's own rows: `RPT.2` Calendar
+ * Alignment, `RPT.7` Institution Specified Time and `RPT.11` General Timing Specification have no
+ * FHIR target row at all; `RPT.3`/`RPT.4`, the two ends of the day-of-week range, carry the
+ * narrative `/translate number to day/` with no published table behind it; `RPT.9`/`RPT.10` Event
+ * Offset carry `/convert to minutes based on RPT.10/`, a rescale this library never performs.
+ */
+const EXPRESSIBLE_RPT_COMPONENTS: ReadonlySet<number> = Object.freeze(new Set([1, 5, 6, 8]));
 
 /**
  * Whether the instant `end` denotes precedes the instant `start` denotes, decided only where the
@@ -365,7 +413,12 @@ function readRepeatPattern(
     return;
   }
 
-  for (const component of INEXPRESSIBLE_RPT_COMPONENTS) {
+  // Every component position the wire actually carried, not a fixed list of the seven published
+  // ones: a valued component past RPT.11 is content the sender sent and this library cannot ground,
+  // so it withholds the schedule exactly as RPT.2 does rather than being read as absent.
+  const carried = repetitions[0]?.components.length ?? 0;
+  for (let component = 1; component <= carried; component += 1) {
+    if (EXPRESSIBLE_RPT_COMPONENTS.has(component)) continue;
     if (!componentValued(tq1, 3, component)) continue;
     issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, `TQ1.3.${String(component)}`, base));
     draft.refused = true;
@@ -448,10 +501,22 @@ function readRepeatPattern(
     draft.refused = true;
   }
 
-  // RPT.8 → Timing.repeat.when, a required-bound code: only the IG rows that target v3-TimingEvent.
+  // RPT.8 → Timing.repeat.when, a required-bound code: only the IG rows that target v3-TimingEvent,
+  // and only when the message declared the bound table (or declared nothing). The coding system the
+  // sender put in RPT.8's third subcomponent is handed to translateBound, which is the only thing
+  // that can enforce TIMING_EVENT_VALUE_MAP's own sourceMnemonics: withhold it and a code sent under
+  // a site's local table is asserted to be the published v3-TimingEvent concept that shares its
+  // spelling, inside an element whose binding is REQUIRED. `AC` under a local table need not mean
+  // "before meal". RPT.1 and RPT.6 above apply the same guard through their own mnemonic sets;
+  // RPT.8's bound table is a real ConceptMap, so it is guarded by the map's declared mnemonics
+  // rather than by a second copy of that list.
   if (componentValued(tq1, 3, 8)) {
     const event = subcomponent(tq1, 3, 8, 1);
-    const target = translateBound({ identifier: event }, TIMING_EVENT_VALUE_MAP);
+    const mnemonic = subcomponent(tq1, 3, 8, 3);
+    const target = translateBound(
+      { identifier: event, nameOfCodingSystem: mnemonic },
+      TIMING_EVENT_VALUE_MAP,
+    );
     if (target === undefined) {
       issues.push(issue(ISSUE_CODES.TRANSFORM_CODE_UNMAPPED, "TQ1.3.8", `${base}.repeat.when`));
       draft.refused = true;
@@ -621,8 +686,25 @@ export function readTq1(
     // Read whole, never truncated at the first raw delimiter, and read only where the field is
     // valued by the same test the service path applies: see freeText. "Verbatim" is the claim these
     // two rows make, and a TX field's delimiters are content, not structure.
-    conditionText = freeText(tq1, 10);
-    instructionText = freeText(tq1, 11);
+    const condition = freeText(tq1, 10);
+    if (condition.kind === "text") conditionText = condition.text;
+    else if (condition.kind === "unplaceable")
+      issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.10", CONDITION_TEXT_PATH));
+
+    const instruction = freeText(tq1, 11);
+    if (instruction.kind === "unplaceable") {
+      issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.11", INSTRUCTION_TEXT_PATH));
+    } else if (instruction.kind === "text") {
+      // R4's `txt-2` on Narrative: "The narrative SHALL have some non-whitespace content". A TQ1-11
+      // of nothing but spaces projects faithfully and still cannot be placed, because the div it
+      // would fill is invalid. @cosyte/fhir models no Narrative constraint, so the conservative-emit
+      // gate cannot catch it and the resource would ship: the refusal happens here or nowhere. Only
+      // this row is tested, because only this row targets a Narrative; TQ1-10 reaches a plain
+      // `string`, which R4 constrains no further, so a whitespace-only one is carried as sent.
+      if (instruction.text.trim() === "")
+        issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.11", INSTRUCTION_TEXT_PATH));
+      else instructionText = instruction.text;
+    }
   } else {
     if (isValued(tq1, 10))
       issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.10", "ServiceRequest"));

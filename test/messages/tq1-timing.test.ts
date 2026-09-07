@@ -275,6 +275,45 @@ describe("an RPT component the published map cannot ground", () => {
     expect(issuesAt(result, "TQ1.3.5")[0]?.code).toBe(ISSUE_CODES.TRANSFORM_QUANTITY_VALUE_INVALID);
   });
 
+  it("refuses an RPT.8 code that declares a foreign coding system", () => {
+    // RPT.8's third subcomponent is the table the sender declared, and it decides whether the
+    // HL70528 map applies at all. `AC` is PUBLISHED as the v3-TimingEvent concept "before meal"; a
+    // site whose local table spells some other concept `AC` must not have it silently rewritten
+    // into the standard one inside `repeat.when`, whose R4 binding to EventTiming is REQUIRED.
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: "^^^^^^^AC&&LOCAL" }));
+    expect(present(dosage(result), "timing")).toBe(false);
+    expect(issuesAt(result, "TQ1.3.8")[0]?.code).toBe(ISSUE_CODES.TRANSFORM_CODE_UNMAPPED);
+  });
+
+  it("refuses an RPT.6 unit that declares a coding system which is not UCUM", () => {
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: "Q4H^^^^6^h&hours&99LOCAL" }));
+    expect(present(dosage(result), "timing")).toBe(false);
+    expect(issuesAt(result, "TQ1.3.6")[0]?.code).toBe(ISSUE_CODES.TRANSFORM_CODE_UNMAPPED);
+  });
+
+  it("carries an RPT.1, RPT.6 and RPT.8 that each name their own bound table", () => {
+    // The guard is a FOREIGN-system test, not a "declared a system at all" test: a message naming
+    // the very table the IG map is bound to reads exactly as one that names none. Without this the
+    // refusals above could be passing for the wrong reason.
+    const result = pharmacyOrder(
+      seg("TQ1", { 1: "1", 3: "Q4H&&HL70335^^^^6^h&&UCUM^^AC&&HL70528" }),
+    );
+    expect(tq1Issues(result)).toEqual([]);
+    const timing = at(dosage(result), "timing");
+    expect(value(timing, "code.coding.code")).toBe("Q4H");
+    expect(value(timing, "repeat.periodUnit")).toBe("h");
+    expect(value(timing, "repeat.when.0")).toBe("AC");
+  });
+
+  it("refuses a valued RPT component past the eleven the datatype publishes", () => {
+    // RPT defines eleven components, so a twelfth is non-conformant; it is still content the wire
+    // carried, and a refusal written as a fixed list of the seven inexpressible ones read it as
+    // absent, emitted the timing from RPT.1/5/6 and said nothing.
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: "Q4H^^^^6^h^^^^^^ZZZ" }));
+    expect(present(dosage(result), "timing")).toBe(false);
+    expect(issuesAt(result, "TQ1.3.12")[0]?.code).toBe(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED);
+  });
+
   it("refuses a second TQ1-3 repetition rather than mapping the first", () => {
     const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: "Q4H~QHS" }));
     expect(present(dosage(result), "timing")).toBe(false);
@@ -628,6 +667,74 @@ describe("an HL7 explicit null in TQ1-10 or TQ1-11", () => {
     // `""x` is not the null marker: it is a field whose content begins with two quotation marks.
     const quoted = pharmacyOrder(seg("TQ1", { 1: "1", 10: '""x' }));
     expect(value(dosage(quoted), "additionalInstruction.0.text")).toBe('""x');
+  });
+});
+
+// ── criteria 7, 8 and 13: a valued free-text row the resource cannot carry ───────────────────────
+
+describe("a valued TQ1-10 or TQ1-11 that cannot be placed", () => {
+  it("flags a row whose whole content the display projection resolves away", () => {
+    // `\H\` and `\N\` are v2 section 2.7 highlight boundaries: display markup, not content, so a
+    // pair with nothing between them renders to the empty string. The field WAS valued, so this is
+    // a fourth wire state, not an absent row: writing nothing AND saying nothing would make content
+    // the sender sent indistinguishable from a field never transmitted.
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 10: "\\H\\\\N\\", 11: "\\H\\\\N\\" }));
+    expect(present(dosage(result), "additionalInstruction")).toBe(false);
+    expect(present(medication(result), "text")).toBe(false);
+    expect(issuesAt(result, "TQ1.10")[0]?.code).toBe(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED);
+    expect(issuesAt(result, "TQ1.11")[0]?.code).toBe(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED);
+  });
+
+  it("names the R4 element each unplaceable row would have reached", () => {
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 10: "\\H\\\\N\\", 11: "\\H\\\\N\\" }));
+    expect(issuesAt(result, "TQ1.10")[0]?.fhirPath).toBe(
+      "MedicationRequest.dosageInstruction.additionalInstruction.text",
+    );
+    expect(issuesAt(result, "TQ1.11")[0]?.fhirPath).toBe("MedicationRequest.text");
+  });
+
+  it("flags a whitespace-only TQ1-11 rather than emitting a Narrative R4's txt-2 rejects", () => {
+    // txt-2: "The narrative SHALL have some non-whitespace content". @cosyte/fhir models no
+    // Narrative constraint at all, so the conservative-emit gate cannot see this one: the refusal
+    // happens here or an invalid div ships inside a resource a viewer renders first.
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 11: "   " }));
+    expect(present(medication(result), "text")).toBe(false);
+    expect(issuesAt(result, "TQ1.11")[0]?.code).toBe(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED);
+  });
+
+  it("carries a whitespace-only TQ1-10, whose target R4 constrains no further", () => {
+    // `additionalInstruction.text` is a plain `string`: no published invariant forbids whitespace
+    // there. The asymmetry with TQ1-11 IS txt-2, and inventing a matching rule here would drop
+    // content the sender sent for no reason the specification gives.
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 10: "   " }));
+    expect(value(dosage(result), "additionalInstruction.0.text")).toBe("   ");
+    expect(issuesAt(result, "TQ1.10")).toEqual([]);
+  });
+
+  it("distinguishes an absent row, an explicit null, and content that projects to nothing", () => {
+    const absent = pharmacyOrder(seg("TQ1", { 1: "1" }));
+    const nulled = pharmacyOrder(seg("TQ1", { 1: "1", 11: '""' }));
+    const projected = pharmacyOrder(seg("TQ1", { 1: "1", 11: "\\H\\\\N\\" }));
+    expect(tq1Issues(absent)).toEqual([]);
+    expect(tq1Issues(nulled)).toEqual([]);
+    expect(tq1Issues(projected).map((i) => i.v2Location)).toEqual(["TQ1.11"]);
+  });
+
+  it("leaves a schedule the same TQ1 did ground exactly as it was", () => {
+    // A free-text row narrows no schedule, so an unplaceable one flags itself and the timing still
+    // ships: only the six schedule-narrowing fields withhold a Timing.
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 3: RPT_EXPRESSIBLE, 11: "   " }));
+    expect(present(dosage(result), "timing")).toBe(true);
+    expect(present(medication(result), "text")).toBe(false);
+  });
+
+  it("reports the TQ1 unreached when the unplaceable row was all it carried", () => {
+    const result = pharmacyOrder(seg("TQ1", { 1: "1", 11: "   " }));
+    expect(
+      result.issues
+        .filter((i) => i.code === ISSUE_CODES.TRANSFORM_SEGMENT_NOT_EMITTED)
+        .map((i) => i.v2Location),
+    ).toEqual(["TQ1[1]"]);
   });
 });
 

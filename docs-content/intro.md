@@ -19,8 +19,9 @@ grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fh
 > six safety-critical datatype converters and the value-free diagnostic channel, and
 > message-level assembly via `toFhir(msg)` for HL7 v2 **ADT → Patient + Encounter**
 > (+ **AL1 → AllergyIntolerance**), **ORU^R01 → DiagnosticReport + Observation**, the order-entry
-> graph **ORM_O01 / OML_O21 → ServiceRequest** and **RXO → MedicationRequest**, and the thin IG
-> singles **VXU_V04 → Immunization**, **SIU_S12 → Appointment**, and **MDM_T02 →
+> graph **ORM_O01 / OML_O21 → ServiceRequest** and **RXO → MedicationRequest** (with an order's
+> **TQ1 → the schedule it carries**, `dosageInstruction.timing` or `occurrenceTiming`), and the thin
+> IG singles **VXU_V04 → Immunization**, **SIU_S12 → Appointment**, and **MDM_T02 →
 > DocumentReference**, plus **terminology value translation** of coded fields: route/site,
 > appointment type, order priority, substitution, and the AL1 allergy tables, translated through
 > their IG `mappedVia` ConceptMaps. The

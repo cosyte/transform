@@ -319,7 +319,8 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
   it("never throws and holds every invariant over order messages carrying a TQ1", () => {
     // The TQ1 rows are generated across the whole space the schedule path branches on: expressible
     // and unpublished repeat-pattern codes, in-binding and out-of-binding period units, both
-    // HL70528 groups, faithful and unfaithful decimals, valid/invalid/inverted bounds, the six
+    // HL70528 groups under a declared bound table and under a foreign one, a non-conformant twelfth
+    // RPT component, faithful and unfaithful decimals, valid/invalid/inverted bounds, the six
     // schedule-narrowing fields, and free text carrying the leak sentinel into the two rows that
     // DO reach the resource. What must hold is the same four invariants: never throw, only
     // registered value-free codes, references resolve, and every emitted resource is valid.
@@ -335,6 +336,13 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
     );
     const periodUnit = fc.constantFrom("h", "d", "min", "hr", "HOURS", "");
     const eventCode = fc.constantFrom("AC", "PCV", "HS", "IC", "ICM", "ZZ", "");
+    // The coding system a sender declares on a bound-table component (CWE.3, the third
+    // SUBCOMPONENT). A foreign one must never be read as the bound table: `AC` under a site's own
+    // table need not be the published v3-TimingEvent concept that shares its spelling.
+    const codingSystem = fc.constantFrom("", "&&HL70528", "&&LOCAL", "&&99RPT");
+    // A twelfth RPT component: non-conformant (RPT publishes eleven), and still content the wire
+    // carried, so it must be flagged rather than read as absent.
+    const twelfth = fc.constantFrom("", "ZZZ");
     // "-6" and the independent "" on units cover the two shapes R4's tim-5 and tim-2 reject: a
     // negative period, and a period or a unit arriving without its pair. "-1e-400" and "-0" are the
     // negatives no double distinguishes from zero, so a numeric sign test lets them through.
@@ -354,6 +362,8 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
       period,
       units: periodUnit,
       event: eventCode,
+      eventSystem: codingSystem,
+      twelfth,
       explicitTime: narrowing,
       start: stamp,
       end: stamp,
@@ -386,10 +396,11 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
             t.period,
             t.units,
             "",
-            t.event,
+            `${t.event}${t.eventSystem}`,
             "",
             "",
             "",
+            t.twelfth,
           ].join("^");
           lines.push(
             [

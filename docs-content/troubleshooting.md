@@ -38,6 +38,29 @@ clinical instant by hours). Supply `assumeTimezoneOffsetMinutes` if you know the
 preserved verbatim in `Quantity.unit` with `code`/`system` absent. Magnitudes are **never** converted
 (mg/dL ↔ mmol/L is analyte-dependent and unsafe to automate).
 
+## My order has a TQ1 but the request carries no schedule
+
+The whole `Timing` is withheld the moment any part of the TQ1 cannot be grounded, and never
+partially built: a half-built schedule reads to the receiving system as a complete dosing
+instruction, so "every 4 hours, but only between meals" must not arrive as "every 4 hours". Look for
+a `TRANSFORM_ELEMENT_DROPPED` or `TRANSFORM_CODE_UNMAPPED` whose `v2Location` names the exact TQ1
+field or repeat-pattern component that caused it (`TQ1.3.2`, `TQ1.6`, `TQ1.8`, …); the full list of
+causes is under [Known limitations](#known-limitations). Note that no `boundsPeriod` survives a
+refusal either, even when TQ1-7 and TQ1-8 were both perfectly usable: an unanchored pair of dates
+would read as an open regimen the message never authorized.
+
+## My TQ1 free-text instruction didn't reach the resource
+
+TQ1-10 and TQ1-11 are `TX`, a v2 primitive with no component structure, so they are read **whole**:
+a raw `^`, `&` or `~` inside one is content, and a taper written `2 tabs^then 1 tab` arrives intact
+rather than truncated at the first delimiter. Three cases still write nothing. An **absent** field
+and the HL7 **explicit null** (`""`, the wire saying the field carries no value) both write nothing
+and say nothing, because neither carried anything to drop. A field that **did** carry content whose
+whole projection resolves away (display markup such as a `\H\` / `\N\` highlight pair with nothing
+between, or, for TQ1-11 alone, nothing but whitespace, which R4's `txt-2` forbids in a narrative)
+writes nothing and raises a `TRANSFORM_ELEMENT_DROPPED` naming the row, so it is never confused with
+a field that was never sent.
+
 ## Are diagnostics safe to log?
 
 Yes. A `TransformIssue` carries only a stable code, a severity, a **positional** v2 location, and a
@@ -50,9 +73,29 @@ resource values; those carry PHI.
   ORU^R01 → DiagnosticReport + Observation, ORM_O01 / OML_O21 → ServiceRequest and
   RXO → MedicationRequest, and the thin IG singles VXU_V04 → Immunization, SIU_S12 →
   Appointment, and MDM_T02 → DocumentReference. An AL1 in any of them becomes an
-  AllergyIntolerance. The v2→FHIR direction is
-  feature-complete for the IG-covered message set; terminology depth and profiles are not
-  implemented.
+  AllergyIntolerance, and a TQ1 accompanying an order becomes that order's schedule. The v2→FHIR
+  direction is feature-complete for the IG-covered message set; terminology depth and profiles are
+  not implemented.
+- **Schedule scope: TQ1 only, and four of its repeat-pattern components.** A TQ1 on an order group
+  builds `dosageInstruction.timing` on a MedicationRequest and `occurrenceTiming` on a
+  ServiceRequest, from TQ1-3's repeat-pattern code (HL70335), period quantity, period units and
+  event code (the HL70528 rows the guide gives a `v3-TimingEvent` target), plus TQ1-7 / TQ1-8 as
+  `repeat.boundsPeriod`. TQ2 is not read. TQ1-10 and TQ1-11 reach the two different targets the
+  guide names on the medication path (`dosageInstruction.additionalInstruction.text` and the
+  resource's own `text` narrative) and are flagged as dropped on the service path, where the guide
+  targets an extension and an annotation this tier does not build. **A schedule is fully grounded or
+  absent and flagged**, so the whole `Timing` is withheld with a `TRANSFORM_ELEMENT_DROPPED` or
+  `TRANSFORM_CODE_UNMAPPED` naming the cause when: a repeat component has no target in the guide
+  (calendar alignment, either end of the day-of-week range, institution-specified time, event
+  offset, general timing specification, or a component past the eleven the datatype defines); a code
+  sits outside its
+  published table, or was sent under a coding system that is not that table (a site's local `AC` is
+  not asserted to be the published "before meal" concept); a period arrives without its units, or
+  written with a minus sign (R4's `tim-2` and `tim-5` reject both); a field narrows the schedule
+  (TQ1-4, TQ1-5, TQ1-6, TQ1-12, TQ1-13, TQ1-14, each needing a rescale, an invented date or an
+  unbuilt element); a bound is unusable or inverted; or more than one TQ1 accompanies one order.
+  TQ1-2 and TQ1-9 are the exception: they are flagged and the schedule still ships, because the dose
+  and the priority already come from the RXO/OBR path and are left exactly as they were.
 - **Allergy scope: AL1 only, and `criticality` only.** `IAM` is not read (it keeps reporting
   `TRANSFORM_SEGMENT_NOT_EMITTED`), and `AllergyIntolerance.reaction.severity` is never populated:
   the IG names `criticality` the base target for AL1-4 and offers `reaction.severity` only as a
