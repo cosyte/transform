@@ -43,6 +43,35 @@ const numRuns = Number(process.env["FUZZ_RUNS"] ?? "300");
 /** A safe HL7 field token: no delimiters, always carrying the leak sentinel. */
 const token = fc.stringMatching(/^[A-Za-z0-9 ]{0,8}$/).map((s) => SENTINEL + s);
 const optToken = fc.option(token, { nil: undefined });
+/**
+ * A free-text token for a `TX` row (TQ1-10 / TQ1-11). `TX` is a v2 **primitive** with no component
+ * structure, so a raw `^`, `&` or `~` inside one is content and must reach the resource rather than
+ * truncate it; the escape sequences exercise the render path (a delimiter escape, a formatting
+ * command, a highlight boundary, an unrenderable vendor sequence, a dangling escape character). The
+ * field separator is still excluded: it would end the field and change the message's shape.
+ */
+const freeTextToken = fc
+  .tuple(
+    fc.stringMatching(/^[A-Za-z0-9 ]{0,6}$/),
+    fc.constantFrom("", "^", "&", "~", "<&>", "\\T\\", "\\.br\\", "\\H\\", "\\Z9\\", "\\"),
+    fc.stringMatching(/^[A-Za-z0-9 ]{0,6}$/),
+  )
+  .map(([head, delim, tail]) => `${SENTINEL}${head}${delim}${tail}`);
+/**
+ * A `TX` row whose WHOLE content is raw v2 delimiters. It carries no sentinel deliberately: every
+ * one of these produces nothing but empty component and subcomponent positions, so the composite
+ * "is some subcomponent non-empty" question answers no for all of them while the datatype's own
+ * rule calls them content. They must reach the resource exactly as `^leading` does.
+ */
+const delimiterOnlyText = fc.constantFrom("^", "&", "~", "^^", "&&", "^&~", "~^&");
+/**
+ * The three of them together, plus the HL7 **explicit null** (`""`): the wire saying a field carries
+ * no value. It is generated because it is the one free-text input that must reach NO resource
+ * element at all, and it carries no sentinel, so only the null-marker invariant below can see it.
+ */
+const optFreeText = fc.option(fc.oneof(freeTextToken, fc.constant('""'), delimiterOnlyText), {
+  nil: undefined,
+});
 const sexCode = fc.constantFrom("F", "M", "O", "U", "A", "N", "ZZ", "", "X");
 const classCode = fc.constantFrom("I", "O", "E", "P", "R", "B", "C", "N", "U", "Z", "");
 const trigger = fc.constantFrom("A01", "A02", "A05", "A08", "A31", "A40");
@@ -291,6 +320,156 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
           expect(getProperty(res, "code")).toBeDefined();
           expect(getProperty(res, "patient")).toBeDefined();
         }
+      }),
+      { numRuns },
+    );
+  });
+
+  it("never throws and holds every invariant over order messages carrying a TQ1", () => {
+    // The TQ1 rows are generated across the whole space the schedule path branches on: expressible
+    // and unpublished repeat-pattern codes, in-binding and out-of-binding period units, both
+    // HL70528 groups under a declared bound table and under a foreign one, a non-conformant twelfth
+    // RPT component, faithful and unfaithful decimals, valid/invalid/inverted bounds, the six
+    // schedule-narrowing fields, every repetition shape TQ1-3's `0..-1` cardinality produces, and
+    // free text carrying the leak sentinel (or nothing but raw delimiters) into the two rows that
+    // DO reach the resource. What must hold is the same four invariants: never throw, only
+    // registered value-free codes, references resolve, and every emitted resource is valid.
+    const patternCode = fc.constantFrom(
+      "Q4H",
+      "BID",
+      "PRN",
+      "ACM",
+      "5ID",
+      "U 0 8 * * *",
+      "",
+      "ZZZ",
+    );
+    const periodUnit = fc.constantFrom("h", "d", "min", "hr", "HOURS", "");
+    const eventCode = fc.constantFrom("AC", "PCV", "HS", "IC", "ICM", "ZZ", "");
+    // The coding system a sender declares on a bound-table component (CWE.3, the third
+    // SUBCOMPONENT). A foreign one must never be read as the bound table: `AC` under a site's own
+    // table need not be the published v3-TimingEvent concept that shares its spelling.
+    const codingSystem = fc.constantFrom("", "&&HL70528", "&&LOCAL", "&&99RPT");
+    // A twelfth RPT component: non-conformant (RPT publishes eleven), and still content the wire
+    // carried, so it must be flagged rather than read as absent.
+    const twelfth = fc.constantFrom("", "ZZZ");
+    // How the generated RPT sits inside TQ1-3, which is `0..-1`. A trailing separator, a leading
+    // one and an explicitly nulled second repetition all arrive in real traffic and none of them is
+    // a second schedule; `~QHS` is one, and must still withhold the whole Timing.
+    const repetitionShape = fc.constantFrom("one", "trailing", "leading", "nulled", "second");
+    // "-6" and the independent "" on units cover the two shapes R4's tim-5 and tim-2 reject: a
+    // negative period, and a period or a unit arriving without its pair. "-1e-400" and "-0" are the
+    // negatives no double distinguishes from zero, so a numeric sign test lets them through.
+    const period = fc.constantFrom("6", "0.5", "0", "-6", "-0", "-1e-400", "+6", "007", "", "abc");
+    const stamp = fc.constantFrom(
+      "20260721",
+      "20260724140000-0500",
+      "20260721140000",
+      "notadate",
+      "",
+    );
+    const narrowing = fc.constantFrom("", "0800", "30^min", "S", "12");
+    const tq1Arb = fc.record({
+      quantity: fc.constantFrom("", "2^tab"),
+      pattern: patternCode,
+      alignment: fc.constantFrom("", "DW"),
+      period,
+      units: periodUnit,
+      event: eventCode,
+      eventSystem: codingSystem,
+      twelfth,
+      repetitionShape,
+      explicitTime: narrowing,
+      start: stamp,
+      end: stamp,
+      priority: fc.constantFrom("", "S", "ZZ"),
+      condition: optFreeText,
+      instruction: optFreeText,
+      conjunction: fc.constantFrom("", "S"),
+      count: fc.constantFrom("", "12"),
+    });
+    const arb = fc.record({
+      code: fc.constantFrom("OMP^O09", "OMG^O19", "ORM^O01", "OML^O21"),
+      detail: fc.constantFrom("RXO", "OBR"),
+      obr6: stamp,
+      tq1s: fc.array(tq1Arb, { maxLength: 2 }),
+    });
+
+    fc.assert(
+      fc.property(arb, (p) => {
+        const lines = [
+          `MSH|^~\\&|CPOE|F|LAB|H|20260101120000-0500||${p.code}|MSGID1|P|2.5.1`,
+          "PID|1||MRN1^^^HOSP^MR||Doe^Jane||19900101|F",
+          "ORC|NW|PLAC1|FILL1||||||20260101110000-0500",
+        ];
+        for (const t of p.tq1s) {
+          const rpt = [
+            t.pattern,
+            t.alignment,
+            "",
+            "",
+            t.period,
+            t.units,
+            "",
+            `${t.event}${t.eventSystem}`,
+            "",
+            "",
+            "",
+            t.twelfth,
+          ].join("^");
+          const field3 = {
+            one: rpt,
+            trailing: `${rpt}~`,
+            leading: `~${rpt}`,
+            nulled: `${rpt}~""`,
+            second: `${rpt}~QHS`,
+          }[t.repetitionShape];
+          lines.push(
+            [
+              "TQ1",
+              "1",
+              t.quantity,
+              field3,
+              t.explicitTime,
+              "",
+              "",
+              t.start,
+              t.end,
+              t.priority,
+              t.condition ?? "",
+              t.instruction ?? "",
+              t.conjunction,
+              "",
+              t.count,
+            ].join("|"),
+          );
+        }
+        lines.push(
+          p.detail === "RXO"
+            ? "RXO|197361^Amox^RXNORM|250|500|mg^milligram^UCUM"
+            : `OBR|1|||24331-1^Panel^LN|R|${p.obr6}`,
+        );
+        let result: TransformResult;
+        try {
+          result = toFhir(parseHL7(lines.join("\r")), {
+            namingSystem: registry,
+            generateId: seqId,
+          });
+        } catch (err) {
+          throw new Error("toFhir threw on an order message with a TQ1 (fail-safe violated)", {
+            cause: err,
+          });
+        }
+        assertResult(result);
+        // Two invariants only the SERIALIZED bytes can carry, because parsing hides both. JSON.parse
+        // normalizes `-1e-400` to `0`, so a parsed probe cannot see a lexically negative period at
+        // all. And no generated token carries a quotation mark, so an adjacent PAIR of them in the
+        // emitted text (escaped in JSON, entity-escaped in the XHTML narrative) can only be an HL7
+        // explicit null read as though it were a clinical instruction.
+        const wire = serializeResource(result.bundle);
+        expect(wire).not.toContain('\\"\\"');
+        expect(wire).not.toContain("&quot;&quot;");
+        expect(wire).not.toContain('"period":-');
       }),
       { numRuns },
     );

@@ -144,6 +144,35 @@ grounded on the HL70119 → request-status ConceptMap and withheld when it canno
 `MedicationRequest` whose IG-ungrounded status is the honest `unknown` rather than a guess. `RXE` has no
 STU1 IG map and is flagged, never assembled.
 
+An order's **`TQ1`** becomes the schedule that order carries: `dosageInstruction.timing` on the
+`MedicationRequest`, `occurrenceTiming` on the `ServiceRequest` (and a group that would also yield an
+`occurrenceDateTime` from `OBR-6` emits the timing alone and flags the dropped one, because
+`occurrence[x]` is a choice). `TQ1-3` grounds `Timing.code` from the HL70335 repeat-pattern rows,
+`repeat.period`, `repeat.periodUnit` and `repeat.when` from the HL70528 rows the guide gives a
+`v3-TimingEvent` target; `TQ1-7` / `TQ1-8` give `repeat.boundsPeriod`; `TQ1-10` and `TQ1-11` are
+carried verbatim to the two different targets the guide names, `dosageInstruction.additionalInstruction.text`
+and the resource's own `text` narrative. Both are `TX`, a v2 primitive with no component structure,
+so they are read **whole**: a raw `^`, `&` or `~` inside a free-text instruction is content, and a
+taper written `2 tabs^then 1 tab` arrives with its second half intact rather than truncated at the
+first delimiter, right down to a delimiter the instruction ends on, or a row that is nothing but
+delimiters. Only a row that carries a value
+is written, though: an HL7 explicit null (`""`) says the field carries none, so it reaches no
+element and puts no marker in one, and no diagnostic either, because nothing was dropped. A row that
+_did_ carry content the projection resolves away entirely (display markup alone), or a `TQ1-11` of
+nothing but whitespace, which R4's `txt-2` forbids in a narrative, likewise writes nothing but is
+**flagged**, so content that arrived is never mistaken for a field that was never sent.
+**A schedule is fully grounded or absent and flagged**: a repeat component the guide gives no target
+for (at any position, including one past the eleven the datatype defines), a code outside its
+published table or sent under a coding system that is not that table, a value that would need a unit
+rescale or an invented date, a field that narrows the schedule (`TQ1-4`, `TQ1-5`, `TQ1-6`, `TQ1-12`,
+`TQ1-13`, `TQ1-14`), an unusable or inverted bound, a period quantity arriving
+without its units or written with a minus sign (R4's `tim-2` and `tim-5` reject both), or a second
+`TQ1` on one order or a second repeat pattern in one `TQ1-3` (a repetition that carries no value is
+not one: `Q4H~` sends one schedule, and it is read wherever in the field it sat),
+each withholds the whole `Timing` and raises a value-free diagnostic naming the cause. A
+half-built timing would read to the receiving system as a complete dosing instruction, which is the
+one outcome this library will not produce.
+
 The thin single-trigger families complete the IG-covered message set: **VXU_V04** RXA (+
 RXR route, ORC) → `Immunization` (status via the IG's three conditioned rows: a delete action →
 `entered-in-error`, an unvalued RXA-20 → `completed`, else the HL70322 → event-status ConceptMap, with a

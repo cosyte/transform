@@ -1,0 +1,819 @@
+/**
+ * TQ1 (Timing/Quantity) → the FHIR `Timing` an order's request carries, grounded firsthand on the IG
+ * **Segment TQ1 to MedicationRequest** and **Segment TQ1 to ServiceRequest** ConceptMaps and the
+ * **Datatype RPT to Timing** ConceptMap it delegates to (`hl7.fhir.uv.v2mappings`, STU1;
+ * `ConceptMap-segment-tq1-to-medicationrequest.html`, `ConceptMap-segment-tq1-to-servicerequest.html`,
+ * `ConceptMap-datatype-rpt-to-timing.html`).
+ *
+ * A pharmacy order that reaches this library as `RXO` + `TQ1` used to produce a `MedicationRequest`
+ * with a drug, a dose and a route and **no schedule at all**, so "give 5 mg every 4 hours for 3 days"
+ * and "give 5 mg once" were the same resource. This module is the schedule: what the TQ1 grounds, and
+ * an explicit refusal for everything it does not.
+ *
+ * | v2 field | FHIR target | via |
+ * |---|---|---|
+ * | TQ1-3 Repeat Pattern (RPT) | `dosageInstruction.timing` / `occurrenceTiming` | the RPT rows below |
+ * | TQ1-7 Start date/time (DTM) | that Timing's `repeat.boundsPeriod.start` | {@link toFhirDateTime} |
+ * | TQ1-8 End date/time (DTM) | that Timing's `repeat.boundsPeriod.end` | {@link toFhirDateTime} |
+ * | TQ1-10 Condition text (TX) | `dosageInstruction.additionalInstruction.text` | whole field, verbatim |
+ * | TQ1-11 Text instruction (TX) | `MedicationRequest.text` (a `Narrative`) | whole field, XML-escaped |
+ *
+ * and inside TQ1-3, the **expressible RPT components and only those**:
+ *
+ * | RPT component | FHIR target | via |
+ * |---|---|---|
+ * | RPT.1 Repeat Pattern Code | `Timing.code` (system `v2-0335`, code verbatim) | {@link isRepeatPatternCode} |
+ * | RPT.5 Period Quantity | `Timing.repeat.period` (decimal) | precision-exact, never rescaled |
+ * | RPT.6 Period Units | `Timing.repeat.periodUnit` (code) | {@link UNITS_OF_TIME} membership |
+ * | RPT.8 Event | `Timing.repeat.when` (code) | {@link TIMING_EVENT_VALUE_MAP} |
+ *
+ * **RPT.5 and RPT.6 are a pair, not two independent rows**, because R4 constrains `Timing.repeat`
+ * beyond its element types: `tim-2` requires period units wherever a period exists, and `tim-5`
+ * requires the period to be non-negative. So a period with no units, a unit with no period, and a
+ * negative period are each refused whole rather than emitted, for the reason below.
+ *
+ * **A schedule is fully grounded or absent and flagged.** Everything here is all-or-nothing, because
+ * a half-built timing reads to the receiving system as a complete instruction: an order whose TQ1
+ * says "every 4 hours, but only between meals" must not arrive as "every 4 hours". So **any** of the
+ * conditions below withholds the whole `Timing` (no partial repeat, no lone `boundsPeriod`) and
+ * raises a value-free issue naming the offending component:
+ *
+ * - An RPT component **outside** the four expressible rows is valued, at **any** position the wire
+ *   carried, not just at one of the seven remaining published ones (see
+ *   {@link EXPRESSIBLE_RPT_COMPONENTS}). `RPT.2` Calendar Alignment, `RPT.7` Institution Specified
+ *   Time and `RPT.11` General Timing Specification have **no FHIR target row at all** in the
+ *   published map; `RPT.3`/`RPT.4` (the two ends of the day-of-week range) carry the narrative
+ *   `/translate number to day/` with no published table behind it; `RPT.9`/`RPT.10` Event Offset
+ *   carry `/convert to minutes based on RPT.10/`, a rescale this library never performs.
+ * - An `RPT.1` with no HL70335 row, an `RPT.8` with no HL70528 row targeting `v3-TimingEvent`, an
+ *   `RPT.5` that is not a faithful FHIR `decimal`, or an `RPT.6` outside FHIR's required-bound
+ *   `UnitsOfTime`. Each would need a value invented to be carried.
+ * - An `RPT.1`, `RPT.6` or `RPT.8` the message declared under a **foreign coding system**. All three
+ *   are read against a bound table, and a site's local `AC` need not mean the published
+ *   `v3-TimingEvent` concept that shares its spelling; asserting it would be exactly the confident
+ *   wrong value this library exists to refuse.
+ * - An `RPT.5` **without** an `RPT.6`, an `RPT.6` **without** an `RPT.5`, or a **negative** `RPT.5`.
+ *   The two are `0..1` each on the wire, so all three shapes arrive in real traffic, and every one of
+ *   them produces a `Timing.repeat` that **fails a published R4 invariant**: `tim-2`
+ *   (`period.empty() or periodUnit.exists()`) and `tim-5` ("period SHALL be a non-negative value").
+ *   `@cosyte/fhir` models no `Timing` constraint, so the conservative-emit gate cannot catch any of
+ *   them and a receiving system would be handed `{"period": 6}` or `{"period": -6}` as a grounded
+ *   repeat to compute against. "Every minus six hours" is not a schedule.
+ * - A **schedule-narrowing** field is valued: TQ1-4 Explicit Time, TQ1-5 Relative Time and Units,
+ *   TQ1-6 Service Duration, TQ1-12 Conjunction, TQ1-13 Occurrence duration, TQ1-14 Total
+ *   occurrences. Each one *narrows* the schedule, so a Timing built without it is not a subset of
+ *   what the sender said, it is a different and larger instruction.
+ * - A valued TQ1-7/TQ1-8 that yields no FHIR dateTime, or a TQ1-8 that precedes TQ1-7.
+ * - More than one TQ1 on the order, or more than one **valued** repetition of TQ1-3: mapping one and
+ *   discarding the rest would silently drop half a regimen. A repetition that carries no value is
+ *   not one of them: `Q4H~`, `~Q4H` and `Q4H~""` each send exactly one repeat pattern, and the
+ *   single valued repetition is the one every component is read from, wherever on the wire it sat.
+ *
+ * **TQ1-2 Quantity and TQ1-9 Priority are different**, and do *not* withhold the timing: the IG maps
+ * them to the dose and the priority, both of which the RXO/OBR path already grounds. They are flagged
+ * dropped and neither field is touched, so a TQ1 that carries them still contributes its schedule.
+ *
+ * **Only a valued field is read, and "valued" is one question asked in the shape of the datatype it
+ * is asked about.** An absent field and the HL7 explicit null (the two-character literal `""`, the
+ * wire saying this position carries no value) are both read as carrying nothing, at every
+ * granularity: no FHIR element is written from either, no diagnostic is raised about either, and a
+ * TQ1 whose only content was a null contributed nothing and is reported as unreached. The null
+ * marker is *text* to a projection that reads a field whole, so reading one as a value would put two
+ * quotation marks into a dosing narrative as though a clinician wrote them.
+ *
+ * A **composite** field (every TQ1 field but the two `TX` rows) is valued when some subcomponent
+ * carries a value, which is also how a repetition and a component are decided, so a structural empty
+ * is never read as content anywhere in the composite path. A **primitive** `TX` row is valued when
+ * the wire put any character in the field at all, because that datatype has no positions to be empty
+ * (see {@link freeText}); asking it the composite question dropped a row of nothing but raw
+ * delimiters, which this module's own rule calls content.
+ *
+ * **A valued free-text row that cannot be placed is flagged, never dropped in silence**, which is
+ * the difference between it and the two states above. Two shapes reach that arm: content the display
+ * projection resolves away entirely (a `\H\`/`\N\` highlight pair with nothing between it), and a
+ * TQ1-11 of nothing but whitespace, which R4's `txt-2` ("the narrative SHALL have some
+ * non-whitespace content") forbids as a `Narrative`. Each raises a value-free
+ * `TRANSFORM_ELEMENT_DROPPED` naming its own row and writes no element. TQ1-10 is not whitespace
+ * tested: its target is a plain `string`, which R4 constrains no further, so a whitespace-only one
+ * is carried exactly as sent.
+ *
+ * @packageDocumentation
+ */
+
+import { renderText, type EncodingCharacters, type RawRepetition, type Segment } from "@cosyte/hl7";
+import { complex, decimal, list, primitive, type FhirComplex, type FhirNode } from "@cosyte/fhir";
+
+import { toFhirDateTime } from "../datatypes/datetime.js";
+import { ISSUE_CODES } from "../diagnostics/codes.js";
+import { issue, type TransformIssue } from "../diagnostics/issue.js";
+import {
+  isRepeatPatternCode,
+  translateBound,
+  TIMING_EVENT_VALUE_MAP,
+  V2_0335_SYSTEM,
+} from "../terminology/concept-map.js";
+import type { TransformContext } from "../terminology/context.js";
+
+/**
+ * FHIR R4's `UnitsOfTime` value set: the **required** binding on `Timing.repeat.periodUnit`. RPT.6
+ * carries a v2 period unit and the IG publishes no ConceptMap for that row, so the only faithful
+ * carry is a code that is already a member; anything else would be an invented translation and is
+ * refused instead.
+ *
+ * @example
+ * ```ts
+ * // UNITS_OF_TIME.has("h");   // true  -> RPT.6 "h" reaches Timing.repeat.periodUnit
+ * // UNITS_OF_TIME.has("hr");  // false -> refused, never translated to "h"
+ * ```
+ */
+export const UNITS_OF_TIME: ReadonlySet<string> = Object.freeze(
+  new Set(["s", "min", "h", "d", "wk", "mo", "a"]),
+);
+
+/** The UCUM coding-system mnemonics RPT.6 may declare and still be read as a `UnitsOfTime` code. */
+const UCUM_MNEMONICS: ReadonlySet<string> = Object.freeze(new Set(["UCUM", "ISO+"]));
+
+/** The HL70335 coding-system mnemonics RPT.1 may declare and still be read as a table code. */
+const HL70335_MNEMONICS: ReadonlySet<string> = Object.freeze(new Set(["HL70335", "0335"]));
+
+/**
+ * Which request the TQ1 is read for. It selects the FHIR paths the diagnostics name and whether the
+ * TQ1-10 / TQ1-11 free-text rows have a target at all (the IG's ServiceRequest map sends them
+ * elsewhere, and the service path carries only the timing here).
+ *
+ * @example
+ * ```ts
+ * // const reading = readTq1(group.tq1s, "MedicationRequest", ctx);
+ * ```
+ */
+export type Tq1Target = "MedicationRequest" | "ServiceRequest";
+
+/**
+ * What one order group's TQ1 occurrences ground, ready for a request builder to place: the `Timing`
+ * (or `undefined` when it was absent or refused), the two free-text rows, the value-free diagnostics
+ * raised reading them, and whether anything at all reached the request.
+ *
+ * @example
+ * ```ts
+ * // const { timing, issues, contributes } = readTq1(tq1s, "ServiceRequest", ctx);
+ * ```
+ */
+export interface Tq1Reading {
+  /** The FHIR `Timing` node, or `undefined` when the TQ1 grounded none or the schedule was refused. */
+  readonly timing: FhirComplex | undefined;
+  /** TQ1-10 Condition text, verbatim, for `dosageInstruction.additionalInstruction.text`. */
+  readonly conditionText: string | undefined;
+  /** TQ1-11 Text instruction, verbatim, for the `MedicationRequest.text` narrative. */
+  readonly instructionText: string | undefined;
+  /** The value-free diagnostics this reading raised, in emission order. */
+  readonly issues: readonly TransformIssue[];
+  /** Whether the TQ1 contributed anything to the request (what the completeness ledger marks on). */
+  readonly contributes: boolean;
+}
+
+/** The R4 element TQ1-10 reaches on the medication path, for the diagnostics that name it. */
+const CONDITION_TEXT_PATH = "MedicationRequest.dosageInstruction.additionalInstruction.text";
+
+/** The R4 element TQ1-11 reaches on the medication path, for the diagnostics that name it. */
+const INSTRUCTION_TEXT_PATH = "MedicationRequest.text";
+
+/** The FHIR path of the timing element on each target: the `occurrence[x]`/`timing` choice differs. */
+function timingPath(target: Tq1Target): string {
+  return target === "MedicationRequest"
+    ? "MedicationRequest.dosageInstruction.timing"
+    : "ServiceRequest.occurrenceTiming";
+}
+
+/**
+ * The HL7 explicit null: the two literal quotation marks a sender writes to say "this position
+ * carries no value". The parser already answers it at FIELD granularity, collapsing a field written
+ * that way to zero repetitions; below that it survives as these two characters, so a repetition or a
+ * component written as one is decided here.
+ */
+const EXPLICIT_NULL = '""';
+
+/**
+ * Whether one subcomponent carries a value. This is the module's single answer to "did the wire say
+ * anything at this position", and every composite question below is built from it, so an explicit
+ * null reads the same way wherever it sits rather than only where the parser happened to fold it.
+ */
+function carriesValue(sub: string): boolean {
+  return sub !== "" && sub !== EXPLICIT_NULL;
+}
+
+/** Whether one repetition of a composite field carries a value anywhere inside it. */
+function repetitionValued(rep: RawRepetition): boolean {
+  return rep.components.some((c) => c.subcomponents.some(carriesValue));
+}
+
+/** Whether a composite field carries a value at all: one valued subcomponent in any repetition. */
+function isValued(seg: Segment, index: number): boolean {
+  return seg.field(index).repetitions.some(repetitionValued);
+}
+
+/** The subcomponents of a 1-based component of one composite repetition. */
+function subcomponents(rep: RawRepetition, component: number): readonly string[] {
+  return rep.components[component - 1]?.subcomponents ?? [];
+}
+
+/** Whether a 1-based component of one composite repetition carries a value. */
+function componentValued(rep: RawRepetition, component: number): boolean {
+  return subcomponents(rep, component).some(carriesValue);
+}
+
+/** A 1-based subcomponent of a 1-based component, or `""` when absent (a composite-encoded CWE part). */
+function subcomponent(rep: RawRepetition, component: number, sub: number): string {
+  return subcomponents(rep, component)[sub - 1] ?? "";
+}
+
+/**
+ * A field's wire text with the **structural empties** its canonical form drops put back, so a `TX`
+ * primitive that ends in (or contains) a raw delimiter arrives with every character the sender sent.
+ *
+ * `Field.text` is byte-verbatim for content but structurally canonical: it strips each component's
+ * trailing empty subcomponents and each repetition's trailing empty components (the parser's D-02),
+ * so the wire `2 tabs^` projects as `2 tabs` and `a&^b` as `a^b`. On a composite field those empties
+ * are absent positions and dropping them is right; on a `TX` primitive they are the last characters
+ * of a clinical instruction. This walks the field's own repetition tree, which still records every
+ * empty, and pads each surviving component back to the subcomponent count the wire carried and each
+ * repetition back to its component count. **Only delimiter characters are ever added**: content is
+ * copied across untouched, so every escape keeps the exact bytes the sender wrote, and a tree that
+ * does not line up with the text (nothing observed produces one) leaves that stretch exactly as it
+ * was rather than dropping any of it.
+ *
+ * @param text - The field's canonical wire text (`Field.text`).
+ * @param repetitions - That same field's repetition tree (`Field.repetitions`).
+ * @param enc - The message's encoding characters.
+ * @example
+ * ```ts
+ * // restoreStructuralEmpties("2 tabs", field.repetitions, enc); // "2 tabs^"
+ * ```
+ */
+export function restoreStructuralEmpties(
+  text: string,
+  repetitions: readonly RawRepetition[],
+  enc: EncodingCharacters,
+): string {
+  const padded = (part: string, count: number): string => {
+    const subs = part.split(enc.subcomponent);
+    if (subs.length >= count) return part;
+    return [...subs, ...Array.from({ length: count - subs.length }, () => "")].join(
+      enc.subcomponent,
+    );
+  };
+  return text
+    .split(enc.repetition)
+    .map((repetition, r) => {
+      const components = repetitions[r]?.components ?? [];
+      const parts = repetition.split(enc.component);
+      const restored = parts.map((part, c) =>
+        padded(part, components[c]?.subcomponents.length ?? 0),
+      );
+      // Components the canonicalization dropped whole: each contributes its own separator, plus the
+      // separators between the empty subcomponents it carried.
+      for (const dropped of components.slice(parts.length))
+        restored.push(padded("", dropped.subcomponents.length));
+      return restored.join(enc.component);
+    })
+    .join(enc.repetition);
+}
+
+/**
+ * What a `TX` free-text row projects to. Three outcomes, and the third is the one a boolean
+ * `string | undefined` could not tell apart from the first: a field the wire **valued** whose whole
+ * content the display projection resolves away (a lone `\H\`/`\N\` highlight pair, say). That is not
+ * an absent field, it is content that arrived and cannot be placed, so it is flagged rather than
+ * dropped in silence.
+ */
+type FreeTextReading =
+  | { readonly kind: "absent" }
+  | { readonly kind: "unplaceable" }
+  | { readonly kind: "text"; readonly text: string };
+
+/**
+ * The **whole** content of a `TX` free-text field as display text.
+ *
+ * TQ1-10 and TQ1-11 are `TX`: a v2 **primitive**, with no component or subcomponent structure at
+ * all, so a raw `^`, `&` or `~` inside one is *content* by definition. `Field.value` is documented
+ * as the "first-repetition, first-component, first-subcomponent value" and would therefore truncate
+ * `2 tabs^then 1 tab` to `2 tabs`, delivering a dosing instruction that lost its taper with nothing
+ * to say so. So the whole field is read, through the parser's own renderer for a clinical narrative:
+ * a read projection over byte-verbatim wire text that resolves the v2 escape sequences (`\T\` to a
+ * literal `&`, `\.br\` to a line break) and **never fabricates**, preserving any sequence it cannot
+ * render rather than guessing at it, over the text {@link restoreStructuralEmpties} repairs.
+ *
+ * **"Valued" is the PRIMITIVE's own question here, not the composite one.** A composite field is
+ * valued when some subcomponent carries content, and asking that of a `TX` row contradicts the
+ * paragraph above: a field of nothing but raw delimiters (`^`, `&`, `~`, `^&~`) produces only empty
+ * positions, so the composite test calls it absent and drops the very characters this datatype
+ * defines as content. The question a primitive asks is "did the wire put anything in this field",
+ * and it is answered off the field's own repetition tree, which the parser leaves EMPTY for an
+ * absent field and for the HL7 explicit null alike.
+ *
+ * **An HL7 explicit null is not a value.** The two-character literal `""` is the wire's way of
+ * saying this field carries nothing, and it projects as text as the two characters it is. The
+ * parser folds a field written that way to zero repetitions, so it arrives here already
+ * indistinguishable from an absent field: nothing to carry, and nothing dropped to flag.
+ *
+ * **A field that projects to nothing is not the same as either.** Display markup alone is still
+ * content the sender put on the wire, so it yields `unplaceable` and its caller raises a value-free
+ * diagnostic: silence there would be indistinguishable from a field that was never sent.
+ */
+function freeText(seg: Segment, field: number): FreeTextReading {
+  const f = seg.field(field);
+  if (f.repetitions.length === 0) return { kind: "absent" };
+  // The message's OWN delimiters, off the segment, never the defaults: a sender declares them in
+  // MSH-2, and a repair that assumed "^~&" would put a character into a narrative that the message
+  // never used as a separator.
+  const rendered = renderText(
+    restoreStructuralEmpties(f.text, f.repetitions, seg.enc),
+    seg.enc,
+  ).text;
+  return rendered === "" ? { kind: "unplaceable" } : { kind: "text", text: rendered };
+}
+
+/**
+ * Whether a `TX` free-text row carries content, decided by the same read that places it, so the
+ * `ServiceRequest` arm (which has no target for either row and only flags them) and the
+ * `MedicationRequest` arm (which places them) never disagree about whether one arrived.
+ */
+function txValued(seg: Segment, field: number): boolean {
+  return freeText(seg, field).kind !== "absent";
+}
+
+/**
+ * The six TQ1 fields that each **narrow** a schedule, paired with the IG target they would have
+ * reached. A valued one withholds the whole timing (see the module note), because a Timing built
+ * without it would read as a complete instruction that is strictly wider than the one sent.
+ */
+const SCHEDULE_NARROWING: readonly (readonly [field: number, path: string])[] = Object.freeze([
+  [4, ".event"],
+  [5, ".repeat.offset"],
+  // R4 places every `bounds[x]` on `Timing.repeat`, not on `Timing`, so the element the IG's
+  // TQ1-6 rows would have reached is `...timing.repeat.boundsDuration`: a consumer routing on
+  // `fhirPath` must not be handed a path that resolves to nothing.
+  [6, ".repeat.boundsDuration"],
+  [12, ""],
+  [13, ".repeat.duration"],
+  [14, ".repeat.countMax"],
+]);
+
+/**
+ * The RPT components this library can ground, by 1-based position: `RPT.1` Repeat Pattern Code,
+ * `RPT.5` Period Quantity, `RPT.6` Period Units and `RPT.8` Event. The refusal is written as the
+ * **complement** of this set rather than as a list of the components to refuse, so it is closed over
+ * whatever the wire actually carries: the published RPT datatype defines eleven components, and a
+ * message that values a twelfth is non-conformant content the transform must still not drop in
+ * silence. Refusing by enumeration would have read that twelfth as absent.
+ *
+ * Why each of the other published components is not here, on the IG's own rows: `RPT.2` Calendar
+ * Alignment, `RPT.7` Institution Specified Time and `RPT.11` General Timing Specification have no
+ * FHIR target row at all; `RPT.3`/`RPT.4`, the two ends of the day-of-week range, carry the
+ * narrative `/translate number to day/` with no published table behind it; `RPT.9`/`RPT.10` Event
+ * Offset carry `/convert to minutes based on RPT.10/`, a rescale this library never performs.
+ */
+const EXPRESSIBLE_RPT_COMPONENTS: ReadonlySet<number> = Object.freeze(new Set([1, 5, 6, 8]));
+
+/**
+ * Whether the instant `end` denotes precedes the instant `start` denotes, decided only where the
+ * two FHIR dateTime values are unambiguously comparable, so an inverted period is caught without a
+ * date-precision value ever being read as an instant it does not carry:
+ *
+ * - Two fully-zoned datetimes are compared as the absolute instants they are.
+ * - Otherwise both are reduced to the calendar date each states and compared at day granularity,
+ *   with a partial date (`2026`, `2026-07`) widened to the whole span it covers, so a comparison
+ *   only fires when *every* day the end could mean is before *every* day the start could mean.
+ *
+ * @param start - The FHIR dateTime the boundsPeriod would start at.
+ * @param end - The FHIR dateTime the boundsPeriod would end at.
+ * @example
+ * ```ts
+ * // endPrecedesStart("2026-07-22", "2026-07-21");                                 // true
+ * // endPrecedesStart("2026-07-21T10:00:00-05:00", "2026-07-21T09:00:00-05:00");   // true
+ * // endPrecedesStart("2026-07-21T10:00:00-05:00", "2026-07-21");                  // false (same day)
+ * ```
+ */
+export function endPrecedesStart(start: string, end: string): boolean {
+  const zoned = (v: string): number | undefined => {
+    if (!v.includes("T")) return undefined;
+    const ms = Date.parse(v);
+    return Number.isNaN(ms) ? undefined : ms;
+  };
+  const startMs = zoned(start);
+  const endMs = zoned(end);
+  if (startMs !== undefined && endMs !== undefined) return endMs < startMs;
+  // Day granularity: the earliest day the start could mean vs the latest day the end could mean.
+  const datePart = (v: string): string => v.split("T")[0] ?? v;
+  const widen = (v: string, high: boolean): string => {
+    const d = datePart(v);
+    if (d.length === 4) return high ? `${d}-12-31` : `${d}-01-01`;
+    if (d.length === 7) return high ? `${d}-31` : `${d}-01`;
+    return d;
+  };
+  return widen(end, true) < widen(start, false);
+}
+
+/**
+ * Build the `Timing.code` CodeableConcept from RPT.1: the message's own code, **verbatim**, under the
+ * `v2-0335` CodeSystem. The IG map's rows are identity in the source code, so nothing is translated
+ * and no second, derived coding is asserted; a code the map has no row for never reaches here.
+ */
+function timingCode(code: string): FhirComplex {
+  return complex([
+    {
+      name: "coding",
+      value: list([
+        complex([
+          { name: "system", value: primitive(V2_0335_SYSTEM) },
+          { name: "code", value: primitive(code) },
+        ]),
+      ]),
+    },
+  ]);
+}
+
+/** The accumulating state of one TQ1 read: the timing parts so far, plus whether it has been refused. */
+interface Draft {
+  refused: boolean;
+  code: FhirComplex | undefined;
+  period: FhirNode | undefined;
+  periodUnit: string | undefined;
+  when: string | undefined;
+  boundsStart: string | undefined;
+  boundsEnd: string | undefined;
+}
+
+/** Read TQ1-3's RPT components into `draft`, refusing on anything outside the expressible set. */
+function readRepeatPattern(
+  tq1: Segment,
+  base: string,
+  draft: Draft,
+  issues: TransformIssue[],
+): void {
+  // The repetitions that carry a VALUE, never the raw ones the separators delimit. `Q4H~`, `~Q4H`
+  // and `Q4H~""` each send exactly one repeat pattern, so counting `~` characters instead of
+  // content refused a schedule the message had grounded completely, and it did so at the one place
+  // in this module that read a structural empty as content: every other emptiness question here is
+  // {@link carriesValue}. The valued one is the repetition every component below is read from, so a
+  // pattern that arrived second on the wire is read exactly as one that arrived first.
+  const valued = tq1.field(3).repetitions.filter(repetitionValued);
+  const rpt = valued[0];
+  if (rpt === undefined) return;
+  if (valued.length > 1) {
+    // Timing.code is 0..1 and Timing carries one repeat: a second pattern cannot be placed, and
+    // taking the first would emit a schedule the message did not send.
+    issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.3", base));
+    draft.refused = true;
+    return;
+  }
+
+  // Every component position the wire actually carried, not a fixed list of the seven published
+  // ones: a valued component past RPT.11 is content the sender sent and this library cannot ground,
+  // so it withholds the schedule exactly as RPT.2 does rather than being read as absent.
+  const carried = rpt.components.length;
+  for (let component = 1; component <= carried; component += 1) {
+    if (EXPRESSIBLE_RPT_COMPONENTS.has(component)) continue;
+    if (!componentValued(rpt, component)) continue;
+    issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, `TQ1.3.${String(component)}`, base));
+    draft.refused = true;
+  }
+
+  // RPT.1 → Timing.code. A foreign coding system is never asserted to be the v2-0335 concept, and a
+  // code the published map has no row for is never asserted at all.
+  if (componentValued(rpt, 1)) {
+    const code = subcomponent(rpt, 1, 1);
+    const mnemonic = subcomponent(rpt, 1, 3);
+    const fromTable = mnemonic === "" || HL70335_MNEMONICS.has(mnemonic);
+    if (fromTable && isRepeatPatternCode(code)) {
+      draft.code = timingCode(code);
+    } else {
+      issues.push(issue(ISSUE_CODES.TRANSFORM_CODE_UNMAPPED, "TQ1.3.1", `${base}.code`));
+      draft.refused = true;
+    }
+  }
+
+  // RPT.5 → Timing.repeat.period, precision-exact. A magnitude FHIR's decimal cannot hold in the
+  // sender's own lexical form is refused, never canonicalized (which would alter it); and so is a
+  // negative one, which R4's tim-5 ("period SHALL be a non-negative value") forbids on the target
+  // element whatever its lexical form. Unsigned zero is not refused: tim-5 admits it and carrying
+  // the sender's own magnitude unaltered is this library's standing rule.
+  //
+  // The sign test is LEXICAL, on the digits the sender wrote, because the emitted value is lexical:
+  // `decimal` preserves the sender's form, so the guard has to answer the same question the wire
+  // will. `Number(raw) < 0` answers a different one and is false for a whole class of negatives: any
+  // magnitude under about 5e-324 underflows to `-0`, so `-1e-400` passed that test and reached the
+  // resource as `"period":-1e-400`, invisible to a JSON-parsing probe because parsing normalizes the
+  // literal to `0`. A minus sign in front of a magnitude is a negative period, at every magnitude.
+  if (componentValued(rpt, 5)) {
+    const raw = subcomponent(rpt, 5, 1);
+    let period: FhirNode | undefined;
+    try {
+      period = primitive(decimal(raw));
+    } catch {
+      period = undefined;
+    }
+    if (period === undefined || raw.startsWith("-")) {
+      issues.push(
+        issue(ISSUE_CODES.TRANSFORM_QUANTITY_VALUE_INVALID, "TQ1.3.5", `${base}.repeat.period`),
+      );
+      draft.refused = true;
+    } else {
+      draft.period = period;
+    }
+  }
+
+  // RPT.6 → Timing.repeat.periodUnit, a required-bound code: carried only when it already is one.
+  if (componentValued(rpt, 6)) {
+    const unit = subcomponent(rpt, 6, 1);
+    const mnemonic = subcomponent(rpt, 6, 3);
+    const fromUcum = mnemonic === "" || UCUM_MNEMONICS.has(mnemonic);
+    if (fromUcum && UNITS_OF_TIME.has(unit)) {
+      draft.periodUnit = unit;
+    } else {
+      issues.push(
+        issue(ISSUE_CODES.TRANSFORM_CODE_UNMAPPED, "TQ1.3.6", `${base}.repeat.periodUnit`),
+      );
+      draft.refused = true;
+    }
+  }
+
+  // RPT.5 and RPT.6 are one carry, not two. R4's tim-2 ("if there's a period, there needs to be
+  // period units") makes a lone period an INVALID repeat rather than a narrower one, and a lone unit
+  // grounds no interval at all; either way the half that did arrive cannot be placed. The one the
+  // message valued is named, so the diagnostic points at content the sender actually sent. Skipped
+  // when that half was already refused above: its own issue already names the component.
+  const periodValued = componentValued(rpt, 5);
+  const unitValued = componentValued(rpt, 6);
+  if (periodValued && !unitValued && draft.period !== undefined) {
+    issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.3.5", `${base}.repeat.period`));
+    draft.refused = true;
+  }
+  if (unitValued && !periodValued && draft.periodUnit !== undefined) {
+    issues.push(
+      issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.3.6", `${base}.repeat.periodUnit`),
+    );
+    draft.refused = true;
+  }
+
+  // RPT.8 → Timing.repeat.when, a required-bound code: only the IG rows that target v3-TimingEvent,
+  // and only when the message declared the bound table (or declared nothing). The coding system the
+  // sender put in RPT.8's third subcomponent is handed to translateBound, which is the only thing
+  // that can enforce TIMING_EVENT_VALUE_MAP's own sourceMnemonics: withhold it and a code sent under
+  // a site's local table is asserted to be the published v3-TimingEvent concept that shares its
+  // spelling, inside an element whose binding is REQUIRED. `AC` under a local table need not mean
+  // "before meal". RPT.1 and RPT.6 above apply the same guard through their own mnemonic sets;
+  // RPT.8's bound table is a real ConceptMap, so it is guarded by the map's declared mnemonics
+  // rather than by a second copy of that list.
+  if (componentValued(rpt, 8)) {
+    const event = subcomponent(rpt, 8, 1);
+    const mnemonic = subcomponent(rpt, 8, 3);
+    const target = translateBound(
+      { identifier: event, nameOfCodingSystem: mnemonic },
+      TIMING_EVENT_VALUE_MAP,
+    );
+    if (target === undefined) {
+      issues.push(issue(ISSUE_CODES.TRANSFORM_CODE_UNMAPPED, "TQ1.3.8", `${base}.repeat.when`));
+      draft.refused = true;
+    } else {
+      draft.when = target.code;
+    }
+  }
+}
+
+/** Read TQ1-7 / TQ1-8 into `draft`'s bounds, refusing an endpoint that is lost or inverted. */
+function readBounds(
+  tq1: Segment,
+  base: string,
+  ctx: TransformContext,
+  draft: Draft,
+  issues: TransformIssue[],
+): void {
+  const endpoint = (field: number, name: "start" | "end"): string | undefined => {
+    if (!isValued(tq1, field)) return undefined;
+    const converted = toFhirDateTime(tq1.field(field).asTs(), ctx.options);
+    issues.push(...converted.issues);
+    if (converted.value === undefined) {
+      // A valued endpoint that yields no dateTime cannot be silently omitted: the remaining bound
+      // would read as an open-ended regimen the message never authorized.
+      issues.push(
+        issue(
+          ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED,
+          `TQ1.${String(field)}`,
+          `${base}.repeat.boundsPeriod.${name}`,
+        ),
+      );
+      draft.refused = true;
+    }
+    return converted.value;
+  };
+
+  draft.boundsStart = endpoint(7, "start");
+  draft.boundsEnd = endpoint(8, "end");
+
+  if (
+    draft.boundsStart !== undefined &&
+    draft.boundsEnd !== undefined &&
+    endPrecedesStart(draft.boundsStart, draft.boundsEnd)
+  ) {
+    issues.push(
+      issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.8", `${base}.repeat.boundsPeriod.end`),
+    );
+    draft.refused = true;
+  }
+}
+
+/** Assemble the `Timing` node from a draft that was not refused, or `undefined` when it grounds none. */
+function assembleTiming(draft: Draft): FhirComplex | undefined {
+  if (draft.refused) return undefined;
+
+  const bounds: { name: string; value: FhirNode }[] = [];
+  if (draft.boundsStart !== undefined)
+    bounds.push({ name: "start", value: primitive(draft.boundsStart) });
+  if (draft.boundsEnd !== undefined)
+    bounds.push({ name: "end", value: primitive(draft.boundsEnd) });
+
+  const repeat: { name: string; value: FhirNode }[] = [];
+  if (bounds.length > 0) repeat.push({ name: "boundsPeriod", value: complex(bounds) });
+  if (draft.period !== undefined) repeat.push({ name: "period", value: draft.period });
+  if (draft.periodUnit !== undefined)
+    repeat.push({ name: "periodUnit", value: primitive(draft.periodUnit) });
+  if (draft.when !== undefined) repeat.push({ name: "when", value: list([primitive(draft.when)]) });
+
+  const timing: { name: string; value: FhirNode }[] = [];
+  if (repeat.length > 0) timing.push({ name: "repeat", value: complex(repeat) });
+  if (draft.code !== undefined) timing.push({ name: "code", value: draft.code });
+
+  return timing.length === 0 ? undefined : complex(timing);
+}
+
+/** The reading an order group with no usable TQ1 yields: nothing placed, nothing claimed reached. */
+function nothing(issues: readonly TransformIssue[]): Tq1Reading {
+  return {
+    timing: undefined,
+    conditionText: undefined,
+    instructionText: undefined,
+    issues,
+    contributes: false,
+  };
+}
+
+/**
+ * Read an order group's TQ1 occurrences into the parts its request builder places. Never throws;
+ * every refusal is a value-free {@link TransformIssue} naming the TQ1 field or component that caused
+ * it, and a refused schedule leaves `timing` `undefined` rather than partially built.
+ *
+ * @param tq1s - The group's `TQ1` segments, in document order (usually zero or one).
+ * @param target - Which request is being built; selects the FHIR paths and the free-text rows.
+ * @param ctx - The transform context (its options carry the naked-timestamp policy).
+ * @example
+ * ```ts
+ * import { parseHL7 } from "@cosyte/hl7";
+ * // const tq1s = parseHL7(raw).allSegments().filter((s) => s.type === "TQ1");
+ * // const { timing, issues } = readTq1(tq1s, "MedicationRequest", {});
+ * ```
+ */
+export function readTq1(
+  tq1s: readonly Segment[],
+  target: Tq1Target,
+  ctx: TransformContext,
+): Tq1Reading {
+  const issues: TransformIssue[] = [];
+  const base = timingPath(target);
+
+  if (tq1s.length === 0) return nothing(issues);
+  if (tq1s.length > 1) {
+    // Two timings on one order is a regimen this library cannot express as one request. Mapping the
+    // first and discarding the rest would emit half a schedule as if it were the whole one, so
+    // nothing from any occurrence is carried and every one of them stays unreached.
+    issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1", base));
+    return nothing(issues);
+  }
+  const tq1 = tq1s[0];
+  if (tq1 === undefined) return nothing(issues);
+
+  // TQ1-2 / TQ1-9: the IG maps these to the dose and the priority, which the RXO/OBR path already
+  // grounds. Flagged dropped, neither field touched, and the schedule is unaffected.
+  if (isValued(tq1, 2)) {
+    issues.push(
+      issue(
+        ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED,
+        "TQ1.2",
+        target === "MedicationRequest"
+          ? "MedicationRequest.dosageInstruction.doseAndRate.doseQuantity"
+          : "ServiceRequest.quantityQuantity",
+      ),
+    );
+  }
+  if (isValued(tq1, 9)) {
+    issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.9", `${target}.priority`));
+  }
+
+  const draft: Draft = {
+    refused: false,
+    code: undefined,
+    period: undefined,
+    periodUnit: undefined,
+    when: undefined,
+    boundsStart: undefined,
+    boundsEnd: undefined,
+  };
+
+  for (const [field, suffix] of SCHEDULE_NARROWING) {
+    if (!isValued(tq1, field)) continue;
+    issues.push(
+      issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, `TQ1.${String(field)}`, `${base}${suffix}`),
+    );
+    draft.refused = true;
+  }
+
+  readRepeatPattern(tq1, base, draft, issues);
+  readBounds(tq1, base, ctx, draft, issues);
+
+  const timing = assembleTiming(draft);
+
+  // TQ1-10 / TQ1-11 reach two DIFFERENT MedicationRequest targets, and the IG names no target on the
+  // service path for either (TQ1-10 is a proposed extension there, TQ1-11 an Annotation this library
+  // does not build), so on that path they are flagged dropped rather than silently discarded.
+  let conditionText: string | undefined;
+  let instructionText: string | undefined;
+  if (target === "MedicationRequest") {
+    // Read whole, never truncated at the first raw delimiter, and read only where the field is
+    // valued by the same test the service path applies: see freeText. "Verbatim" is the claim these
+    // two rows make, and a TX field's delimiters are content, not structure.
+    const condition = freeText(tq1, 10);
+    if (condition.kind === "text") conditionText = condition.text;
+    else if (condition.kind === "unplaceable")
+      issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.10", CONDITION_TEXT_PATH));
+
+    const instruction = freeText(tq1, 11);
+    if (instruction.kind === "unplaceable") {
+      issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.11", INSTRUCTION_TEXT_PATH));
+    } else if (instruction.kind === "text") {
+      // R4's `txt-2` on Narrative: "The narrative SHALL have some non-whitespace content". A TQ1-11
+      // of nothing but spaces projects faithfully and still cannot be placed, because the div it
+      // would fill is invalid. @cosyte/fhir models no Narrative constraint, so the conservative-emit
+      // gate cannot catch it and the resource would ship: the refusal happens here or nowhere. Only
+      // this row is tested, because only this row targets a Narrative; TQ1-10 reaches a plain
+      // `string`, which R4 constrains no further, so a whitespace-only one is carried as sent.
+      if (instruction.text.trim() === "")
+        issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.11", INSTRUCTION_TEXT_PATH));
+      else instructionText = instruction.text;
+    }
+  } else {
+    if (txValued(tq1, 10))
+      issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.10", "ServiceRequest"));
+    if (txValued(tq1, 11))
+      issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TQ1.11", "ServiceRequest.note"));
+  }
+
+  return {
+    timing,
+    conditionText,
+    instructionText,
+    issues,
+    contributes:
+      timing !== undefined || conditionText !== undefined || instructionText !== undefined,
+  };
+}
+
+/**
+ * Escape the five XML predefined entities in a v2 free-text instruction so it can sit inside an
+ * XHTML `div` without altering anything else about it. Nothing is trimmed, collapsed, wrapped or
+ * re-cased: unescaping the result returns the sender's text character for character.
+ *
+ * @param value - The decoded v2 text.
+ * @example
+ * ```ts
+ * // escapeXml('take <2 & "rest"'); // 'take &lt;2 &amp; &quot;rest&quot;'
+ * ```
+ */
+export function escapeXml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+/**
+ * Build the `MedicationRequest.text` `Narrative` for a TQ1-11 free-text instruction: `status`
+ * `additional` (the resource's structured elements do not contain this text, so it is genuinely
+ * additional, never `generated`), and a `div` carrying the sender's text XML-escaped and otherwise
+ * untouched.
+ *
+ * @param value - The TQ1-11 text, decoded.
+ * @example
+ * ```ts
+ * // narrative("with food"); // Narrative { status: "additional", div: "<div ...>with food</div>" }
+ * ```
+ */
+export function narrative(value: string): FhirComplex {
+  return complex([
+    { name: "status", value: primitive("additional") },
+    {
+      name: "div",
+      value: primitive(`<div xmlns="http://www.w3.org/1999/xhtml">${escapeXml(value)}</div>`),
+    },
+  ]);
+}
