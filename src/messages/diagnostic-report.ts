@@ -15,6 +15,7 @@
  * | OBR-22 Results Rpt/Status Chng Date/Time | `DiagnosticReport.issued` (an `instant`) | {@link toFhirDateTime} |
  * | OBR-24 Diagnostic Serv Sect ID | `DiagnosticReport.category` | v2-0074 coding |
  * | OBR-25 Result Status | `DiagnosticReport.status` | {@link DIAGNOSTIC_REPORT_STATUS_MAP} (HL70123) |
+ * | (SPM children) | `DiagnosticReport.specimen` | reference wiring from the assembler |
  * | (OBX children) | `DiagnosticReport.result` | reference wiring from the assembler |
  *
  * **Fail-safes.** `DiagnosticReport.status` is required (R4 1..1) and the IG itself notes an unvalued
@@ -23,8 +24,11 @@
  * required-`status` emit gate withholds the report rather than emitting an invalid one or guessing
  * `final`. `OBR-25 = C`→`corrected` / `X`→`cancelled` are modelled exactly. OBR-22 becomes `issued`
  * only when it is a fully-zoned instant; a date-only/naked OBR-22 is dropped + flagged (never a
- * fabricated UTC), mirroring `Bundle.timestamp`. Deferred and flagged elsewhere, not silently mapped:
- * OBR-32/34/35 performers (need PractitionerRole resources), specimen, and `basedOn` ServiceRequest.
+ * fabricated UTC), mirroring `Bundle.timestamp`. `.specimen` carries only the Specimens the
+ * assembler has already emitted into this bundle, so the reference never resolves to nothing.
+ * Deferred and flagged elsewhere, not silently mapped: OBR-32/34/35 performers (need
+ * PractitionerRole resources), the ORU map's own OBR-to-Specimen row (4.2.2, distinct from the SPM
+ * one), and `basedOn` ServiceRequest.
  *
  * @packageDocumentation
  */
@@ -75,6 +79,7 @@ export const DIAGNOSTIC_REPORT_STATUS_MAP: Readonly<Record<string, string>> = Ob
  * @param subjectFullUrl - The bundle's Patient fullUrl → `DiagnosticReport.subject`.
  * @param encounterFullUrl - The bundle's Encounter fullUrl → `DiagnosticReport.encounter`.
  * @param ctx - The transform context (naming-system registry + timezone policy).
+ * @param specimenFullUrls - The `urn:uuid:` fullUrls of this group's emitted `Specimen`s → `.specimen`.
  * @example
  * ```ts
  * import { parseHL7 } from "@cosyte/hl7";
@@ -88,6 +93,7 @@ export function buildDiagnosticReport(
   subjectFullUrl: string | undefined,
   encounterFullUrl: string | undefined,
   ctx: TransformContext,
+  specimenFullUrls: readonly string[] = [],
 ): ConvertResult<FhirComplex> {
   const issues: TransformIssue[] = [];
   const props: { name: string; value: FhirNode }[] = [
@@ -179,6 +185,12 @@ export function buildDiagnosticReport(
         issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "OBR.22", "DiagnosticReport.issued"),
       );
     }
+  }
+
+  // DiagnosticReport.specimen → the emitted Specimens of this group (ORU map row 4.2.7.1's own
+  // assignment, `DiagnosticReport[1].specimen.reference = Specimen[n].id`).
+  if (specimenFullUrls.length > 0) {
+    props.push({ name: "specimen", value: list(specimenFullUrls.map((u) => reference(u))) });
   }
 
   // DiagnosticReport.result → the emitted Observations under this OBR.

@@ -160,7 +160,11 @@ all reported. A flagged segment is still not transformed: you learn what is miss
 said.
 
 The same `toFhir(msg)` handles the other message families: **ORU^R01** → `DiagnosticReport` (OBR) +
-`Observation` (OBX), and the order-entry graph, **ORM_O01 / OML_O21** ORC/OBR →
+`Observation` (OBX) + `Specimen` (SPM, referenced from the report that scopes it, and withheld with
+it rather than left orphaned), with each result's OBSERVATION-group `NTE` as `Observation.note` and
+`OBX-2` selecting the guide's own `value[x]` (a `DR` period, an `NR` range, a `TM` time, an `NA`
+sampled-data waveform, and a `Base64` `ED` payload carried into the guide's named `valueAttachment`
+extension byte-for-byte, undecoded), and the order-entry graph, **ORM_O01 / OML_O21** ORC/OBR →
 `ServiceRequest` and **RXO** (+ RXR route) → `MedicationRequest`, with `ServiceRequest.status`
 grounded on the HL70119 → request-status ConceptMap and withheld when it cannot be grounded, and a
 `MedicationRequest` whose IG-ungrounded status is the honest `unknown` rather than a guess. `RXE` has no

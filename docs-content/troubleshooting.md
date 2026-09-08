@@ -176,9 +176,21 @@ resource values; those carry PHI.
   never interpreted.
 - **ORU scope**: `DiagnosticReport.category` is not defaulted (the IG segment map sets none; it is
   realm-dependent), the results graph uses the first PID/PV1 (multiple patient result groups are not
-  handled), and OBR performers/specimen and `basedOn` ServiceRequest are deferred. An OBX value
-  type with no first-class FHIR `value[x]` (`NA`, `ED`, `DR`, `TM`, `NR`, …) preserves the raw value as
-  `valueString` and flags it, never a fabricated typed value.
+  handled), and OBR performers, the OBR-sourced specimen row and `basedOn` ServiceRequest are
+  deferred. An OBX value type with no settled FHIR `value[x]` (`RP`, whose extension target the guide
+  itself marks unresolved, and any type the guide does not map) preserves the raw value as
+  `valueString` and flags it, never a fabricated typed value. `DR`, `NR`, `TM` and `NA` reach
+  `valuePeriod`, `valueRange`, `valueTime` and `valueSampledData`, and an `ED` whose OBX-5.4 is
+  `Base64` reaches the guide's named `valueAttachment` extension with its payload carried
+  byte-for-byte, undecoded; each of them still falls back to the raw text plus a flagged drop when the
+  value cannot be carried faithfully (a `TM` with a UTC offset, a magnitude FHIR `decimal` cannot hold
+  unaltered, an `ED` under any other encoding). A `SampledData` never asserts an `origin` or a
+  `period`: the guide sources neither, so both ship value-absent with a `data-absent-reason` and a
+  `TRANSFORM_REQUIRED_ELEMENT_UNKNOWN`. An `SPM` in an ORU becomes a `Specimen` the scoping
+  `DiagnosticReport` references, withheld with that report rather than left orphaned, and its
+  `Specimen.status` is never asserted (the guide reaches it only through a Table 0136 value map this
+  library does not carry). An `NTE` inside the OBSERVATION group becomes `Observation.note`; the
+  PATIENT-level and ORDER_OBSERVATION-level `NTE` rows have no published target and reach nothing.
 - **Terminology value translation**: coded fields with an IG `mappedVia` value ConceptMap
   are value-translated via `toFhirCodeableConceptVia`, covering RXR route/site (HL70162/HL70550), SCH-8
   appointment type (HL70277), RXO-9 substitution (HL70161), OBR-5 priority (HL70485), and the AL1
