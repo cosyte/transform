@@ -13,3 +13,14 @@
 # adding a line here. Tracked FILENAMES are scanned whatever this file says, because a
 # declaration about a file's bytes says nothing about its name.
 vendor/*.tgz binary
+
+# The pinned FHIR definition packages under `vendor/fhir-packages/` are the same case and get the
+# same declaration: published third-party archives this repository consumes as DATA, verified by
+# sha256 at run time by the conformance harness. The argument above is what decides it, and it is
+# about the ARCHIVE, not about the trust: a DEFLATE stream can carry the em dash's UTF-8 bytes by
+# coincidence, and if it did there would be no edit that removes a byte from someone else's
+# compressed stream. Measured on the pins committed today, both archives scan clean either way, so
+# this declaration buys nothing NOW; it is here so that a future pin bump cannot land the gate in a
+# state with no remedy. The `binary` declaration covers CONTENT only: the tracked filenames are
+# still scanned, and `scripts/phi-scan.ts` reads these bytes on its own path route regardless.
+vendor/fhir-packages/*.tgz binary

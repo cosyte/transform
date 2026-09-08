@@ -146,7 +146,34 @@ missing without comment.
 The fail-safe rule holds at the message level: an unmapped patient class, a naked timestamp, or an
 unresolvable authority becomes a typed issue, never a fabricated value. A trigger the IG has no
 **message** map for is assembled from the segment maps and flagged, never invented; every emitted
-resource is validated against `@cosyte/fhir` before it ships.
+resource is checked against a small internal required-element schema before it ships, which is a
+floor this library wrote for itself and not a statement about FHIR conformance. What conformance the
+output actually reaches is measured separately, and published.
+
+### Conformance: measured, not asserted
+
+The guide publishes seven v2 test messages. This repository carries them, transforms every one of
+them, validates every resource of the resulting Bundle against the pinned **FHIR R4 4.0.1**
+definitions and the pinned **`hl7.fhir.us.core` version 9.0.0** profiles, and publishes the outcome
+in [`documentation/conformance/report.md`](documentation/conformance/report.md), with the
+machine-readable form beside it in `documentation/conformance/result.json`.
+
+**Today that result is: none of the seven messages produces a Bundle with zero error-severity
+results** against R4 plus those profiles. Against the base R4 4.0.1 definitions alone, without any
+profile, six of the seven are clean; the exception is `SIU_S12`, whose `Appointment` is `booked` with
+no start, which R4's own `app-3` invariant forbids. The profile findings are mostly one shape: US
+Core requires elements the guide's segment maps publish no row for (`Encounter.type`,
+`Coverage.relationship`, `Observation.category`, `DocumentReference.category`), and this library
+leaves an ungrounded element absent rather than guessing at it. Every finding is listed in the
+report, per message, per resource, with the element path and the profile version it came from.
+
+Two things that result does **not** say. It says nothing about **mapping correctness**: a clean
+Bundle is well formed and profile-conformant, not proof that the right v2 field reached the right
+FHIR element. And it is not a full implementation-guide validator run: the report states which
+classes of check were performed and which were not, external terminology resolution among the
+latter. Both packages are carried in the repository and verified by digest on every run, so the
+number is reproducible against a pin rather than against whatever was current; `pnpm run conformance`
+regenerates it, and the test suite fails when the published result and a live run disagree.
 
 **And silence is not completeness.** Every segment occurrence that contributed nothing to a resource
 in the returned bundle raises one value-free issue naming it, so you can read the issues list instead

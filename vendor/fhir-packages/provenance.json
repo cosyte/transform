@@ -1,0 +1,28 @@
+{
+  "note": "Pinned FHIR definition packages. These are DATA, not dependencies: nothing here is installed, resolved or executed. The conformance harness reads them from disk and verifies each sha256 before use; a missing, unreadable or hash-mismatched file fails the run and there is no network fetch fallback.",
+  "verifiedBy": "scripts/conformance/pinned-packages.ts",
+  "packages": [
+    {
+      "id": "hl7.fhir.r4.core",
+      "version": "4.0.1",
+      "role": "base-definitions",
+      "file": "hl7.fhir.r4.core-4.0.1.tgz",
+      "bytes": 4531911,
+      "sha256": "b090bf929e1f665cf2c91583720849695bc38d2892a7c5037c56cb00817fb091",
+      "sourceUrl": "https://packages2.fhir.org/packages/hl7.fhir.r4.core/4.0.1",
+      "resolvedUrl": "https://packages2.fhir.org/web/hl7.fhir.r4.core-4.0.1.tgz",
+      "retrievedAt": "2026-09-08"
+    },
+    {
+      "id": "hl7.fhir.us.core",
+      "version": "9.0.0",
+      "role": "profiles",
+      "file": "hl7.fhir.us.core-9.0.0.tgz",
+      "bytes": 2749959,
+      "sha256": "d7b54d2ec2a48cea94ffea5d939ad67a681f80b94d69594a08cebac36da9e059",
+      "sourceUrl": "https://packages2.fhir.org/packages/hl7.fhir.us.core/9.0.0",
+      "resolvedUrl": "https://packages2.fhir.org/web/hl7.fhir.us.core-9.0.0.tgz",
+      "retrievedAt": "2026-09-08"
+    }
+  ]
+}

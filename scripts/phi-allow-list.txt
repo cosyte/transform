@@ -120,3 +120,114 @@ PHONE 555-9999
 # silently excused itself would be the one file nobody checks.
 EMAIL package.json hello@cosyte.com
 EMAIL scripts/phi-allow-list.txt hello@cosyte.com
+
+# ===========================================================================
+# THE PUBLISHED v2-TO-FHIR TEST CORPUS
+# ===========================================================================
+#
+# WHAT IT IS. `test/_support/ig-corpus/messages.json` carries the seven v2 test
+# messages the HL7 Version 2 to FHIR implementation guide publishes on
+# https://hl7.org/fhir/uv/v2mappings/test_conversions.html (retrieved
+# 2026-09-08, page sha256 a25b317e58c872b8bd21a3dcfb893b00f7fc2d24025dd21a83cef11678642a38).
+# They are the guide's own benchmark messages, published openly and freely
+# licensed, and every identifier in them is a placeholder the guide invented:
+# "Eve Everywoman" is its standing synthetic patient, the addresses are in the
+# reserved 99999 postal code or are obvious placeholders, the telephone numbers
+# are in the reserved 555 exchange or use an unassignable area code, and the one
+# Social Security Number is an all-zero placeholder in area 000, which the
+# Social Security Administration has never issued and never will. That value is
+# NOT written out anywhere in this file: it is a dashed shape, this scanner
+# refuses every dashed shape unconditionally, and a quoted violator here would
+# red the gate on every run.
+#
+# ▶ WHY THE CORPUS IS IN THE WALK AND NOT BESIDE IT. `test` is already a scan
+#   root, so these files are read by the same passes as every other fixture, and
+#   the gate DOES bite on them: before these entries existed the scan reported
+#   over two hundred hits in that one file. `test/scripts/phi-scan-corpus.test.ts`
+#   plants an uncovered violator inside the corpus directory and asserts a
+#   non-zero exit, so "inside the gate" is measured rather than asserted.
+#
+# ▶ AND THE COST, STATED RATHER THAN LEFT TO BE FOUND. Every tag below except
+#   EMAIL is FILE-blind and all of them are ROUTE-blind, so each one is a real
+#   subtraction from this repository's whole PHI gate, pre-commit included. What
+#   is bought for it is a corpus nobody has to keep outside the gate. Each value
+#   was read by hand before it was declared, and none of them is a value this
+#   repository's own gate tests use as a tripwire (those are assembled at runtime
+#   in `test/scripts/phi-scan.test.ts` precisely so they never need an entry).
+#
+# --- The corpus's two mailboxes, path-scoped: the narrowest tag there is ---
+#
+# Two entries per address, because this file is itself inside the scan corpus
+# and the declaration carries the literal. Same shape as the publisher-mailbox
+# entries above, and for the same reason.
+EMAIL test/_support/ig-corpus/messages.json eve@test.test
+EMAIL test/_support/ig-corpus/messages.json me@northpole.earth
+EMAIL scripts/phi-allow-list.txt eve@test.test
+EMAIL scripts/phi-allow-list.txt me@northpole.earth
+
+# --- The corpus's person-name tokens (PID-5/6, NK1-2, IN1-16) ---
+#
+# `Eve Everywoman` and its `Original` alias are the guide's synthetic patient;
+# `Madewell` is her mother's maiden name; `Everyone^Elliot` is the next of kin;
+# `TEST` is a component of the deliberately obvious `JOHN^DOE^TEST^JR.` in the
+# MDM_T02. `BRO`, `SEL` and `SELF` are relationship CODES rather than names: the
+# guide's ORM_O01 is a v2.3.1 message whose IN1 fields sit one place left of the
+# v2.5.1 table this scanner is pinned to, so a relationship code lands in the
+# field the scanner reads as a name. Declared rather than answered by loosening
+# the scanner, which is pinned to v2.5.1 on purpose.
+NAME EVE
+NAME EVERYWOMAN
+NAME EVERYONE
+NAME ELLIOT
+NAME MADEWELL
+NAME ORIGINAL
+NAME TEST
+NAME BRO
+NAME SEL
+NAME SELF
+
+# --- The corpus's dates of birth (PID-7) ---
+DOB 19700601
+DOB 19941201
+
+# --- The corpus's identifiers (PID-3/19/20, IN1-49) ---
+#
+# `000322330` is nine digits, so the scanner reads it as an SSN shape; it is the
+# MDM_T02's medical record number, and area 000 has never been issued as a
+# Social Security Number, so it cannot collide with a real one. The PID-19 entry
+# is the guide's all-zero placeholder as the corpus fixture spells it: its
+# digits are HTML numeric character references, because a dashed SSN shape is
+# refused by this scanner UNCONDITIONALLY and no entry can clear one. Declaring
+# the ESCAPED form therefore subtracts nothing from the dashed-SSN floor, which
+# still refuses every dashed shape in every file, this corpus included.
+ID 1032702
+ID N09204074
+ID 000322330
+ID J342342
+ID 12345
+ID 125189
+ID &#48;&#48;&#48;-&#48;&#48;-&#48;&#48;&#48;&#48;
+
+# --- The corpus's address components (PID-11) ---
+#
+# Placeholder street lines against real city names, in the reserved 99999 postal
+# code or an obviously invented one. The combinations identify nobody.
+ADDRESS 1000 HOUSE LANE
+ADDRESS APPT 123
+ADDRESS 212 RESORT DRIVE
+ADDRESS 3003 TESTING RD LOT 92
+ADDRESS ANN ARBOR
+ADDRESS MIAMI
+ADDRESS BOULDER
+ADDRESS 99999
+ADDRESS 12345-2144
+
+# --- The corpus's telephone numbers (PID-13/14) ---
+#
+# 555-8473 and 555-1126 are in the reserved fictional exchange. The MDM_T02's
+# number is in area code 103, which is not assignable under the North American
+# Numbering Plan, so it cannot reach a real telephone either.
+PHONE 555-8473
+PHONE 555-1126
+PHONE (103)144-1441
+PHONE 1443441

@@ -70,6 +70,7 @@
     "changeset": "changeset",
     "typecheck": "tsc --noEmit",
     "phi-scan": "tsx scripts/phi-scan.ts",
+    "conformance": "tsx scripts/conformance/run.ts",
     "check:no-internal-refs": "bash scripts/check-no-internal-refs.sh",
     "check:agent-notes": "tsx scripts/check-agent-notes.ts",
     "check:no-emdash": "node scripts/check-no-emdash.mjs",

@@ -410,9 +410,24 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
  * the previous list (`test/fixtures` + `src`) is a strict SUBSET of this one, so
  * nothing the walk opened before can stop being opened.
  *
- * ▶ `vendor/` IS DELIBERATELY ABSENT. It holds a `pnpm pack` gzip tarball of a
- * sibling package, and see `RECONCILE_EXEMPT` for why a text scan over gzip
- * bytes is neither a detection nor a clearance.
+ * ▶ `vendor/` ITSELF IS DELIBERATELY ABSENT, AND `vendor/fhir-packages` IS
+ * DELIBERATELY PRESENT. The two are not in tension. `vendor/` proper holds a
+ * `pnpm pack` gzip tarball of a sibling package that is REPACKED on every
+ * refresh, and see `RECONCILE_EXEMPT` for why a text scan over bytes that change
+ * on every repack is neither a detection nor a clearance. `vendor/fhir-packages`
+ * holds published FHIR definition packages PINNED BY sha256, plus a plain-text
+ * provenance record beside them, and the provenance record is text this scan
+ * should read. Declaring the directory rather than exempting the tarballs is the
+ * order this script's own remedy prescribes: widen the walk first, exempt only
+ * what genuinely cannot be scanned.
+ *
+ * ▶ AND THE TARBALL CELLS ARE MEASURED, NOT ASSUMED. `pnpm phi-scan
+ * vendor/fhir-packages/<either tarball>` exits 0 with no hits, and it will keep
+ * doing so because those bytes are pinned: a package whose sha256 is fixed
+ * cannot drift into a chance match the way a repacked one can. The cells are
+ * pinned in `test/scripts/phi-scan-corpus.test.ts`. If a future pin ever DOES
+ * produce a chance hit, the answer is an allow-list entry or a
+ * `RECONCILE_EXEMPT` line with the reason written down, never a narrower walk.
  */
 const WALK_ROOT_NAMES = [
   ".changeset",
@@ -422,6 +437,7 @@ const WALK_ROOT_NAMES = [
   "scripts",
   "src",
   "test",
+  join("vendor", "fhir-packages"),
 ] as const;
 
 const WALK_ROOTS = WALK_ROOT_NAMES.map((name) => join(REPO_ROOT, name));

@@ -1,0 +1,366 @@
+{
+  "note": "HAND WRITTEN, NEVER GENERATED. This file is the honesty surface of the conformance measurement. `documentation/conformance/result.json` is what a run observes; this is what a reviewer says should be observed, and the run fails when the two disagree IN EITHER DIRECTION: a pair declared conformant that starts failing is a regression, and a pair declared non-conformant that stops failing is a stale excuse. Do not regenerate this file, and do not delete a line to make a run go green: the remedy for a broken claim is to fix the transform or to change the claim on purpose, with a reason.",
+  "package": { "id": "hl7.fhir.us.core", "version": "9.0.0" },
+  "profileSelection": {
+    "Bundle": {
+      "profiles": [],
+      "reason": "US Core 9.0.0 publishes no Bundle profile. Validated against base R4 4.0.1 alone, and never recorded as profile-conformant."
+    },
+    "MessageHeader": {
+      "profiles": [],
+      "reason": "US Core 9.0.0 publishes no MessageHeader profile. Validated against base R4 4.0.1 alone, and never recorded as profile-conformant."
+    },
+    "Appointment": {
+      "profiles": [],
+      "reason": "US Core 9.0.0 publishes no Appointment profile. Validated against base R4 4.0.1 alone, and never recorded as profile-conformant."
+    },
+    "Patient": {
+      "profiles": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"],
+      "reason": "The one Patient profile the package publishes."
+    },
+    "Encounter": {
+      "profiles": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter"],
+      "reason": "The one Encounter profile the package publishes."
+    },
+    "RelatedPerson": {
+      "profiles": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson"],
+      "reason": "The one RelatedPerson profile the package publishes."
+    },
+    "AllergyIntolerance": {
+      "profiles": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-allergyintolerance"],
+      "reason": "The one AllergyIntolerance profile the package publishes."
+    },
+    "Coverage": {
+      "profiles": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-coverage"],
+      "reason": "The one Coverage profile the package publishes."
+    },
+    "ServiceRequest": {
+      "profiles": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-servicerequest"],
+      "reason": "The one ServiceRequest profile the package publishes."
+    },
+    "Immunization": {
+      "profiles": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-immunization"],
+      "reason": "The one Immunization profile the package publishes."
+    },
+    "DiagnosticReport": {
+      "profiles": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-diagnosticreport-lab"],
+      "reason": "The package publishes two DiagnosticReport profiles, one for laboratory results and one for clinical notes. The corpus carries one DiagnosticReport, from the ORU_R01, whose OBR-4 is a LOINC laboratory order and whose OBX results are laboratory values, so the laboratory profile is the one that applies."
+    },
+    "DocumentReference": {
+      "profiles": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference"],
+      "reason": "The package publishes two DocumentReference profiles, the general one and one scoped to advance-directive documents. The corpus carries one DocumentReference, from the MDM_T02, whose TXA-2 document type is a discharge summary and not an advance directive, so the general profile is the one that applies."
+    },
+    "Observation": {
+      "profiles": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-simple-observation"],
+      "reason": "Every Observation profile the package publishes is topic-scoped, so no resource can satisfy them all and applying them all would measure conformance to a set nothing can conform to. How many it publishes is printed beside this reason, read off the package itself rather than written here. The default applied is the package's own catch-all for observations no other profile covers.",
+      "byMessage": {
+        "ORU_R01": {
+          "profiles": ["http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab"],
+          "reason": "The ORU_R01's three Observations are laboratory results, each carrying a LOINC code and a quantity, so the laboratory-result profile applies to them rather than the catch-all."
+        }
+      }
+    }
+  },
+  "claims": [
+    {
+      "message": "ADT_A01",
+      "resourceType": "Bundle",
+      "profile": null,
+      "conformant": true,
+      "reason": "The message Bundle is well formed against base R4 4.0.1: a `message` type, one entry per emitted resource, each with a `urn:uuid` fullUrl."
+    },
+    {
+      "message": "ADT_A01",
+      "resourceType": "MessageHeader",
+      "profile": null,
+      "conformant": true,
+      "reason": "The header carries the eventCoding and source R4 require, and US Core publishes nothing to hold it to beyond that."
+    },
+    {
+      "message": "ADT_A01",
+      "resourceType": "Patient",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+      "conformant": true,
+      "reason": "PID-3 here names an assigning authority the transform resolves to an identifier system, so the profile's identifier slice is satisfied along with name, gender and birthDate."
+    },
+    {
+      "message": "ADT_A01",
+      "resourceType": "Encounter",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+      "conformant": false,
+      "reason": "Two findings. US Core requires `Encounter.type` (1..*) and the guide's PV1 map publishes no row that grounds one, so the library emits none rather than a guessed value. And US Core requires `Encounter.identifier.system`, while the library reads PV1-19's value only and never its assigning authority, so the visit-number identifier ships with a type and a value and no system. This phase measures; it does not change the mapping."
+    },
+    {
+      "message": "ADT_A01",
+      "resourceType": "RelatedPerson",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson",
+      "conformant": false,
+      "reason": "US Core requires `RelatedPerson.active` (1..1). NK1 publishes no row for it, so the library leaves it absent rather than asserting a contact is active."
+    },
+    {
+      "message": "ADT_A01",
+      "resourceType": "AllergyIntolerance",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-allergyintolerance",
+      "conformant": true,
+      "reason": "AL1 grounds the clinical status, the code and the patient reference the profile requires."
+    },
+    {
+      "message": "ADT_A01",
+      "resourceType": "Coverage",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-coverage",
+      "conformant": false,
+      "reason": "Two findings. US Core requires `Coverage.relationship` (1..1) and the IN1 map publishes no row for it. And the profile's own invariant us-core-15 requires a payor with either an identifier or a reference to an Organization, while IN1-4 gives an insurer name only, which the library carries as a display with no literal reference because it builds no Organization."
+    },
+
+    {
+      "message": "SIU_S12",
+      "resourceType": "Bundle",
+      "profile": null,
+      "conformant": true,
+      "reason": "The message Bundle is well formed against base R4 4.0.1."
+    },
+    {
+      "message": "SIU_S12",
+      "resourceType": "MessageHeader",
+      "profile": null,
+      "conformant": true,
+      "reason": "The header carries the eventCoding and source R4 requires."
+    },
+    {
+      "message": "SIU_S12",
+      "resourceType": "Patient",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+      "conformant": true,
+      "reason": "The same PID as the ADT_A01, with the same resolvable assigning authority."
+    },
+    {
+      "message": "SIU_S12",
+      "resourceType": "Encounter",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+      "conformant": false,
+      "reason": "The same two findings as the ADT_A01 Encounter: no `Encounter.type` the PV1 map grounds, and a visit-number identifier the library never gives a system."
+    },
+    {
+      "message": "SIU_S12",
+      "resourceType": "Appointment",
+      "profile": null,
+      "conformant": false,
+      "reason": "A base R4 4.0.1 finding, not a profile one, and the only one in the corpus. R4's app-3 invariant allows a missing start and end only on a proposed or cancelled appointment; SCH-25 grounds a `booked` status here, and the appointment's start and end come from SCH-11, which the library does not yet read. So the Appointment is booked with no start, which R4 forbids. US Core publishes no Appointment profile, so base R4 is the whole measurement here."
+    },
+
+    {
+      "message": "ORM_O01",
+      "resourceType": "Bundle",
+      "profile": null,
+      "conformant": true,
+      "reason": "The message Bundle is well formed against base R4 4.0.1."
+    },
+    {
+      "message": "ORM_O01",
+      "resourceType": "MessageHeader",
+      "profile": null,
+      "conformant": true,
+      "reason": "The header carries the eventCoding and source R4 requires."
+    },
+    {
+      "message": "ORM_O01",
+      "resourceType": "Patient",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+      "conformant": true,
+      "reason": "PID-3 names a resolvable assigning authority, so the profile's identifier slice is satisfied."
+    },
+    {
+      "message": "ORM_O01",
+      "resourceType": "Encounter",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+      "conformant": false,
+      "reason": "The same two findings as the ADT_A01 Encounter: no `Encounter.type` the PV1 map grounds, and a visit-number identifier the library never gives a system."
+    },
+    {
+      "message": "ORM_O01",
+      "resourceType": "AllergyIntolerance",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-allergyintolerance",
+      "conformant": true,
+      "reason": "AL1 grounds the clinical status, the code and the patient reference the profile requires."
+    },
+    {
+      "message": "ORM_O01",
+      "resourceType": "Coverage",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-coverage",
+      "conformant": false,
+      "reason": "Three findings. The two the ADT_A01 Coverage carries (no `Coverage.relationship`, and us-core-15 unsatisfied by a payor that is a display only), plus a third: this IN1 carries a policy number the library emits as a `Coverage.identifier`, and the profile requires `Coverage.identifier.type`, which the IN1 map does not ground."
+    },
+    {
+      "message": "ORM_O01",
+      "resourceType": "ServiceRequest",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-servicerequest",
+      "conformant": true,
+      "reason": "The order grounds the status, intent, code and subject the profile requires."
+    },
+
+    {
+      "message": "OML_O21",
+      "resourceType": "Bundle",
+      "profile": null,
+      "conformant": true,
+      "reason": "The message Bundle is well formed against base R4 4.0.1."
+    },
+    {
+      "message": "OML_O21",
+      "resourceType": "MessageHeader",
+      "profile": null,
+      "conformant": true,
+      "reason": "The header carries the eventCoding and source R4 requires."
+    },
+    {
+      "message": "OML_O21",
+      "resourceType": "Patient",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+      "conformant": true,
+      "reason": "PID-3 names a resolvable assigning authority, so the profile's identifier slice is satisfied."
+    },
+    {
+      "message": "OML_O21",
+      "resourceType": "Encounter",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+      "conformant": false,
+      "reason": "The same two findings as the ADT_A01 Encounter: no `Encounter.type` the PV1 map grounds, and a visit-number identifier the library never gives a system."
+    },
+    {
+      "message": "OML_O21",
+      "resourceType": "AllergyIntolerance",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-allergyintolerance",
+      "conformant": true,
+      "reason": "AL1 grounds the clinical status, the code and the patient reference the profile requires."
+    },
+    {
+      "message": "OML_O21",
+      "resourceType": "Coverage",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-coverage",
+      "conformant": false,
+      "reason": "The same three findings as the ORM_O01 Coverage: no `Coverage.relationship`, us-core-15 unsatisfied by a display-only payor, and a policy-number identifier with no `type` the IN1 map grounds."
+    },
+    {
+      "message": "OML_O21",
+      "resourceType": "ServiceRequest",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-servicerequest",
+      "conformant": true,
+      "reason": "The order grounds the status, intent, code and subject the profile requires."
+    },
+
+    {
+      "message": "ORU_R01",
+      "resourceType": "Bundle",
+      "profile": null,
+      "conformant": true,
+      "reason": "The message Bundle is well formed against base R4 4.0.1."
+    },
+    {
+      "message": "ORU_R01",
+      "resourceType": "MessageHeader",
+      "profile": null,
+      "conformant": true,
+      "reason": "The header carries the eventCoding and source R4 requires."
+    },
+    {
+      "message": "ORU_R01",
+      "resourceType": "Patient",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+      "conformant": false,
+      "reason": "This message's PID-3 names its assigning authority with the universal id `3.4.5.6.7` and type ISO, and that is not a well-formed OID (an OID's root arc is 0, 1 or 2). The transform therefore refuses to synthesize an identifier system from it rather than emitting a wrong one, so the identifier ships with a type and a value and no `system`, which US Core requires. Four of the other messages carry an authority that IS a well-formed OID and do get a system, which is why this claim differs by message rather than being a property of the Patient map."
+    },
+    {
+      "message": "ORU_R01",
+      "resourceType": "Encounter",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+      "conformant": false,
+      "reason": "The same two findings as the ADT_A01 Encounter: no `Encounter.type` the PV1 map grounds, and a visit-number identifier the library never gives a system."
+    },
+    {
+      "message": "ORU_R01",
+      "resourceType": "DiagnosticReport",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-diagnosticreport-lab",
+      "conformant": false,
+      "reason": "Three findings, all one cause. US Core's laboratory report profile requires a `category` and a laboratory slice within it, and its us-core-9 invariant requires a result or a presented form. The guide's OBR map publishes no row that grounds a report category, so the library emits none rather than asserting the report is a laboratory one on its own authority."
+    },
+    {
+      "message": "ORU_R01",
+      "resourceType": "Observation",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab",
+      "conformant": false,
+      "reason": "All three Observations carry the same finding: US Core's laboratory profile requires `Observation.category` with a laboratory slice, and the guide's OBX map publishes no row that grounds an observation category."
+    },
+
+    {
+      "message": "MDM_T02",
+      "resourceType": "Bundle",
+      "profile": null,
+      "conformant": true,
+      "reason": "The message Bundle is well formed against base R4 4.0.1."
+    },
+    {
+      "message": "MDM_T02",
+      "resourceType": "MessageHeader",
+      "profile": null,
+      "conformant": true,
+      "reason": "The header carries the eventCoding and source R4 requires."
+    },
+    {
+      "message": "MDM_T02",
+      "resourceType": "Patient",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+      "conformant": false,
+      "reason": "This message's PID-3 declares its assigning authority's universal id type as GUID rather than ISO, and the transform derives an identifier system only from a well-formed ISO OID, so the identifier ships without the `system` US Core requires."
+    },
+    {
+      "message": "MDM_T02",
+      "resourceType": "Encounter",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter",
+      "conformant": false,
+      "reason": "The same two findings as the ADT_A01 Encounter: no `Encounter.type` the PV1 map grounds, and a visit-number identifier the library never gives a system."
+    },
+    {
+      "message": "MDM_T02",
+      "resourceType": "DocumentReference",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference",
+      "conformant": false,
+      "reason": "US Core requires `DocumentReference.category` (1..*) and the guide's TXA map publishes no row that grounds one, so the library emits none."
+    },
+
+    {
+      "message": "VXU_V04",
+      "resourceType": "Bundle",
+      "profile": null,
+      "conformant": true,
+      "reason": "The message Bundle is well formed against base R4 4.0.1."
+    },
+    {
+      "message": "VXU_V04",
+      "resourceType": "MessageHeader",
+      "profile": null,
+      "conformant": true,
+      "reason": "The header carries the eventCoding and source R4 requires."
+    },
+    {
+      "message": "VXU_V04",
+      "resourceType": "Patient",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
+      "conformant": true,
+      "reason": "PID-3 names a resolvable assigning authority, so the profile's identifier slice is satisfied."
+    },
+    {
+      "message": "VXU_V04",
+      "resourceType": "Immunization",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-immunization",
+      "conformant": true,
+      "reason": "All three Immunizations validate clean: the RXA map grounds the status, the vaccine code, the patient reference and the occurrence the profile requires. This is the one resource type in the corpus that is conformant to its US Core profile in every message that carries it."
+    },
+    {
+      "message": "VXU_V04",
+      "resourceType": "Observation",
+      "profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-simple-observation",
+      "conformant": false,
+      "reason": "All four Observations carry the same finding: even the package's catch-all observation profile requires `Observation.category`, and the guide's OBX map publishes no row that grounds one."
+    }
+  ]
+}
