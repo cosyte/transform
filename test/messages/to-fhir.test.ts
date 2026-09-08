@@ -63,21 +63,25 @@ function pv1(fields: Readonly<Record<number, string>>): string {
   return parts.join("|");
 }
 
-const ADT_A01 = [
+/** The visit the `ADT_A01` fixture below carries, so a variant can differ in one field only. */
+const ADT_A01_VISIT: Readonly<Record<number, string>> = {
+  2: "I", // patient class → Encounter.class IMP
+  3: "ICU^101^A", // assigned location (deferred)
+  7: "1234^Welby^Marcus^^^Dr.", // attending (deferred)
+  8: "5678^Smith^Sam", // referring (deferred)
+  19: "VISIT001", // visit number → Encounter.identifier VN
+  44: "20260721143000-0500", // admit → period.start
+  45: "20260721150000-0500", // discharge → period.end + status finished
+};
+
+const ADT_A01_HEAD = [
   "MSH|^~\\&|SENDAPP|SENDFAC|RCVAPP|RCVFAC|20260721143000-0500||ADT^A01^ADT_A01|MSG00001|P|2.5.1",
   "EVN|A01|20260721143000-0500",
   "PID|1||MRN12345^^^HOSP^MR~999887777^^^SSA^SS||Public^Jane^Q^^Mrs.^^L||19800115|F|||123 Main St^Apt 4^Boston^MA^02101^USA^H|||555-1234",
   "NK1|1|Public^John^^^^^L|SPO|456 Oak Ave^^Boston^MA^02101",
-  pv1({
-    2: "I", // patient class → Encounter.class IMP
-    3: "ICU^101^A", // assigned location (deferred)
-    7: "1234^Welby^Marcus^^^Dr.", // attending (deferred)
-    8: "5678^Smith^Sam", // referring (deferred)
-    19: "VISIT001", // visit number → Encounter.identifier VN
-    44: "20260721143000-0500", // admit → period.start
-    45: "20260721150000-0500", // discharge → period.end + status finished
-  }),
 ];
+
+const ADT_A01 = [...ADT_A01_HEAD, pv1(ADT_A01_VISIT)];
 
 describe("toFhir: ADT^A01 message assembly", () => {
   const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } });
@@ -423,5 +427,117 @@ describe("exported Phase-2 table maps mirror the IG ConceptMaps", () => {
     expect(ENCOUNTER_STATUS_MAP["P"]).toBe("planned");
     expect(ENCOUNTER_STATUS_MAP["U"]).toBe("unknown");
     expect(ENCOUNTER_STATUS_MAP["I"]).toBe("in-progress");
+  });
+});
+
+// ── A message carrying none of DG1, PR1 or IN1 is untouched by the reading of those three ───────
+
+/**
+ * The exact bundle and issue list `ADT_A01` above produced BEFORE this library read DG1, PR1 or
+ * IN1, captured from the tree at that commit and written out here rather than characterized. It is
+ * a message the change does not apply to, so the change must add nothing to it: not a resource,
+ * not an issue, not a shifted `urn:uuid:` identity.
+ *
+ * Recaptured only when a change legitimately alters what this input produces, which is then argued
+ * in the change rather than absorbed by a regenerated literal.
+ */
+const ADT_A01_BASELINE_BUNDLE =
+  '{"resourceType":"Bundle","identifier":{"value":"MSG00001"},"type":"message","timestamp":"2026-07-21T14:30:00-05:00","entry":[{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000004","resource":{"resourceType":"MessageHeader","eventCoding":{"system":"http://terminology.hl7.org/CodeSystem/v2-0003","code":"A01"},"source":{"name":"SENDAPP","_endpoint":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]}},"focus":[{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},{"reference":"urn:uuid:00000000-0000-4000-8000-000000000002"}]}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000001","resource":{"resourceType":"Patient","identifier":[{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"MR"}]},"system":"urn:oid:1.2.840.114350","value":"MRN12345"},{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"SS"}]},"value":"999887777"}],"name":[{"use":"official","family":"Public","given":["Jane","Q"],"prefix":["Mrs."]}],"gender":"female","birthDate":"1980-01-15","address":[{"use":"home","line":["123 Main St","Apt 4"],"city":"Boston","state":"MA","postalCode":"02101","country":"USA"}]}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000002","resource":{"resourceType":"Encounter","identifier":[{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"VN"}]},"value":"VISIT001"}],"status":"finished","class":{"system":"http://terminology.hl7.org/CodeSystem/v3-ActCode","code":"IMP","display":"inpatient encounter"},"subject":{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},"period":{"start":"2026-07-21T14:30:00-05:00","end":"2026-07-21T15:00:00-05:00"}}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000003","resource":{"resourceType":"RelatedPerson","patient":{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},"relationship":[{"coding":[{"code":"SPO"}]}],"name":[{"use":"official","family":"Public","given":["John"]}],"address":[{"line":["456 Oak Ave"],"city":"Boston","state":"MA","postalCode":"02101"}]}}]}';
+
+const ADT_A01_BASELINE_ISSUES: readonly string[] = [
+  "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED@CX.4#Identifier.system",
+  "TRANSFORM_ELEMENT_DROPPED@PID.13#Patient.telecom",
+  "TRANSFORM_ELEMENT_DROPPED@PV1.3#Encounter.location",
+  "TRANSFORM_ELEMENT_DROPPED@PV1.7#Encounter.participant",
+  "TRANSFORM_ELEMENT_DROPPED@PV1.8#Encounter.participant",
+  "TRANSFORM_CODE_UNMAPPED@CWE.1#Coding.code",
+  "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN@MSH.3#MessageHeader.source.endpoint",
+  "TRANSFORM_SEGMENT_NOT_EMITTED@EVN[1]#",
+];
+
+describe("a message carrying no DG1, PR1 or IN1 is byte-identical to the recorded baseline", () => {
+  const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } });
+
+  it("carries none of the three segments, so the baseline is the right thing to compare against", () => {
+    for (const name of ["DG1", "PR1", "IN1"]) {
+      expect([name, ADT_A01.some((line) => line.startsWith(`${name}|`))]).toEqual([name, false]);
+    }
+  });
+
+  it("produces exactly the recorded bundle, byte for byte", () => {
+    const result = toFhir(msg(ADT_A01), { namingSystem: registry, generateId: seq() });
+    expect(serializeResource(result.bundle)).toBe(ADT_A01_BASELINE_BUNDLE);
+  });
+
+  it("produces exactly the recorded issue list, in order", () => {
+    const result = toFhir(msg(ADT_A01), { namingSystem: registry, generateId: seq() });
+    expect(result.issues.map((i) => `${i.code}@${i.v2Location}#${i.fhirPath ?? ""}`)).toEqual([
+      ...ADT_A01_BASELINE_ISSUES,
+    ]);
+  });
+
+  it("stops matching the baseline the moment one of the three segments is added", () => {
+    // What makes the two assertions above falsifiable: the same message with one DG1 appended
+    // produces neither the recorded bundle nor the recorded issue list.
+    const withDiagnosis = [...ADT_A01, "DG1|1|I9|250.00^Diab^I9"];
+    const result = toFhir(msg(withDiagnosis), { namingSystem: registry, generateId: seq() });
+    expect(serializeResource(result.bundle)).not.toBe(ADT_A01_BASELINE_BUNDLE);
+    expect(result.issues.map((i) => `${i.code}@${i.v2Location}#${i.fhirPath ?? ""}`)).not.toEqual([
+      ...ADT_A01_BASELINE_ISSUES,
+    ]);
+  });
+});
+
+/**
+ * The same criterion over the one input that separates "carries none of the three" from "carries a
+ * field some other map routes to one of the three resource types": a visit whose financial class
+ * (PV1-20) is valued. The ADT_A01 message map routes that field to `Coverage[1]`, the resource the
+ * IN1 rows create, and no IN1 is present here, so the message is still one this reading does not
+ * apply to and its output must not move.
+ *
+ * The comparison target is the SAME recorded baseline the block above uses, which is measured, not
+ * assumed: run against the tree before this reading of DG1, PR1 and IN1 existed, this input
+ * produced that bundle byte for byte and that issue list in that order. The one message the two
+ * blocks differ in is PV1-20 itself.
+ */
+describe("a valued PV1-20 on a message carrying none of the three changes nothing", () => {
+  const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } });
+  const ADT_A01_FINANCIAL_CLASS = [...ADT_A01_HEAD, pv1({ ...ADT_A01_VISIT, 20: "SELF" })];
+
+  it("values PV1-20 and still carries none of DG1, PR1 or IN1", () => {
+    expect(ADT_A01_FINANCIAL_CLASS.at(-1)).toContain("|SELF");
+    expect(ADT_A01_FINANCIAL_CLASS).not.toEqual(ADT_A01);
+    for (const name of ["DG1", "PR1", "IN1"]) {
+      const carried = ADT_A01_FINANCIAL_CLASS.some((line) => line.startsWith(`${name}|`));
+      expect([name, carried]).toEqual([name, false]);
+    }
+  });
+
+  it("produces exactly the recorded bundle, byte for byte", () => {
+    const result = toFhir(msg(ADT_A01_FINANCIAL_CLASS), {
+      namingSystem: registry,
+      generateId: seq(),
+    });
+    expect(serializeResource(result.bundle)).toBe(ADT_A01_BASELINE_BUNDLE);
+  });
+
+  it("produces exactly the recorded issue list, in order, adding nothing at PV1.20", () => {
+    const result = toFhir(msg(ADT_A01_FINANCIAL_CLASS), {
+      namingSystem: registry,
+      generateId: seq(),
+    });
+    const raised = result.issues.map((i) => `${i.code}@${i.v2Location}#${i.fhirPath ?? ""}`);
+    expect(raised).toEqual([...ADT_A01_BASELINE_ISSUES]);
+    expect(raised.filter((l) => l.includes("@PV1.20#"))).toEqual([]);
+  });
+
+  it("still declares PV1-20 once the message carries the insurance segment the row targets", () => {
+    // What makes the three assertions above falsifiable rather than vacuous: the declaration this
+    // phase does make is still reachable, so they measure the guard and not a deleted code path.
+    const insured = [...ADT_A01_FINANCIAL_CLASS, "IN1|1|||Acme Insurance Co"];
+    const result = toFhir(msg(insured), { namingSystem: registry, generateId: seq() });
+    const raised = result.issues.map((i) => `${i.code}@${i.v2Location}#${i.fhirPath ?? ""}`);
+    expect(raised).toContain(`${ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED}@PV1.20#Coverage`);
+    expect(raised).not.toEqual([...ADT_A01_BASELINE_ISSUES]);
   });
 });

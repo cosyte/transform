@@ -176,3 +176,63 @@ export function buildEncounter(
   if (props.length === 1) return { value: undefined, issues };
   return { value: complex(props), issues };
 }
+
+/**
+ * The same Encounter carrying one `diagnosis` entry per Condition the bundle holds, per the ADT_A01
+ * message map's `Encounter[1].diagnosis.reference = Condition[1].id` row. Each entry's `condition`
+ * points at that Condition's `fullUrl`, so the link resolves inside the bundle.
+ *
+ * Applied after the diagnoses are built, because the Encounter joins the bundle before them and the
+ * produced nodes are immutable: this returns a new node rather than mutating the emitted one.
+ *
+ * @param encounter - The Encounter node already in the bundle.
+ * @param conditionFullUrls - The fullUrls of the Conditions emitted for the same message, in order.
+ * @example
+ * ```ts
+ * // withEncounterDiagnosis(encounter, ["urn:uuid:cond-1"]); // adds one diagnosis entry
+ * ```
+ */
+export function withEncounterDiagnosis(
+  encounter: FhirComplex,
+  conditionFullUrls: readonly string[],
+): FhirComplex {
+  if (conditionFullUrls.length === 0) return encounter;
+  const entries = conditionFullUrls.map((url) =>
+    complex([{ name: "condition", value: reference(url) }]),
+  );
+  return complex([
+    ...encounter.properties.filter((p) => p.name !== "diagnosis"),
+    { name: "diagnosis", value: list(entries) },
+  ]);
+}
+
+/**
+ * The Encounter that should replace the emitted one once the message's diagnoses exist: the same
+ * resource carrying the back-references, put through the conservative-emit gate first. When the
+ * gate refuses the linked draft the ORIGINAL Encounter is returned unchanged and the link is
+ * declared {@link ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED}, so a detail never costs the visit.
+ *
+ * The gate is a parameter rather than a call into the assembler, so what "the gate refuses this"
+ * means stays in one place and the refusal branch is reachable from a test without a hand-built
+ * invalid resource: the same shape the allergy emit path uses.
+ *
+ * @param encounter - The Encounter node already in the bundle.
+ * @param conditionFullUrls - The fullUrls of the Conditions emitted for the same message, in order.
+ * @param gate - The conservative-emit predicate: `true` when the linked Encounter may replace it.
+ * @example
+ * ```ts
+ * // emitEncounterDiagnosis(encounter, ["urn:uuid:cond-1"], () => true).value; // the linked one
+ * ```
+ */
+export function emitEncounterDiagnosis(
+  encounter: FhirComplex,
+  conditionFullUrls: readonly string[],
+  gate: (resource: FhirComplex) => boolean,
+): ConvertResult<FhirComplex> {
+  const linked = withEncounterDiagnosis(encounter, conditionFullUrls);
+  if (linked === encounter || gate(linked)) return { value: linked, issues: [] };
+  return {
+    value: encounter,
+    issues: [issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "DG1", "Encounter.diagnosis")],
+  };
+}

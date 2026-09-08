@@ -75,7 +75,8 @@ resource values; those carry PHI.
   ORU^R01 → DiagnosticReport + Observation, ORM_O01 / OML_O21 → ServiceRequest and
   RXO → MedicationRequest, and the thin IG singles VXU_V04 → Immunization, SIU_S12 →
   Appointment, and MDM_T02 → DocumentReference. An AL1 in any of them becomes an
-  AllergyIntolerance, and a TQ1 accompanying an order becomes that order's schedule. The v2→FHIR
+  AllergyIntolerance, a DG1 a Condition, a PR1 a Procedure and an IN1 a Coverage, and a TQ1
+  accompanying an order becomes that order's schedule. The v2→FHIR
   direction is feature-complete for the IG-covered message set; terminology depth and profiles are
   not implemented.
 - **Schedule scope: TQ1 only, and four of its repeat-pattern components.** A TQ1 on an order group
@@ -115,6 +116,36 @@ resource values; those carry PHI.
   that grounds no allergen code and no allergen text. AL1-6 is read as `onsetDateTime` only for a
   message whose version identifier is readable and earlier than 2.7, the version that withdrew the
   field; on 2.7 or later, or when the version cannot be read, it is dropped and flagged.
+- **Diagnosis, procedure and coverage scope: what the three segment maps ground, and no more.** A
+  DG1 becomes a Condition, a PR1 a Procedure and an IN1 a Coverage, each wired to the bundle
+  Patient; with no Patient in the bundle every one of them is withheld and declared
+  `TRANSFORM_ELEMENT_DROPPED`, naming the occurrence and the reference it could not anchor.
+  **`Coverage.status` is never asserted.** No published row of the IN1 map grounds one, and R4's
+  binding has no neutral member, so the element ships value-absent with a `data-absent-reason` of
+  `unknown` and a `TRANSFORM_REQUIRED_ELEMENT_UNKNOWN`: read it as unknown, never as active
+  coverage. **`Coverage.payor` names the insurer and resolves to nothing**: IN1-4.1 becomes a
+  reference `display` with no literal reference, because no Organization resource is built, and an
+  IN1 that names no insurance company is withheld entirely, since `payor` is required and nothing
+  else grounds it. `Procedure.status` is the `unknown` the map's own row directs where the message
+  context determines none; `completed` is never selected from a message that did not say so. A DG1-21
+  of `D` sets `verificationStatus` to `entered-in-error`, the one value the map assigns; every other
+  Table 0206 action code leaves the element absent with a `TRANSFORM_CODE_UNMAPPED`. A DG1 that
+  grounds neither a diagnosis code nor a description still becomes a Condition, with its empty
+  `code` flagged, so it is visible rather than reading as an intentionally empty one.
+  `Condition.clinicalStatus` is absent because no row grounds it, which can fail R4's `con-3`
+  invariant under a full profile validator. **The rows that need a resource this tier does not
+  build are declared, never silently dropped**: `Condition.asserter` (DG1-16),
+  `Procedure.performer.actor` (PR1-8, PR1-11, PR1-12), `Procedure.location` (PR1-23),
+  `Coverage.payer` (IN1-5), `Coverage.policyHolder` (IN1-10, IN1-11) and `Coverage.subscriber`
+  (IN1-16) each raise a `TRANSFORM_ELEMENT_DROPPED` when their field is valued, and so do the rows
+  whose reference resolves by identifier rather than by position (DG1-22, PR1-25), the CPT modifier
+  concatenation whose target is not an R4 element (PR1-16), and the relationship whose value
+  translation needs a table this library does not carry (IN1-17). A message carrying a DG1 raises
+  one more, for the `EpisodeOfCare` its diagnoses are not tied to. **The visit's financial class
+  (PV1-20) is declared only on an insured message**: the guide routes that field into the same
+  `Coverage` an IN1 creates, so a message carrying both gets a `TRANSFORM_ELEMENT_DROPPED` naming
+  it, while a message carrying no DG1, PR1 or IN1 gains nothing at all and produces exactly the
+  bundle and issue list it produced before.
 - **Reverse (FHIR → v2) scope: two shapes, deliberately.** `toV2Patient` emits an `ADT`-shaped
   message carrying a `PID`, `toV2Observation` an `ORU`-shaped message carrying an `OBX`. Both
   require the caller to pass the v2 trigger (no resource carries one, so it is never inferred: a

@@ -18,7 +18,8 @@ grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fh
 > from npm yet**: see [Installation](./installation). This release ships the
 > six safety-critical datatype converters and the value-free diagnostic channel, and
 > message-level assembly via `toFhir(msg)` for HL7 v2 **ADT → Patient + Encounter**
-> (+ **AL1 → AllergyIntolerance**), **ORU^R01 → DiagnosticReport + Observation**, the order-entry
+> (+ **AL1 → AllergyIntolerance**, **DG1 → Condition**, **PR1 → Procedure** and
+> **IN1 → Coverage**), **ORU^R01 → DiagnosticReport + Observation**, the order-entry
 > graph **ORM_O01 / OML_O21 → ServiceRequest** and **RXO → MedicationRequest** (with an order's
 > **TQ1 → the schedule it carries**, `dosageInstruction.timing` or `occurrenceTiming`), and the thin
 > IG singles **VXU_V04 → Immunization**, **SIU_S12 → Appointment**, and **MDM_T02 →

@@ -56,39 +56,64 @@ const NEW_CODES: ReadonlySet<string> = new Set([LIBRARY_GAP, STANDARD_GAP]);
  * produces is declared here instead, and the two whole-corpus baseline assertions below prove the
  * difference is exactly that change rather than skipping the input.
  *
- * `AL1` to `AllergyIntolerance` is the first such change: an AL1 that used to reach nothing now
- * builds a resource, so every input carrying one gains an entry, and the entries after it shift by
- * one identity. Nothing else about these inputs moved, and that is what is asserted.
+ * Each entry names the segment whose reading changed. `AL1` to `AllergyIntolerance` was the first;
+ * `DG1` to `Condition`, `PR1` to `Procedure` and `IN1` to `Coverage` are the rest. In every case
+ * an occurrence that used to reach nothing now builds a resource (or is withheld and declared), so
+ * the input gains entries and diagnostics and the entries after them shift by one identity.
+ * Nothing else about these inputs moved, and that is what is asserted.
  */
-const ALLERGY_SUPERSEDED: ReadonlyMap<string, string> = new Map([
-  ["ig-mapped-unhandled", "its AL1 now becomes an AllergyIntolerance"],
-  ["eleven-silent-segments", "its AL1 now becomes an AllergyIntolerance"],
+const SUPERSEDED: ReadonlyMap<string, string> = new Map([
+  ["ig-mapped-unhandled", "its AL1 is an AllergyIntolerance and its DG1 a Condition"],
+  ["blank-line-then-named", "its DG1 is now a Condition"],
+  ["three-dg1", "each of its three DG1 occurrences is now a Condition"],
+  ["nothing-emitted", "its DG1 is now read, and withheld for want of a Patient to anchor"],
+  ["eleven-silent-segments", "its AL1, DG1 and PR1 now build resources and its IN1 is read"],
   ["unique-field-tokens", "its AL1 now becomes an AllergyIntolerance"],
+]);
+
+/** The resource types this library did not build when the baselines were captured. */
+const LATER_RESOURCE_TYPES: ReadonlySet<string> = new Set([
+  "AllergyIntolerance",
+  "Condition",
+  "Procedure",
+  "Coverage",
 ]);
 
 interface RawBundleEntry {
   fullUrl?: string;
-  resource?: { resourceType?: string; focus?: { reference?: string }[] };
+  resource?: {
+    resourceType?: string;
+    focus?: { reference?: string }[];
+    diagnosis?: { condition?: { reference?: string } }[];
+  };
 }
 
 /**
- * The same bundle with every `AllergyIntolerance` entry, and every reference to one, removed: what
- * the input produced before this library read AL1 at all.
+ * The same bundle with every entry of a {@link LATER_RESOURCE_TYPES} type, and every reference to
+ * one, removed: what the input produced before this library read those segments at all.
  */
-function withoutAllergies(bundleJson: string): string {
+function withoutLaterResources(bundleJson: string): string {
   const bundle = JSON.parse(bundleJson) as { entry?: RawBundleEntry[] };
   const all = bundle.entry ?? [];
   const removed = new Set(
     all
-      .filter((e) => e.resource?.resourceType === "AllergyIntolerance")
+      .filter((e) => LATER_RESOURCE_TYPES.has(e.resource?.resourceType ?? ""))
       .map((e) => e.fullUrl ?? ""),
   );
   if (removed.size === 0) return bundleJson;
   const kept = all.filter((e) => !removed.has(e.fullUrl ?? ""));
   for (const entry of kept) {
-    const focus = entry.resource?.focus;
-    if (entry.resource !== undefined && focus !== undefined) {
-      entry.resource.focus = focus.filter((f) => !removed.has(f.reference ?? ""));
+    const resource = entry.resource;
+    if (resource === undefined) continue;
+    if (resource.focus !== undefined) {
+      resource.focus = resource.focus.filter((f) => !removed.has(f.reference ?? ""));
+    }
+    if (resource.diagnosis !== undefined) {
+      const remaining = resource.diagnosis.filter(
+        (d) => !removed.has(d.condition?.reference ?? ""),
+      );
+      if (remaining.length === 0) delete resource.diagnosis;
+      else resource.diagnosis = remaining;
     }
   }
   bundle.entry = kept;
@@ -371,25 +396,26 @@ describe("enumeration excludes a position that carries no segment, wherever it s
 // ── The trigger predicate and the two codes ─────────────────────────────────────────────────────
 
 describe("a segment the IG maps that reached nothing is a library gap", () => {
-  it("reports the DG1 the assembly never reads, and not the AL1 it now emits", () => {
-    // The AL1 of this input became an AllergyIntolerance in the bundle, so it reached a resource
-    // and is no longer a gap. The DG1 still reaches nothing and still reports.
-    expect(addedLabels(run("ig-mapped-unhandled"))).toEqual([`${LIBRARY_GAP}@DG1[1]`]);
+  it("reports neither the AL1 nor the DG1 of an input whose two occurrences now both build", () => {
+    // Both occurrences of this input reach a resource in the returned bundle: the AL1 an
+    // AllergyIntolerance, the DG1 a Condition. Nothing here is a gap any more.
+    expect(addedLabels(run("ig-mapped-unhandled"))).toEqual([]);
   });
 
   it("reports an ADT OBX although the library emits Observation on another path", () => {
     expect(addedLabels(run("adt-obx"))).toEqual([`${LIBRARY_GAP}@OBX[1]`]);
   });
 
-  it("reports the ten names the assembly still never reads, in message order", () => {
-    // Ten of the eleven: the AL1 of this input now reaches an AllergyIntolerance. The IAM beside it
-    // does not, and is the one the guide maps and this library still does not build.
+  it("reports the eight names the assembly still never reads, in message order", () => {
+    // Eight of the eleven. The AL1 is an AllergyIntolerance, the DG1 a Condition and the PR1 a
+    // Procedure, so none of the three is a gap. The IN1 of this input names no insurance company,
+    // so its Coverage is withheld for want of the one row that grounds a payor, and it IS a gap:
+    // read and refused is not reached. The IAM beside the AL1 is the allergy segment this library
+    // still does not build at all.
     expect(addedLabels(run("eleven-silent-segments"))).toEqual([
       `${LIBRARY_GAP}@SFT[1]`,
       `${LIBRARY_GAP}@EVN[1]`,
       `${LIBRARY_GAP}@IAM[1]`,
-      `${LIBRARY_GAP}@DG1[1]`,
-      `${LIBRARY_GAP}@PR1[1]`,
       `${LIBRARY_GAP}@IN1[1]`,
       `${LIBRARY_GAP}@IN3[1]`,
       `${LIBRARY_GAP}@SPM[1]`,
@@ -399,11 +425,58 @@ describe("a segment the IG maps that reached nothing is a library gap", () => {
   });
 
   it("raises one issue per occurrence and never collapses repeats", () => {
-    expect(addedLabels(run("three-dg1"))).toEqual([
-      `${LIBRARY_GAP}@DG1[1]`,
-      `${LIBRARY_GAP}@DG1[2]`,
-      `${LIBRARY_GAP}@DG1[3]`,
+    expect(addedLabels(run("oru-two-orphan-obx"))).toEqual([
+      `${LIBRARY_GAP}@OBX[1]`,
+      `${LIBRARY_GAP}@OBX[2]`,
     ]);
+  });
+
+  it("reports none of three repeated DG1 occurrences, because each is now its own Condition", () => {
+    expect(addedLabels(run("three-dg1"))).toEqual([]);
+    expect(
+      serializeResource(run("three-dg1").bundle).match(/"resourceType":"Condition"/g),
+    ).toHaveLength(3);
+  });
+});
+
+describe("DG1, PR1 and IN1 stop being library gaps once they reach a resource", () => {
+  // Inline rather than a corpus fixture: the corpus exists to carry captured baselines, and this
+  // input has none (it postdates the capture). The three occurrences are valued exactly far enough
+  // to build, and the five names beside them are the ones this library still does not build.
+  const MSH = COMPLETENESS_FIXTURES[0]?.raw.split("\r")[0] ?? "";
+  const REACHING = [
+    MSH,
+    "PID|1||MRN12345^^^HOSP^MR||Public^Jane^Q||19800115|F",
+    "DG1|1|I9|250.00^Diab^I9",
+    "PR1|1||4491^Proc^I9",
+    "IN1|1|PLAN1^Plan^L||Insurer Name",
+    "IAM|1|DA|PEN^Penicillin^L",
+    "IN3|1|CERT1",
+    "SPM|1|SPEC1",
+    "PRT|1|AD",
+    "ROL|1|AD|AT",
+  ].join("\r");
+
+  it("raises no segment-not-emitted issue for the three names, and keeps raising it for the five", () => {
+    const result = runCompletenessFixture(REACHING);
+    expect(addedLabels(result)).toEqual([
+      `${LIBRARY_GAP}@IAM[1]`,
+      `${LIBRARY_GAP}@IN3[1]`,
+      `${LIBRARY_GAP}@SPM[1]`,
+      `${LIBRARY_GAP}@PRT[1]`,
+      `${LIBRARY_GAP}@ROL[1]`,
+    ]);
+    const wire = serializeResource(result.bundle);
+    for (const type of ["Condition", "Procedure", "Coverage"]) {
+      expect([type, wire.includes(`"resourceType":"${type}"`)]).toEqual([type, true]);
+    }
+  });
+
+  it("goes back to reporting a name whose occurrence stops reaching a resource", () => {
+    // The same message with the insurance company name removed: the Coverage is withheld for want
+    // of a payor, so the IN1 is a gap again. This is what makes the assertion above falsifiable.
+    const withheld = REACHING.replace("IN1|1|PLAN1^Plan^L||Insurer Name", "IN1|1|PLAN1^Plan^L");
+    expect(addedLabels(runCompletenessFixture(withheld))).toContain(`${LIBRARY_GAP}@IN1[1]`);
   });
 });
 
@@ -475,7 +548,9 @@ describe("an occurrence that reached an emitted resource raises neither code", (
   });
 
   it("reports a segment after a blank line, and its ordinal counts the blank", () => {
-    expect(addedLabels(run("blank-line-then-named"))).toEqual([`${LIBRARY_GAP}@DG1[1]`]);
+    // The named one is a DG1, which now reaches a Condition and is therefore silent; the damaged
+    // one still reports, and its ordinal still counts the blank position before it.
+    expect(addedLabels(run("blank-line-then-named"))).toEqual([]);
     expect(addedLabels(run("blank-line-then-malformed"))).toEqual([`${STANDARD_GAP}@[#4]`]);
   });
 
@@ -589,20 +664,20 @@ describe("the invariants that hold across the whole corpus", () => {
   });
 
   it("carries the library's standard envelope and nothing message-derived beyond the location", () => {
-    const first = added(run("ig-mapped-unhandled"))[0];
+    const first = added(run("adt-obx"))[0];
     expect(first).toBeDefined();
     const i = first as TransformIssue;
     expect(i.code).toBe(LIBRARY_GAP);
     expect(i.severity).toBe("information");
     expect(i.message).toBe(ISSUE_REGISTRY[LIBRARY_GAP].message);
     expect(i.fhirPath).toBeUndefined();
-    expect(i.v2Location).toBe("DG1[1]");
+    expect(i.v2Location).toBe("OBX[1]");
 
     const rendered = serializeResource(toOperationOutcome([i]));
     expect(rendered).toContain(`"code":"${LIBRARY_GAP}"`);
     expect(rendered).toContain(`"code":"${fhirIssueTypeFor(LIBRARY_GAP)}"`);
     expect(rendered).toContain('"severity":"information"');
-    expect(rendered).toContain('"diagnostics":"DG1[1]"');
+    expect(rendered).toContain('"diagnostics":"OBX[1]"');
   });
 
   it("produces identical issue sequences for identical input bytes", () => {
@@ -649,7 +724,7 @@ describe("the pre-change baselines still hold for every recorded input", () => {
 
   it("returns the same resources with the same contents for every recorded input", () => {
     for (const fixture of COMPLETENESS_FIXTURES) {
-      if (ALLERGY_SUPERSEDED.has(fixture.id)) continue;
+      if (SUPERSEDED.has(fixture.id)) continue;
       const result = run(fixture.id);
       expect([fixture.id, serializeResource(result.bundle)]).toEqual([
         fixture.id,
@@ -658,9 +733,9 @@ describe("the pre-change baselines still hold for every recorded input", () => {
     }
   });
 
-  it("returns a superseded input's baseline bundle exactly, once its allergies are removed", () => {
-    for (const id of ALLERGY_SUPERSEDED.keys()) {
-      const produced = withoutAllergies(serializeResource(run(id).bundle));
+  it("returns a superseded input's baseline bundle exactly, once the later resources are removed", () => {
+    for (const id of SUPERSEDED.keys()) {
+      const produced = withoutLaterResources(serializeResource(run(id).bundle));
       expect([id, canonicalIdentities(produced)]).toEqual([
         id,
         canonicalIdentities(goldenFor(id).bundle),
@@ -670,7 +745,7 @@ describe("the pre-change baselines still hold for every recorded input", () => {
 
   it("keeps every pre-existing issue first, in its recorded order, with the new ones appended", () => {
     for (const fixture of COMPLETENESS_FIXTURES) {
-      if (ALLERGY_SUPERSEDED.has(fixture.id)) continue;
+      if (SUPERSEDED.has(fixture.id)) continue;
       const result = run(fixture.id);
       const baseline = goldenFor(fixture.id).issues;
       const head = result.issues.slice(0, baseline.length).map((i) => {
@@ -688,7 +763,7 @@ describe("the pre-change baselines still hold for every recorded input", () => {
   });
 
   it("keeps every recorded issue of a superseded input, in its recorded order", () => {
-    // Reading an AL1 raises the datatype diagnostics of the components it reads, so a superseded
+    // Reading a segment raises the datatype diagnostics of the components it reads, so a superseded
     // input's new issues interleave rather than append. Every recorded one is still there, still in
     // order: none was dropped, replaced or reordered by the resource that now gets built.
     const label = (i: {
@@ -697,27 +772,49 @@ describe("the pre-change baselines still hold for every recorded input", () => {
       v2Location: string;
       fhirPath?: string;
     }): string => `${i.code}@${i.v2Location}#${i.fhirPath ?? ""}@${i.severity}`;
-    for (const id of ALLERGY_SUPERSEDED.keys()) {
+    for (const id of SUPERSEDED.keys()) {
       const produced = run(id).issues.map(label);
       expect([id, isSubsequence(goldenFor(id).issues.map(label), produced)]).toEqual([id, true]);
     }
   });
 
-  it("adds exactly the allergy diagnostics to a superseded input, and nothing else", () => {
+  it("adds exactly the new segments' diagnostics to a superseded input, and nothing else", () => {
     // The whole delta, written out rather than characterized, so a later change to it is reviewed.
+    // `CWE.3` is the unresolved coding-system mnemonic of a code the reading now converts; the
+    // `DG1` drop is the unbuilt EpisodeOfCare target, declared once per message carrying a DG1.
+    const UNRESOLVED = ISSUE_CODES.TRANSFORM_CODE_SYSTEM_UNRESOLVED;
+    const DROPPED = ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED;
     const added: Readonly<Record<string, readonly string[]>> = {
-      "ig-mapped-unhandled": [`${ISSUE_CODES.TRANSFORM_CODE_SYSTEM_UNRESOLVED}@CWE.3`],
-      "eleven-silent-segments": [`${ISSUE_CODES.TRANSFORM_CODE_SYSTEM_UNRESOLVED}@CWE.3`],
+      // One CWE.3 for the AL1 allergen, one for the DG1 diagnosis code.
+      "ig-mapped-unhandled": [`${UNRESOLVED}@CWE.3`, `${UNRESOLVED}@CWE.3`, `${DROPPED}@DG1`],
+      "blank-line-then-named": [`${UNRESOLVED}@CWE.3`, `${DROPPED}@DG1`],
+      "three-dg1": [
+        `${UNRESOLVED}@CWE.3`,
+        `${UNRESOLVED}@CWE.3`,
+        `${UNRESOLVED}@CWE.3`,
+        `${DROPPED}@DG1`,
+      ],
+      // No PID at all, so the diagnosis is read and then withheld for want of a subject to anchor.
+      "nothing-emitted": [`${DROPPED}@DG1[0]`, `${DROPPED}@DG1`],
+      // The AL1 allergen, the DG1 diagnosis code and the PR1 procedure code, plus the withheld
+      // Coverage of an IN1 that names no insurance company.
+      "eleven-silent-segments": [
+        `${UNRESOLVED}@CWE.3`,
+        `${UNRESOLVED}@CWE.3`,
+        `${DROPPED}@DG1`,
+        `${UNRESOLVED}@CWE.3`,
+        `${DROPPED}@IN1[0]`,
+      ],
       // Its AL1-2 is a token in no v2 table, so both Table 0127 maps refuse it (one issue each)
       // and the identity map behind the alternate-codes extension refuses it too (the CWE.1 one).
       "unique-field-tokens": [
-        `${ISSUE_CODES.TRANSFORM_CODE_SYSTEM_UNRESOLVED}@CWE.3`,
+        `${UNRESOLVED}@CWE.3`,
         `${ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}@AL1.2`,
         `${ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}@CWE.1`,
         `${ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}@AL1.2`,
       ],
     };
-    for (const id of ALLERGY_SUPERSEDED.keys()) {
+    for (const id of SUPERSEDED.keys()) {
       const recorded = goldenFor(id).issues.map((i) => `${i.code}@${i.v2Location}`);
       const produced = run(id)
         .issues.filter((i) => !NEW_CODES.has(i.code))
@@ -786,9 +883,9 @@ describe("the diagnostic observes the assembly and does not steer it", () => {
       namingSystem: createNamingSystem(),
       generateId: () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`,
     });
-    // A superseded input (its AL1 is an AllergyIntolerance now), so the baseline is recovered the
-    // way the corpus assertions above recover it, not by recapturing it.
-    expect(canonicalIdentities(withoutAllergies(serializeResource(direct.bundle)))).toBe(
+    // A superseded input (its AL1, DG1 and PR1 build resources now), so the baseline is recovered
+    // the way the corpus assertions above recover it, not by recapturing it.
+    expect(canonicalIdentities(withoutLaterResources(serializeResource(direct.bundle)))).toBe(
       canonicalIdentities(goldenFor("eleven-silent-segments").bundle),
     );
   });

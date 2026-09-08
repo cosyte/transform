@@ -13,6 +13,7 @@
 
 import { randomUUID } from "node:crypto";
 
+import type { Field } from "@cosyte/hl7";
 import { complex, primitive, list, type FhirComplex } from "@cosyte/fhir";
 
 import type { TransformOptions } from "../terminology/context.js";
@@ -120,6 +121,66 @@ export function orderIdentifier(value: string, typeCode: string): FhirComplex | 
       ]),
     },
     { name: "value", value: primitive(value) },
+  ]);
+}
+
+/** The raw first-subcomponent of a field's component at 0-based `index`, or `""` when empty. */
+function component(field: Field, index: number): string {
+  return field.repetitions[0]?.components[index]?.subcomponents[0] ?? "";
+}
+
+/** One EI field read as a FHIR `Identifier`: the value, and whether an authority went unused. */
+export interface EntityIdentifier {
+  /** The `Identifier` node built from EI.1, or `undefined` when EI.1 carries nothing. */
+  readonly identifier: FhirComplex | undefined;
+  /** Whether EI.2, EI.3 or EI.4 carried an assigning authority this library did not resolve. */
+  readonly authorityValued: boolean;
+}
+
+/**
+ * Read one EI (Entity Identifier) field as a FHIR `Identifier`, carrying EI.1 as
+ * `Identifier.value` and nothing else. The same reading {@link orderIdentifier} applies to the
+ * placer/filler order numbers, without the v2-0203 identifier type those rows assign.
+ *
+ * `Identifier.system` is deliberately left absent even when EI.2 to EI.4 name an assigning
+ * authority: a system URI is never synthesized from a bare namespace, because two senders reusing
+ * one namespace would otherwise collide. The caller is told the authority went unused through
+ * {@link EntityIdentifier.authorityValued} so it can raise its own value-free diagnostic.
+ *
+ * @param field - The `EI` field, exactly as the parser published it.
+ * @example
+ * ```ts
+ * import { parseHL7 } from "@cosyte/hl7";
+ * // const dg1 = parseHL7(raw).segments("DG1")[0];
+ * // toFhirEntityIdentifier(dg1!.field(20)).identifier; // { value: "<EI.1>" } or undefined
+ * ```
+ */
+export function toFhirEntityIdentifier(field: Field): EntityIdentifier {
+  const entityId = component(field, 0);
+  const authorityValued =
+    component(field, 1) !== "" || component(field, 2) !== "" || component(field, 3) !== "";
+  return {
+    identifier:
+      entityId === "" ? undefined : complex([{ name: "value", value: primitive(entityId) }]),
+    authorityValued,
+  };
+}
+
+/**
+ * The same `CodeableConcept` with its `text` replaced by `textValue`, so a segment row that targets
+ * `code.text` directly can override the original text the datatype map read out of the coded field.
+ *
+ * @param concept - The `CodeableConcept` node the datatype converter produced.
+ * @param textValue - The text the segment map's own row assigns.
+ * @example
+ * ```ts
+ * // withCodeableText(concept, "Diabetes mellitus") -> the same codings, that text
+ * ```
+ */
+export function withCodeableText(concept: FhirComplex, textValue: string): FhirComplex {
+  return complex([
+    ...concept.properties.filter((p) => p.name !== "text"),
+    { name: "text", value: primitive(textValue) },
   ]);
 }
 
