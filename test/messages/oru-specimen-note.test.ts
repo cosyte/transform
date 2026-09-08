@@ -267,9 +267,7 @@ describe("an SPM in an ORU becomes a Specimen the DiagnosticReport that scopes i
       OBX_FINAL,
       seg("SPM", { 1: "1", 2: "SPEC1", 4: "BLD^Blood^HL70487", 14: "first~~third" }),
     ]);
-    expect(resourceJson(notes, "Specimen")).toContain(
-      '"note":[{"text":"first"},{"text":"third"}]',
-    );
+    expect(resourceJson(notes, "Specimen")).toContain('"note":[{"text":"first"},{"text":"third"}]');
   });
 
   it("stops reporting the SPM as not emitted, so the completeness report agrees with the bundle", () => {
