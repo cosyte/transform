@@ -14,6 +14,13 @@ parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://g
 composites and produces validated [`@cosyte/fhir`](https://github.com/cosyte/fhir) model nodes,
 grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`).
 
+"Validated" there means a small internal required-element check before a resource ships, which is a
+floor and not a conformance claim. How far the output actually conforms is measured separately, against
+pinned FHIR R4 4.0.1 definitions and a pinned profile package, over the guide's own published test
+messages, and the outcome is published in the repository as `documentation/conformance/report.md`.
+Read that before relying on the word "validated": today it says none of the seven published messages
+produces a Bundle that is clean against R4 plus those profiles, and it lists every finding.
+
 > **Status:** pre-alpha (`0.0.x`). The package **is published on npm**, but it **cannot be installed
 > from npm yet**: see [Installation](./installation). This release ships the
 > six safety-critical datatype converters and the value-free diagnostic channel, and
