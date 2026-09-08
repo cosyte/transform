@@ -139,9 +139,13 @@ resource values; those carry PHI.
   `Coverage.payer` (IN1-5), `Coverage.policyHolder` (IN1-10, IN1-11) and `Coverage.subscriber`
   (IN1-16) each raise a `TRANSFORM_ELEMENT_DROPPED` when their field is valued, and so do the rows
   whose reference resolves by identifier rather than by position (DG1-22, PR1-25), the CPT modifier
-  concatenation whose target is not an R4 element (PR1-16), the relationship whose value translation
-  needs a table this library does not carry (IN1-17), the financial class that also targets a
-  Coverage (PV1-20), and the `EpisodeOfCare` a DG1 is not tied to.
+  concatenation whose target is not an R4 element (PR1-16), and the relationship whose value
+  translation needs a table this library does not carry (IN1-17). A message carrying a DG1 raises
+  one more, for the `EpisodeOfCare` its diagnoses are not tied to. **The visit's financial class
+  (PV1-20) is declared only on an insured message**: the guide routes that field into the same
+  `Coverage` an IN1 creates, so a message carrying both gets a `TRANSFORM_ELEMENT_DROPPED` naming
+  it, while a message carrying no DG1, PR1 or IN1 gains nothing at all and produces exactly the
+  bundle and issue list it produced before.
 - **Reverse (FHIR → v2) scope: two shapes, deliberately.** `toV2Patient` emits an `ADT`-shaped
   message carrying a `PID`, `toV2Observation` an `ORU`-shaped message carrying an `OBX`. Both
   require the caller to pass the v2 trigger (no resource carries one, so it is never inferred: a

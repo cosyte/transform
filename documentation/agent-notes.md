@@ -98,7 +98,7 @@ more resource types to the same bundle.** Each is wired to the bundle Patient by
 ADT_A01 message-map rows (`Condition[1].subject.reference=Patient[1].id`,
 `Procedure.subject.reference=Patient[1].id`, `Coverage.beneficiary.reference=Patient[1].id`), each
 Condition is referenced back from `Encounter.diagnosis` when the same message produced an Encounter,
-and with no Patient in the bundle all three are withheld and declared per occurrence. Five things
+and with no Patient in the bundle all three are withheld and declared per occurrence. Six things
 about them are decisions rather than omissions:
 
 - **`Coverage.status` is never asserted, and that is the whole point of how it ships.**
@@ -126,6 +126,17 @@ about them are decisions rather than omissions:
   PR1-5 to reach minute granularity, so the branch is decided by what the CONVERSION could carry: a
   PR1-5 that `toFhirDateTime` reduces to date precision (naked or partial-precision) yields
   `performedDateTime` and a declared `performedPeriod.end`, never an end computed from a date.
+- **▶ THE `PV1-20` DECLARATION IS GUARDED ON THE MESSAGE CARRYING AN `IN1`, AND THAT GUARD IS LOAD
+  BEARING.** The ADT_A01 message map routes a valued PV1-20 into `Coverage[1]`, the SAME resource
+  the IN1 rows create, and that contribution is not built here. But PV1 is read by every ADT this
+  library has ever transformed, so declaring it unconditionally added an issue to messages this
+  reading does not apply to at all: **a message carrying no DG1, no PR1 and no IN1 must produce the
+  bundle and the issue list it produced before the three were read**, and an ungated declaration
+  broke exactly that, measured on an `ADT^A01` whose only difference from the recorded baseline was
+  a valued PV1-20. The guard belongs to the row, not to the visit: no Coverage from an IN1 means no
+  `Coverage[1]` for the row to contribute to, and the `PV1[Coverage]` segment map that would build a
+  Coverage from PV1-20 alone is not read here at all. `test/messages/to-fhir.test.ts` pins both
+  halves against the recorded baseline; do not widen one without the other.
 
 **And the completeness baselines were superseded, not recaptured.** `completeness-goldens.json` is a
 capture of one commit and recapturing it from a tree that carries the change would launder the

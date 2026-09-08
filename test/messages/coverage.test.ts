@@ -282,16 +282,45 @@ describe("the deferred IN1 rows are declared, never silently absent", () => {
     expect(labels(result)).toContain(`${DROPPED}@IN1.17#Coverage.relationship`);
   });
 
-  it("declares the PV1-20 financial class, the message map's other Coverage source", () => {
+  it("declares the PV1-20 financial class against the Coverage the insurance segment created", () => {
     const withFinancialClass = run([
       MSH_ADT_A01,
       PID_JANE,
       segment("PV1", { 1: "1", 2: "I", 20: "SELF" }),
+      IN1_MINIMAL,
     ]);
+    expect(resourcesOfType(withFinancialClass, "Coverage")).toHaveLength(1);
     expect(labels(withFinancialClass)).toContain(`${DROPPED}@PV1.20#Coverage`);
 
-    const without = run([MSH_ADT_A01, PID_JANE, segment("PV1", { 1: "1", 2: "I" })]);
+    const without = run([MSH_ADT_A01, PID_JANE, segment("PV1", { 1: "1", 2: "I" }), IN1_MINIMAL]);
     expect(labels(without)).not.toContain(`${DROPPED}@PV1.20#Coverage`);
+  });
+
+  it("declares it for an insured message whose Coverage the payor branch withheld", () => {
+    // The row is about the Coverage[1] the IN1 rows create, and an occurrence whose resource was
+    // withheld is still an insurance segment the message carried: same shape as the IN1 rows above.
+    const result = run([
+      MSH_ADT_A01,
+      PID_JANE,
+      segment("PV1", { 1: "1", 2: "I", 20: "SELF" }),
+      segment("IN1", { 1: "1" }),
+    ]);
+    expect(resourcesOfType(result, "Coverage")).toHaveLength(0);
+    expect(labels(result)).toContain(`${DROPPED}@PV1.20#Coverage`);
+  });
+
+  it("says nothing about PV1-20 on a message that carries no insurance segment at all", () => {
+    // This reading covers DG1, PR1 and IN1, and a message carrying none of them must produce what
+    // it produced before the three were read. The PV1[Coverage] segment map, which is that
+    // message's only route to a Coverage, is not read here, so the financial class stays as
+    // unhandled as it always was. The byte-identical half of this is in to-fhir.test.ts.
+    const noInsurance = run([
+      MSH_ADT_A01,
+      PID_JANE,
+      segment("PV1", { 1: "1", 2: "I", 20: "SELF" }),
+    ]);
+    expect(labels(noInsurance)).not.toContain(`${DROPPED}@PV1.20#Coverage`);
+    expect(labels(noInsurance).some((l) => l.includes("@PV1.20#"))).toBe(false);
   });
 });
 

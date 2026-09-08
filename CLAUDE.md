@@ -49,9 +49,12 @@ as a trap is clinical-safety content.
   one is a `display` with no literal reference because no Organization is built. **▶
   `Procedure.status` IS THE `unknown` THE MAP'S OWN ROW DIRECTS**, never `completed`. `DG1-21`
   grounds exactly one status (`D` to `entered-in-error`) and `Condition.clinicalStatus` has no row at
-  all, so a Condition here can fail R4's `con-3`. Every deferred row is declared with a diagnostic
-  rather than dropped, and the completeness baselines were SUPERSEDED, never recaptured. All of it:
-  `documentation/agent-notes.md#shipped-phase-history-phases-16`.
+  all, so a Condition here can fail R4's `con-3`. Every deferred row of the three maps is declared
+  with a diagnostic rather than dropped, and the completeness baselines were SUPERSEDED, never
+  recaptured. **▶ THE `PV1-20` DECLARATION IS GUARDED ON THE MESSAGE CARRYING AN `IN1`**: it is the
+  one declaration sourced from a segment this reading does not otherwise touch, and ungated it added
+  an issue to a message carrying none of the three, which must produce exactly what it produced
+  before. All of it: `documentation/agent-notes.md#shipped-phase-history-phases-16`.
 - **Phase 7 (FHIR→v2) shipped NARROWLY, and the narrowness is the point**: `toV2Patient` and
   `toV2Observation` emit a **complete** v2 message (`ADT^<trigger>` + PID, `ORU^<trigger>` + OBX)
   from the subset of the IG segment maps whose **inverse is one-to-one**. The **trigger is a required

@@ -410,17 +410,22 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
     reach.mark(pr1);
   }
 
-  // The PV1-20 financial class also targets Coverage[1] in the message map. That row is not built
-  // here, and a valued PV1-20 is a coverage the bundle does not carry: declared, never silent.
+  // IN1 → Coverage, one per occurrence, beneficiary wired to the bundle Patient
+  // (Coverage.beneficiary.reference = Patient[1].id in the ADT_A01 message map). Collected before
+  // the PV1-20 declaration below, which is scoped to the insurance the message carries.
+  const coverages = collectCoverages(msg);
+
+  // The PV1-20 financial class also targets Coverage[1] in the message map, the SAME Coverage[1]
+  // the IN1 rows create. Its contribution to that resource is not built here, so it is declared for
+  // an insured message rather than dropped in silence. A message with no IN1 has no Coverage[1] for
+  // the row to contribute to and is left exactly as the reading of IN1 found it: the PV1[Coverage]
+  // segment map, which is that message's only route to a Coverage, is not read here at all.
   const visitSegment = msg.allSegments().find((seg) => seg.type === "PV1");
-  if (visitSegment !== undefined && visitSegment.field(20).value !== "") {
+  if (coverages.length > 0 && visitSegment !== undefined && visitSegment.field(20).value !== "") {
     issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "PV1.20", "Coverage"));
   }
 
-  // IN1 → Coverage, one per occurrence, beneficiary wired to the bundle Patient
-  // (Coverage.beneficiary.reference = Patient[1].id in the ADT_A01 message map).
   const coverageFullUrls: string[] = [];
-  const coverages = collectCoverages(msg);
   for (let i = 0; i < coverages.length; i++) {
     const in1 = coverages[i];
     if (in1 === undefined) continue;
