@@ -23,6 +23,48 @@ import {
 
 const SEVERITIES = new Set(["fatal", "error", "warning", "information"]);
 
+/** A rendered table row, as opposed to a header or a separator. */
+function isFindingRow(line: string): boolean {
+  return line.startsWith("| ") && !line.startsWith("| resource |");
+}
+
+/** The finding rows the report prints under one message's `###` heading. */
+function findingRows(report: string, message: string): string[] {
+  const start = report.indexOf(`\n### ${message}\n`);
+  if (start < 0) return [];
+  const rest = report.slice(start + 1);
+  const nextHeading = rest.search(/\n#{2,3} /);
+  const section = nextHeading < 0 ? rest : rest.slice(0, nextHeading);
+  return section.split("\n").filter(isFindingRow);
+}
+
+/** A finding row as the de-duplicating renderer saw it: without the cell naming the instance. */
+function withoutInstanceCell(row: string): string {
+  const cells = row.split("|");
+  return [...cells.slice(0, 2), ...cells.slice(3)].join("|");
+}
+
+/**
+ * The report as it would read if the per-message tables collapsed repeated rows.
+ *
+ * ▶ THIS IS THE MUTATION THE ROW-COUNT ASSERTION EXISTS TO CATCH. The renderer used to push
+ * `[...new Set(findings)]` over rows that named no instance, which is exactly this transform.
+ */
+function withDeduplicatedRows(report: string): string {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const line of report.split("\n")) {
+    if (line.startsWith("#")) seen.clear();
+    if (isFindingRow(line)) {
+      const key = withoutInstanceCell(line);
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
 describe("B1: a profile failure names the profile and its version", () => {
   it("records the profile canonical, the profile version and the package pin on every verdict", () => {
     const result = liveResult();
@@ -188,5 +230,69 @@ describe("E1: the artifact declares which classes of check it performed, and bot
     mutated.summary.messagesWithZeroErrors = 7;
     mutated.summary.messagesWithZeroErrorNames = mutated.messages.map((m) => m.message);
     expect(renderReport(mutated)).not.toBe(publishedReport());
+  });
+});
+
+describe('"every message, every finding" means every finding, and the rows say so', () => {
+  it("prints one row per error-severity finding, so a table's rows count to its stated number", () => {
+    const report = publishedReport();
+    const result = publishedResult();
+    let repeatedRows = 0;
+    let messagesChecked = 0;
+    for (const message of result.messages) {
+      if (message.status !== "validated" || message.errorCount === 0) continue;
+      const rows = findingRows(report, message.message);
+      expect(
+        rows.length,
+        `${message.message}: the table's rows must count to the ${String(message.errorCount)} ` +
+          "error-severity results stated above it",
+      ).toBe(message.errorCount);
+      repeatedRows += rows.length - new Set(rows.map(withoutInstanceCell)).size;
+      messagesChecked += 1;
+    }
+    expect(messagesChecked).toBeGreaterThan(0);
+    // The assertion above is vacuous unless the corpus really does repeat a finding across sibling
+    // resources of one type: without that, a de-duplicating render would be indistinguishable.
+    expect(
+      repeatedRows,
+      "the corpus must carry a finding that repeats across sibling resources",
+    ).toBeGreaterThan(0);
+  });
+
+  it("names which resource instance each finding came from, not just the type", () => {
+    const report = publishedReport();
+    const result = publishedResult();
+    const rows = findingRows(report, "ORU_R01");
+    expect(rows.length).toBeGreaterThan(0);
+    // Every row names a Bundle position, and every position it names is one the result records.
+    const positions = new Set(
+      result.messages
+        .find((m) => m.message === "ORU_R01")
+        ?.resources.map((r) =>
+          r.entryIndex === 0 ? "the Bundle itself" : `entry ${String(r.entryIndex)}`,
+        ),
+    );
+    for (const row of rows) {
+      const cell = row.split("|")[2]?.trim() ?? "";
+      expect(positions, `row does not name a real Bundle position: ${row}`).toContain(cell);
+    }
+    // And sibling Observations are told apart rather than merged.
+    const observationRows = rows.filter((r) => r.startsWith("| Observation |"));
+    expect(new Set(observationRows.map((r) => r.split("|")[2]?.trim())).size).toBeGreaterThan(1);
+  });
+
+  it("MUTATION: de-duplicating the rows breaks the count the table states", () => {
+    const result = publishedResult();
+    const deduplicated = withDeduplicatedRows(publishedReport());
+    const shrunk = result.messages.filter(
+      (m) =>
+        m.status === "validated" &&
+        m.errorCount > 0 &&
+        findingRows(deduplicated, m.message).length !== m.errorCount,
+    );
+    expect(
+      shrunk.map((m) => m.message).length,
+      "collapsing repeated rows must be visible to the assertion above",
+    ).toBeGreaterThan(0);
   });
 });

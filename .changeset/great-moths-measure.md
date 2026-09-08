@@ -20,11 +20,15 @@ segment maps publish no row for, among them `Encounter.type`, `Coverage.relation
 `Observation.category` and `DocumentReference.category`, and this library leaves an ungrounded element
 absent rather than guessing at it. Every finding is in the report with its element path, the profile
 canonical it came from and that profile's version, so a result is reproducible against a pin rather
-than against whatever was current.
+than against whatever was current. Each per-message table prints one row per finding per resource
+instance, naming which Bundle entry it came from, so the rows count to the number stated above them
+rather than collapsing sibling resources that fail the same way into one.
 
 The README's old claim, that every emitted resource "is validated against `@cosyte/fhir` before it
 ships", is gone. What it described is a small internal required-element schema, and the replacement
-says so and points at the measurement.
+says so and points at the measurement. The opening paragraph, where a reader meets the word
+"validated" first, now carries that qualification where they meet it rather than leaving it in a
+section 130 lines down the page.
 
 Three things keep the number honest. The published result is checked against a hand-written claims
 register on every test run, in BOTH directions: a pair declared conformant that starts failing breaks

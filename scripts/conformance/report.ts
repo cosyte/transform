@@ -9,6 +9,12 @@
  * that produce a Bundle with zero error-severity results comes before anything that softens it, the
  * profile package is named and versioned in the same sentence, and the classes of check that were
  * NOT performed sit in the same document rather than in a footnote somewhere else.
+ *
+ * ▶ THE PER-MESSAGE TABLES ARE NEVER DE-DUPLICATED. They used to be, and the heading over them says
+ * "every finding": four sibling Observations each missing `Observation.category` collapsed to one
+ * row while the sentence above the table stated four, so a reader who counted rows read a smaller
+ * number than was measured. One row per finding per resource instance, with the instance named, so
+ * the rows count to the stated number and the table says what the heading promises.
  */
 
 import { observedPairs } from "./check.js";
@@ -16,6 +22,15 @@ import type { ConformanceResult } from "./harness.js";
 
 function plural(n: number, one: string, many: string): string {
   return n === 1 ? one : many;
+}
+
+/**
+ * Which resource instance a finding row belongs to.
+ *
+ * The Bundle itself sits at index 0 of what the harness validates; its entries are 1-based after it.
+ */
+function bundlePosition(entryIndex: number): string {
+  return entryIndex === 0 ? "the Bundle itself" : `entry ${String(entryIndex)}`;
 }
 
 /** The short profile name a canonical URL ends with, for a table cell. */
@@ -160,6 +175,12 @@ export function renderReport(result: ConformanceResult): string {
 
   lines.push("## Every message, every finding");
   lines.push("");
+  lines.push(
+    "One row per error-severity finding, per resource instance: a table's rows count to the number " +
+      "stated above it. Sibling resources of one type that fail the same way get one row each, " +
+      "because collapsing them would print fewer findings than were measured.",
+  );
+  lines.push("");
   for (const message of result.messages) {
     lines.push(`### ${message.message}`);
     lines.push("");
@@ -183,7 +204,7 @@ export function renderReport(result: ConformanceResult): string {
         for (const finding of verdict.findings) {
           if (finding.severity !== "error" && finding.severity !== "fatal") continue;
           findings.push(
-            `| ${resource.resourceType} | ${verdict.profile === null ? `base R4 ${base?.version ?? ""}` : `\`${shortProfile(verdict.profile)}\` ${verdict.profileVersion ?? ""}`} | ` +
+            `| ${resource.resourceType} | ${bundlePosition(resource.entryIndex)} | ${verdict.profile === null ? `base R4 ${base?.version ?? ""}` : `\`${shortProfile(verdict.profile)}\` ${verdict.profileVersion ?? ""}`} | ` +
               `\`${finding.path}\` | ${finding.code}${finding.constraint === undefined ? "" : ` (${finding.constraint})`} | ${finding.message} |`,
           );
         }
@@ -192,9 +213,12 @@ export function renderReport(result: ConformanceResult): string {
     if (findings.length === 0) {
       lines.push("No error-severity result.");
     } else {
-      lines.push("| resource | validated against | element | finding | what it means |");
-      lines.push("|---|---|---|---|---|");
-      lines.push(...[...new Set(findings)]);
+      lines.push(
+        "| resource | in the Bundle | validated against | element | finding | what it means |",
+      );
+      lines.push("|---|---|---|---|---|---|");
+      // ▶ NEVER DE-DUPLICATE THESE. One row per finding, so the rows count to the stated number.
+      lines.push(...findings);
     }
     lines.push("");
   }

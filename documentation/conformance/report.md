@@ -66,85 +66,94 @@ The profile package publishes several profiles for some resource types and none 
 
 ## Every message, every finding
 
+One row per error-severity finding, per resource instance: a table's rows count to the number stated above it. Sibling resources of one type that fail the same way get one row each, because collapsing them would print fewer findings than were measured.
+
 ### ADT_A01
 
 7 resources validated, 5 error-severity results.
 
-| resource | validated against | element | finding | what it means |
-|---|---|---|---|---|
-| Encounter | `us-core-encounter` 9.0.0 | `Encounter.identifier.system` | CARDINALITY_MIN | Required element is missing. |
-| Encounter | `us-core-encounter` 9.0.0 | `Encounter.type` | CARDINALITY_MIN | Required element is missing. |
-| RelatedPerson | `us-core-relatedperson` 9.0.0 | `RelatedPerson.active` | CARDINALITY_MIN | Required element is missing. |
-| Coverage | `us-core-coverage` 9.0.0 | `Coverage` | INVARIANT_VIOLATED (us-core-15) | A resource invariant (content-validation constraint) was violated. |
-| Coverage | `us-core-coverage` 9.0.0 | `Coverage.relationship` | CARDINALITY_MIN | Required element is missing. |
+| resource | in the Bundle | validated against | element | finding | what it means |
+|---|---|---|---|---|---|
+| Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.identifier.system` | CARDINALITY_MIN | Required element is missing. |
+| Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.type` | CARDINALITY_MIN | Required element is missing. |
+| RelatedPerson | entry 4 | `us-core-relatedperson` 9.0.0 | `RelatedPerson.active` | CARDINALITY_MIN | Required element is missing. |
+| Coverage | entry 6 | `us-core-coverage` 9.0.0 | `Coverage` | INVARIANT_VIOLATED (us-core-15) | A resource invariant (content-validation constraint) was violated. |
+| Coverage | entry 6 | `us-core-coverage` 9.0.0 | `Coverage.relationship` | CARDINALITY_MIN | Required element is missing. |
 
 ### SIU_S12
 
 5 resources validated, 3 error-severity results.
 
-| resource | validated against | element | finding | what it means |
-|---|---|---|---|---|
-| Encounter | `us-core-encounter` 9.0.0 | `Encounter.identifier.system` | CARDINALITY_MIN | Required element is missing. |
-| Encounter | `us-core-encounter` 9.0.0 | `Encounter.type` | CARDINALITY_MIN | Required element is missing. |
-| Appointment | base R4 4.0.1 | `Appointment` | INVARIANT_VIOLATED (app-3) | A resource invariant (content-validation constraint) was violated. |
+| resource | in the Bundle | validated against | element | finding | what it means |
+|---|---|---|---|---|---|
+| Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.identifier.system` | CARDINALITY_MIN | Required element is missing. |
+| Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.type` | CARDINALITY_MIN | Required element is missing. |
+| Appointment | entry 4 | base R4 4.0.1 | `Appointment` | INVARIANT_VIOLATED (app-3) | A resource invariant (content-validation constraint) was violated. |
 
 ### ORM_O01
 
 7 resources validated, 5 error-severity results.
 
-| resource | validated against | element | finding | what it means |
-|---|---|---|---|---|
-| Encounter | `us-core-encounter` 9.0.0 | `Encounter.identifier.system` | CARDINALITY_MIN | Required element is missing. |
-| Encounter | `us-core-encounter` 9.0.0 | `Encounter.type` | CARDINALITY_MIN | Required element is missing. |
-| Coverage | `us-core-coverage` 9.0.0 | `Coverage` | INVARIANT_VIOLATED (us-core-15) | A resource invariant (content-validation constraint) was violated. |
-| Coverage | `us-core-coverage` 9.0.0 | `Coverage.identifier.type` | CARDINALITY_MIN | Required element is missing. |
-| Coverage | `us-core-coverage` 9.0.0 | `Coverage.relationship` | CARDINALITY_MIN | Required element is missing. |
+| resource | in the Bundle | validated against | element | finding | what it means |
+|---|---|---|---|---|---|
+| Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.identifier.system` | CARDINALITY_MIN | Required element is missing. |
+| Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.type` | CARDINALITY_MIN | Required element is missing. |
+| Coverage | entry 5 | `us-core-coverage` 9.0.0 | `Coverage` | INVARIANT_VIOLATED (us-core-15) | A resource invariant (content-validation constraint) was violated. |
+| Coverage | entry 5 | `us-core-coverage` 9.0.0 | `Coverage.identifier.type` | CARDINALITY_MIN | Required element is missing. |
+| Coverage | entry 5 | `us-core-coverage` 9.0.0 | `Coverage.relationship` | CARDINALITY_MIN | Required element is missing. |
 
 ### OML_O21
 
 7 resources validated, 5 error-severity results.
 
-| resource | validated against | element | finding | what it means |
-|---|---|---|---|---|
-| Encounter | `us-core-encounter` 9.0.0 | `Encounter.identifier.system` | CARDINALITY_MIN | Required element is missing. |
-| Encounter | `us-core-encounter` 9.0.0 | `Encounter.type` | CARDINALITY_MIN | Required element is missing. |
-| Coverage | `us-core-coverage` 9.0.0 | `Coverage` | INVARIANT_VIOLATED (us-core-15) | A resource invariant (content-validation constraint) was violated. |
-| Coverage | `us-core-coverage` 9.0.0 | `Coverage.identifier.type` | CARDINALITY_MIN | Required element is missing. |
-| Coverage | `us-core-coverage` 9.0.0 | `Coverage.relationship` | CARDINALITY_MIN | Required element is missing. |
+| resource | in the Bundle | validated against | element | finding | what it means |
+|---|---|---|---|---|---|
+| Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.identifier.system` | CARDINALITY_MIN | Required element is missing. |
+| Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.type` | CARDINALITY_MIN | Required element is missing. |
+| Coverage | entry 5 | `us-core-coverage` 9.0.0 | `Coverage` | INVARIANT_VIOLATED (us-core-15) | A resource invariant (content-validation constraint) was violated. |
+| Coverage | entry 5 | `us-core-coverage` 9.0.0 | `Coverage.identifier.type` | CARDINALITY_MIN | Required element is missing. |
+| Coverage | entry 5 | `us-core-coverage` 9.0.0 | `Coverage.relationship` | CARDINALITY_MIN | Required element is missing. |
 
 ### ORU_R01
 
 8 resources validated, 12 error-severity results.
 
-| resource | validated against | element | finding | what it means |
-|---|---|---|---|---|
-| Patient | `us-core-patient` 9.0.0 | `Patient.identifier.system` | CARDINALITY_MIN | Required element is missing. |
-| Encounter | `us-core-encounter` 9.0.0 | `Encounter.identifier.system` | CARDINALITY_MIN | Required element is missing. |
-| Encounter | `us-core-encounter` 9.0.0 | `Encounter.type` | CARDINALITY_MIN | Required element is missing. |
-| DiagnosticReport | `us-core-diagnosticreport-lab` 9.0.0 | `DiagnosticReport` | INVARIANT_VIOLATED (us-core-9) | A resource invariant (content-validation constraint) was violated. |
-| DiagnosticReport | `us-core-diagnosticreport-lab` 9.0.0 | `DiagnosticReport.category` | CARDINALITY_MIN | Required element is missing. |
-| DiagnosticReport | `us-core-diagnosticreport-lab` 9.0.0 | `DiagnosticReport.category:LaboratorySlice` | CARDINALITY_MIN | Required element is missing. |
-| Observation | `us-core-observation-lab` 9.0.0 | `Observation.category` | CARDINALITY_MIN | Required element is missing. |
-| Observation | `us-core-observation-lab` 9.0.0 | `Observation.category:us-core` | CARDINALITY_MIN | Required element is missing. |
+| resource | in the Bundle | validated against | element | finding | what it means |
+|---|---|---|---|---|---|
+| Patient | entry 2 | `us-core-patient` 9.0.0 | `Patient.identifier.system` | CARDINALITY_MIN | Required element is missing. |
+| Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.identifier.system` | CARDINALITY_MIN | Required element is missing. |
+| Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.type` | CARDINALITY_MIN | Required element is missing. |
+| DiagnosticReport | entry 4 | `us-core-diagnosticreport-lab` 9.0.0 | `DiagnosticReport` | INVARIANT_VIOLATED (us-core-9) | A resource invariant (content-validation constraint) was violated. |
+| DiagnosticReport | entry 4 | `us-core-diagnosticreport-lab` 9.0.0 | `DiagnosticReport.category` | CARDINALITY_MIN | Required element is missing. |
+| DiagnosticReport | entry 4 | `us-core-diagnosticreport-lab` 9.0.0 | `DiagnosticReport.category:LaboratorySlice` | CARDINALITY_MIN | Required element is missing. |
+| Observation | entry 5 | `us-core-observation-lab` 9.0.0 | `Observation.category` | CARDINALITY_MIN | Required element is missing. |
+| Observation | entry 5 | `us-core-observation-lab` 9.0.0 | `Observation.category:us-core` | CARDINALITY_MIN | Required element is missing. |
+| Observation | entry 6 | `us-core-observation-lab` 9.0.0 | `Observation.category` | CARDINALITY_MIN | Required element is missing. |
+| Observation | entry 6 | `us-core-observation-lab` 9.0.0 | `Observation.category:us-core` | CARDINALITY_MIN | Required element is missing. |
+| Observation | entry 7 | `us-core-observation-lab` 9.0.0 | `Observation.category` | CARDINALITY_MIN | Required element is missing. |
+| Observation | entry 7 | `us-core-observation-lab` 9.0.0 | `Observation.category:us-core` | CARDINALITY_MIN | Required element is missing. |
 
 ### MDM_T02
 
 5 resources validated, 4 error-severity results.
 
-| resource | validated against | element | finding | what it means |
-|---|---|---|---|---|
-| Patient | `us-core-patient` 9.0.0 | `Patient.identifier.system` | CARDINALITY_MIN | Required element is missing. |
-| Encounter | `us-core-encounter` 9.0.0 | `Encounter.identifier.system` | CARDINALITY_MIN | Required element is missing. |
-| Encounter | `us-core-encounter` 9.0.0 | `Encounter.type` | CARDINALITY_MIN | Required element is missing. |
-| DocumentReference | `us-core-documentreference` 9.0.0 | `DocumentReference.category` | CARDINALITY_MIN | Required element is missing. |
+| resource | in the Bundle | validated against | element | finding | what it means |
+|---|---|---|---|---|---|
+| Patient | entry 2 | `us-core-patient` 9.0.0 | `Patient.identifier.system` | CARDINALITY_MIN | Required element is missing. |
+| Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.identifier.system` | CARDINALITY_MIN | Required element is missing. |
+| Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.type` | CARDINALITY_MIN | Required element is missing. |
+| DocumentReference | entry 4 | `us-core-documentreference` 9.0.0 | `DocumentReference.category` | CARDINALITY_MIN | Required element is missing. |
 
 ### VXU_V04
 
 10 resources validated, 4 error-severity results.
 
-| resource | validated against | element | finding | what it means |
-|---|---|---|---|---|
-| Observation | `us-core-simple-observation` 9.0.0 | `Observation.category` | CARDINALITY_MIN | Required element is missing. |
+| resource | in the Bundle | validated against | element | finding | what it means |
+|---|---|---|---|---|---|
+| Observation | entry 6 | `us-core-simple-observation` 9.0.0 | `Observation.category` | CARDINALITY_MIN | Required element is missing. |
+| Observation | entry 7 | `us-core-simple-observation` 9.0.0 | `Observation.category` | CARDINALITY_MIN | Required element is missing. |
+| Observation | entry 8 | `us-core-simple-observation` 9.0.0 | `Observation.category` | CARDINALITY_MIN | Required element is missing. |
+| Observation | entry 9 | `us-core-simple-observation` 9.0.0 | `Observation.category` | CARDINALITY_MIN | Required element is missing. |
 
 ## The reviewed claims
 

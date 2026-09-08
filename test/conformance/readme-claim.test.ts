@@ -16,6 +16,34 @@ import { publishedResult, readme } from "../_support/conformance.js";
 /** Spell out a small integer the way the README's prose does. */
 const WORDS = ["none", "one", "two", "three", "four", "five", "six", "seven"] as const;
 
+/**
+ * A paragraph that tells a reader this library's output is "validated".
+ *
+ * ▶ THE WORD IS THE CLAIM, WHEREVER IT APPEARS. Grading this by the one sentence that was deleted
+ * checks that a string is gone, not that the property holds: the README's opening paragraph carried
+ * the identical claim, in the place a consumer meets first, and a single-literal tripwire over a
+ * deleted sentence could not see it. `validator` is deliberately not matched: "not a full
+ * implementation-guide validator run" is a disclaimer, not a claim.
+ */
+const VALIDATION_CLAIM = /\bvalidat(?:ed|es|ing)\b/i;
+
+/**
+ * Text that tells the reader what that word does and does not mean.
+ *
+ * Either half satisfies it: saying outright that the internal check is not a conformance claim, or
+ * naming the published measurement so the reader can go and read what conformance was reached.
+ */
+const QUALIFIED =
+  /not a statement about FHIR conformance|not a conformance claim|documentation\/conformance\/report\.md/;
+
+/** The README split into paragraphs, in document order. */
+function paragraphs(text: string): string[] {
+  return text
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+}
+
 describe("F1: the README's validation claim points at the published result and matches it", () => {
   it("points the reader at both published artifacts", () => {
     const text = readme();
@@ -102,5 +130,33 @@ describe("F1: the README's validation claim points at the published result and m
     // And the limits of the measurement travel with the number.
     expect(text).toContain("mapping correctness");
     expect(text).toContain("external terminology resolution");
+  });
+
+  it("qualifies every paragraph that calls the output validated, in that paragraph or the next", () => {
+    const paras = paragraphs(readme());
+    const claims = paras.filter((p) => VALIDATION_CLAIM.test(p));
+    // The assertion below is vacuous unless the README makes the claim somewhere.
+    expect(claims.length).toBeGreaterThan(0);
+    paras.forEach((paragraph, index) => {
+      if (!VALIDATION_CLAIM.test(paragraph)) return;
+      const withNeighbour = `${paragraph}\n\n${paras[index + 1] ?? ""}`;
+      expect(
+        QUALIFIED.test(withNeighbour),
+        `a paragraph calls the output validated and neither it nor the next paragraph says what ` +
+          `that means or where the measurement is:\n\n${paragraph}`,
+      ).toBe(true);
+    });
+  });
+
+  it("qualifies the claim in the opening section, where a consumer meets it first", () => {
+    // Everything before the first `##` heading: the lede a reader gets without scrolling.
+    const opening = readme().split(/\n## /)[0] ?? "";
+    expect(VALIDATION_CLAIM.test(opening), "the README makes its validation claim up front").toBe(
+      true,
+    );
+    expect(
+      QUALIFIED.test(opening),
+      "the claim a consumer meets first is qualified where they meet it, not 130 lines later",
+    ).toBe(true);
   });
 });
