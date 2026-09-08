@@ -425,3 +425,61 @@ describe("exported Phase-2 table maps mirror the IG ConceptMaps", () => {
     expect(ENCOUNTER_STATUS_MAP["I"]).toBe("in-progress");
   });
 });
+
+// ── A message carrying none of DG1, PR1 or IN1 is untouched by the reading of those three ───────
+
+/**
+ * The exact bundle and issue list `ADT_A01` above produced BEFORE this library read DG1, PR1 or
+ * IN1, captured from the tree at that commit and written out here rather than characterized. It is
+ * a message the change does not apply to, so the change must add nothing to it: not a resource,
+ * not an issue, not a shifted `urn:uuid:` identity.
+ *
+ * Recaptured only when a change legitimately alters what this input produces, which is then argued
+ * in the change rather than absorbed by a regenerated literal.
+ */
+const ADT_A01_BASELINE_BUNDLE =
+  '{"resourceType":"Bundle","identifier":{"value":"MSG00001"},"type":"message","timestamp":"2026-07-21T14:30:00-05:00","entry":[{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000004","resource":{"resourceType":"MessageHeader","eventCoding":{"system":"http://terminology.hl7.org/CodeSystem/v2-0003","code":"A01"},"source":{"name":"SENDAPP","_endpoint":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]}},"focus":[{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},{"reference":"urn:uuid:00000000-0000-4000-8000-000000000002"}]}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000001","resource":{"resourceType":"Patient","identifier":[{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"MR"}]},"system":"urn:oid:1.2.840.114350","value":"MRN12345"},{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"SS"}]},"value":"999887777"}],"name":[{"use":"official","family":"Public","given":["Jane","Q"],"prefix":["Mrs."]}],"gender":"female","birthDate":"1980-01-15","address":[{"use":"home","line":["123 Main St","Apt 4"],"city":"Boston","state":"MA","postalCode":"02101","country":"USA"}]}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000002","resource":{"resourceType":"Encounter","identifier":[{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"VN"}]},"value":"VISIT001"}],"status":"finished","class":{"system":"http://terminology.hl7.org/CodeSystem/v3-ActCode","code":"IMP","display":"inpatient encounter"},"subject":{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},"period":{"start":"2026-07-21T14:30:00-05:00","end":"2026-07-21T15:00:00-05:00"}}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000003","resource":{"resourceType":"RelatedPerson","patient":{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},"relationship":[{"coding":[{"code":"SPO"}]}],"name":[{"use":"official","family":"Public","given":["John"]}],"address":[{"line":["456 Oak Ave"],"city":"Boston","state":"MA","postalCode":"02101"}]}}]}';
+
+const ADT_A01_BASELINE_ISSUES: readonly string[] = [
+  "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED@CX.4#Identifier.system",
+  "TRANSFORM_ELEMENT_DROPPED@PID.13#Patient.telecom",
+  "TRANSFORM_ELEMENT_DROPPED@PV1.3#Encounter.location",
+  "TRANSFORM_ELEMENT_DROPPED@PV1.7#Encounter.participant",
+  "TRANSFORM_ELEMENT_DROPPED@PV1.8#Encounter.participant",
+  "TRANSFORM_CODE_UNMAPPED@CWE.1#Coding.code",
+  "TRANSFORM_REQUIRED_ELEMENT_UNKNOWN@MSH.3#MessageHeader.source.endpoint",
+  "TRANSFORM_SEGMENT_NOT_EMITTED@EVN[1]#",
+];
+
+describe("a message carrying no DG1, PR1 or IN1 is byte-identical to the recorded baseline", () => {
+  const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } });
+
+  it("carries none of the three segments, so the baseline is the right thing to compare against", () => {
+    for (const name of ["DG1", "PR1", "IN1"]) {
+      expect([name, ADT_A01.some((line) => line.startsWith(`${name}|`))]).toEqual([name, false]);
+    }
+  });
+
+  it("produces exactly the recorded bundle, byte for byte", () => {
+    const result = toFhir(msg(ADT_A01), { namingSystem: registry, generateId: seq() });
+    expect(serializeResource(result.bundle)).toBe(ADT_A01_BASELINE_BUNDLE);
+  });
+
+  it("produces exactly the recorded issue list, in order", () => {
+    const result = toFhir(msg(ADT_A01), { namingSystem: registry, generateId: seq() });
+    expect(result.issues.map((i) => `${i.code}@${i.v2Location}#${i.fhirPath ?? ""}`)).toEqual([
+      ...ADT_A01_BASELINE_ISSUES,
+    ]);
+  });
+
+  it("stops matching the baseline the moment one of the three segments is added", () => {
+    // What makes the two assertions above falsifiable: the same message with one DG1 appended
+    // produces neither the recorded bundle nor the recorded issue list.
+    const withDiagnosis = [...ADT_A01, "DG1|1|I9|250.00^Diab^I9"];
+    const result = toFhir(msg(withDiagnosis), { namingSystem: registry, generateId: seq() });
+    expect(serializeResource(result.bundle)).not.toBe(ADT_A01_BASELINE_BUNDLE);
+    expect(result.issues.map((i) => `${i.code}@${i.v2Location}#${i.fhirPath ?? ""}`)).not.toEqual([
+      ...ADT_A01_BASELINE_ISSUES,
+    ]);
+  });
+});

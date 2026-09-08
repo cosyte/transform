@@ -475,6 +475,114 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
     );
   });
 
+  it("never throws and grounds every element over structurally hostile DG1/PR1/IN1 segments", () => {
+    // The value sets a Condition, a Procedure and a Coverage may carry in their coded and fixed
+    // elements: anything else would be a guess, whatever the segment looked like.
+    const VERIFICATION_STATUSES = new Set(["entered-in-error"]);
+    const PROCEDURE_STATUSES = new Set(["unknown"]);
+    // Table 0206 action codes, near-misses, and shapes the parser publishes for a damaged field:
+    // an empty component structure, a bare separator, repetitions, escapes, and out-of-range dates.
+    const hostileField = fc.constantFrom(
+      "",
+      "^",
+      "^^",
+      "^^^^",
+      "~",
+      "~~",
+      '""',
+      "\\F\\",
+      "\\T\\",
+      "\\.br\\",
+      "\\Z9\\",
+      "\\",
+      "&",
+      "^&~",
+      `${SENTINEL}^${SENTINEL}^${SENTINEL}`,
+      "250.00^Diab^I9",
+      "250.00^Diab^I9^ALT^AltText^SCT^^^Original",
+      "A~B",
+      "20260721103000-0500",
+      "20260721",
+      "202607211030",
+      "99999999999999",
+      "20261332250000-0500",
+      "0000",
+      "not-a-date",
+      "-1",
+      "1e9",
+      "SN",
+      "D",
+    );
+    const arb = fc.record({
+      hasPid: fc.boolean(),
+      hasPv1: fc.boolean(),
+      dg1: fc.array(fc.array(hostileField, { minLength: 0, maxLength: 22 }), { maxLength: 3 }),
+      pr1: fc.array(fc.array(hostileField, { minLength: 0, maxLength: 25 }), { maxLength: 3 }),
+      in1: fc.array(fc.array(hostileField, { minLength: 0, maxLength: 49 }), { maxLength: 3 }),
+    });
+    fc.assert(
+      fc.property(arb, (p) => {
+        const lines = ["MSH|^~\\&|APP|FAC|RCV|RFAC|20260101120000-0500||ADT^A01|MSGID1|P|2.5.1"];
+        if (p.hasPid) lines.push("PID|1||MRN1^^^HOSP^MR||Doe^Jane||19900101|F");
+        if (p.hasPv1) lines.push("PV1|1|I");
+        for (const [name, rows] of [
+          ["DG1", p.dg1],
+          ["PR1", p.pr1],
+          ["IN1", p.in1],
+        ] as const) {
+          for (const fields of rows) lines.push([name, ...fields].join("|"));
+          // One occurrence of each name with no fields at all.
+          lines.push(name);
+        }
+        let result: TransformResult;
+        try {
+          result = toFhir(parseHL7(lines.join("\r")), {
+            namingSystem: registry,
+            generateId: seqId,
+          });
+        } catch (err) {
+          throw new Error("toFhir threw on a DG1/PR1/IN1-carrying message", { cause: err });
+        }
+        assertResult(result);
+
+        const parsed = parseResource(serializeResource(result.bundle)).resource;
+        const entry = getProperty(parsed, "entry");
+        if (entry === undefined || !isList(entry)) return;
+        for (const e of entry.items) {
+          const res = isComplex(e) ? getProperty(e, "resource") : undefined;
+          if (res === undefined || !isComplex(res)) continue;
+          const type = readString(res, "resourceType");
+          if (type === "Condition") {
+            // Anchored, and never carrying a verification status the map has no assignment for.
+            expect(getProperty(res, "subject")).toBeDefined();
+            const verification = getProperty(res, "verificationStatus");
+            if (verification !== undefined && isComplex(verification)) {
+              const coding = getProperty(verification, "coding");
+              const items = coding !== undefined && isList(coding) ? coding.items : [];
+              for (const item of items) {
+                if (!isComplex(item)) continue;
+                const code = readString(item, "code");
+                if (code !== undefined) expect(VERIFICATION_STATUSES.has(code)).toBe(true);
+              }
+            }
+          }
+          if (type === "Procedure") {
+            expect(getProperty(res, "subject")).toBeDefined();
+            const status = readString(res, "status");
+            expect(status !== undefined && PROCEDURE_STATUSES.has(status)).toBe(true);
+          }
+          if (type === "Coverage") {
+            // Anchored, paid by someone the message named, and never asserting a status.
+            expect(getProperty(res, "beneficiary")).toBeDefined();
+            expect(getProperty(res, "payor")).toBeDefined();
+            expect(readString(res, "status")).toBeUndefined();
+          }
+        }
+      }),
+      { numRuns },
+    );
+  });
+
   it("never throws on hostile arbitrary input that still parses as HL7", () => {
     fc.assert(
       fc.property(fc.string({ maxLength: 400 }), (raw) => {

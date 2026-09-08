@@ -86,8 +86,9 @@ of issues as a FHIR `OperationOutcome` with `toOperationOutcome(issues)`.
 ## Assemble a message
 
 `toFhir(msg)` takes a parsed `@cosyte/hl7` **ADT** message and returns a FHIR R4 **message `Bundle`**:
-a `MessageHeader`, then the `Patient` and `Encounter` (and `RelatedPerson`, and one
-`AllergyIntolerance` per `AL1`) it describes, plus the value-free issues, each map grounded firsthand
+a `MessageHeader`, then the `Patient` and `Encounter` (and `RelatedPerson`, one
+`AllergyIntolerance` per `AL1`, one `Condition` per `DG1`, one `Procedure` per `PR1` and one
+`Coverage` per `IN1`) it describes, plus the value-free issues, each map grounded firsthand
 on the IG's segment/table ConceptMaps.
 
 ```ts
@@ -100,13 +101,16 @@ const { bundle, issues } = toFhir(parseHL7(raw), {
 // bundle.type === "message"; every reference resolves to a urn:uuid: fullUrl inside the bundle.
 ```
 
-| Segment | FHIR resource        | key maps                                                                            |
-| ------- | -------------------- | ----------------------------------------------------------------------------------- |
-| MSH     | `MessageHeader`      | MSH-9 → `eventCoding`; MSH-7/10 → `Bundle.timestamp`/`.identifier`                  |
-| PID     | `Patient`            | PID-3/5/7/8/11 → `identifier`/`name`/`birthDate`/`gender`/`address`                 |
-| PV1     | `Encounter`          | PV1-2 → `class`/`status` (HL70004); PV1-19/44/45 → `identifier`/`period`            |
-| NK1     | `RelatedPerson`      | NK1-2/3/4 → `name`/`relationship`/`address`                                         |
-| AL1     | `AllergyIntolerance` | AL1-2 → `category` + `type` (two maps); AL1-3/4/5 → `code`/`criticality`/`reaction` |
+| Segment | FHIR resource        | key maps                                                                                                                   |
+| ------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| MSH     | `MessageHeader`      | MSH-9 → `eventCoding`; MSH-7/10 → `Bundle.timestamp`/`.identifier`                                                         |
+| PID     | `Patient`            | PID-3/5/7/8/11 → `identifier`/`name`/`birthDate`/`gender`/`address`                                                        |
+| PV1     | `Encounter`          | PV1-2 → `class`/`status` (HL70004); PV1-19/44/45 → `identifier`/`period`                                                   |
+| NK1     | `RelatedPerson`      | NK1-2/3/4 → `name`/`relationship`/`address`                                                                                |
+| AL1     | `AllergyIntolerance` | AL1-2 → `category` + `type` (two maps); AL1-3/4/5 → `code`/`criticality`/`reaction`                                        |
+| DG1     | `Condition`          | DG1-3/4 → `code`/`code.text`; DG1-5/19 → `onsetDateTime`/`recordedDate`; DG1-21 `D` → `verificationStatus`                 |
+| PR1     | `Procedure`          | PR1-3/4 → `code`/`code.text`; PR1-5 + PR1-7 → `performedDateTime` or `performedPeriod`; PR1-6/15 → `category`/`reasonCode` |
+| IN1     | `Coverage`           | IN1-2/15 → `identifier`/`type`; IN1-12/13 → `period`; IN1-4.1 → `payor.display`; IN1-10/49 → the subscriber-id extension   |
 
 An allergy is a field a downstream system may act on before prescribing, so the AL1 rows are read
 strictly. `clinicalStatus` is the `active` the IG assigns (its constraint ait-1 needs one, and no AL1
@@ -120,6 +124,24 @@ whose AL1-3 names no substance, or that arrives with no Patient to anchor, is wi
 rather than emitted: an allergy to nothing, or one pointing at nobody, is worse than a reported gap.
 AL1-6 is legacy input only, read as `onsetDateTime` for a message earlier than 2.7 (the version that
 withdrew the field) and dropped with a diagnostic otherwise.
+
+The diagnosis, procedure and coverage a message carries are read the same way. Each is wired to the
+bundle Patient, and each `Condition` is referenced back from `Encounter.diagnosis` when the message
+also described a visit; with no Patient to anchor them all three are withheld and declared, never
+emitted pointing at nobody. Three refusals are worth knowing before you consume them.
+**`Coverage.status` is never asserted**: the IN1 map publishes no row for it and R4's binding has no
+neutral member, so the element ships value-absent with a `data-absent-reason` of `unknown` and a
+diagnostic saying so. Read it as unknown, not as active coverage. **`Coverage.payor` names the
+insurer without resolving it**: IN1-4.1 becomes a reference `display` and no literal reference,
+because no `Organization` is built, and an IN1 that names no insurance company is withheld entirely,
+since `payor` is required and nothing else grounds it. **`Procedure.status` is the `unknown` the
+guide's own row directs** where the message context determines none; a `completed` this library was
+never told is never selected. A DG1-21 of `D` sets `verificationStatus` to `entered-in-error`, the
+one value the map assigns, and every other Table 0206 action code leaves the element absent and
+flagged. Every row of the three maps whose target needs a `Practitioner`, `Location` or
+`Organization`, or resolves by identifier rather than by bundle position, raises a diagnostic naming
+the field and the path it did not build, so what was deferred is in the issues list rather than
+missing without comment.
 
 The fail-safe rule holds at the message level: an unmapped patient class, a naked timestamp, or an
 unresolvable authority becomes a typed issue, never a fabricated value. A trigger the IG has no

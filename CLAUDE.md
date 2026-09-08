@@ -39,6 +39,19 @@ as a trap is clinical-safety content.
   and no category and that is the answer, not a gap to fill. Why, and the fixed `clinicalStatus`,
   the alternate-codes extension, the withheld cases and the withdrawn AL1-6:
   `documentation/agent-notes.md#shipped-phase-history-phases-16`.
+- **`DG1`, `PR1` and `IN1` are now built too: `Condition`, `Procedure`, `Coverage`, all wired to the
+  bundle Patient**, with each Condition referenced back from `Encounter.diagnosis`. **▶
+  `Coverage.status` IS NEVER ASSERTED**: the IN1 map publishes no row for it, so it ships
+  value-absent with a `data-absent-reason` of `unknown` and a
+  `TRANSFORM_REQUIRED_ELEMENT_UNKNOWN`, and its emit-schema entry deliberately carries NO required
+  binding so that shape satisfies the cardinality. **▶ `Coverage.payor` DECIDES WHETHER THE COVERAGE
+  EXISTS**: IN1-4 is its only source, so an unnamed insurer withholds the whole resource, and a named
+  one is a `display` with no literal reference because no Organization is built. **▶
+  `Procedure.status` IS THE `unknown` THE MAP'S OWN ROW DIRECTS**, never `completed`. `DG1-21`
+  grounds exactly one status (`D` to `entered-in-error`) and `Condition.clinicalStatus` has no row at
+  all, so a Condition here can fail R4's `con-3`. Every deferred row is declared with a diagnostic
+  rather than dropped, and the completeness baselines were SUPERSEDED, never recaptured. All of it:
+  `documentation/agent-notes.md#shipped-phase-history-phases-16`.
 - **Phase 7 (FHIR→v2) shipped NARROWLY, and the narrowness is the point**: `toV2Patient` and
   `toV2Observation` emit a **complete** v2 message (`ADT^<trigger>` + PID, `ORU^<trigger>` + OBX)
   from the subset of the IG segment maps whose **inverse is one-to-one**. The **trigger is a required

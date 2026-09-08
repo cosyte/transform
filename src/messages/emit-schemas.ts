@@ -26,6 +26,15 @@
  * - **MedicationRequest**: `status` (1..1 code), `intent` (1..1 code), `subject` (1..1 Reference), and
  *   `medication[x]` (1..1) are all required; the assembler only ever emits the `medicationCodeableConcept`
  *   form, so it is required here, and a pharmacy order with no give code (no `medication[x]`) is withheld.
+ * - **Condition**: `subject` (1..1 Reference) is required, so a diagnosis whose Patient was withheld
+ *   is withheld too rather than emitted with a subject that resolves to nothing in the bundle.
+ * - **Procedure**: `status` (1..1 code) and `subject` (1..1 Reference) are both required. The status
+ *   carries its R4 required binding, so the fixed value the segment map directs is checked against the
+ *   event-status value set rather than trusted.
+ * - **Coverage**: `status` (1..1 code), `beneficiary` (1..1 Reference) and `payor` (1..* Reference)
+ *   are all required. No published row grounds the status, so it ships as a value-absent element
+ *   carrying `data-absent-reason`, which satisfies the cardinality without asserting a code; a
+ *   coverage that lost its beneficiary or its payer is withheld.
  * - **AllergyIntolerance**: `patient` (1..1 Reference) is required, and the three coded elements the IG
  *   value maps target (`type`, `category`, `criticality`) carry their R4 **required** bindings, so a map
  *   row that ever produced a non-member code would withhold the resource rather than ship an allergy a
@@ -100,6 +109,53 @@ export const EMIT_SCHEMAS: readonly ResourceSchema[] = Object.freeze([
       vaccineCode: { min: 1, max: 1, types: ["CodeableConcept"] },
       patient: { min: 1, max: 1, types: ["Reference"] },
       occurrenceDateTime: { min: 1, max: 1, types: ["dateTime"] },
+    },
+  },
+  {
+    // Condition: subject (1..1 Reference) is required. A DG1 with no bundle Patient to anchor never
+    // reaches this gate (the assembly withholds it first); the entry is the defence behind that.
+    type: "Condition",
+    elements: {
+      subject: { min: 1, max: 1, types: ["Reference"] },
+    },
+  },
+  {
+    // Procedure: status (1..1 code) and subject (1..1 Reference) are both required. The status
+    // binding is R4's required EventStatus set, so the value the PR1 map's own row directs is
+    // checked rather than trusted, and a Procedure carrying anything else is withheld.
+    type: "Procedure",
+    elements: {
+      status: {
+        min: 1,
+        max: 1,
+        types: ["code"],
+        binding: {
+          strength: "required",
+          codes: [
+            "preparation",
+            "in-progress",
+            "not-done",
+            "on-hold",
+            "stopped",
+            "completed",
+            "entered-in-error",
+            "unknown",
+          ],
+        },
+      },
+      subject: { min: 1, max: 1, types: ["Reference"] },
+    },
+  },
+  {
+    // Coverage: status (1..1 code), beneficiary (1..1 Reference) and payor (1..* Reference) are all
+    // required. The status is modelled WITHOUT its required binding on purpose: no published row
+    // grounds a coverage status, so the element ships value-absent with a data-absent-reason
+    // extension, which satisfies the cardinality while asserting no member of the value set.
+    type: "Coverage",
+    elements: {
+      status: { min: 1, max: 1, types: ["code"] },
+      beneficiary: { min: 1, max: 1, types: ["Reference"] },
+      payor: { min: 1, max: UNBOUNDED, types: ["Reference"] },
     },
   },
   {

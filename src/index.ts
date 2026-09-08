@@ -132,6 +132,35 @@ export {
 } from "./messages/allergy-intolerance.js";
 export type { AllergyBuildOptions } from "./messages/allergy-intolerance.js";
 
+// ── Message-level assembly: DG1 → Condition, PR1 → Procedure, IN1 → Coverage ─────────────────────
+export {
+  CONDITION_ENTERED_IN_ERROR,
+  CONDITION_VERIFICATION_STATUS_SYSTEM,
+  DG1_RETRACTION_ACTION_CODE,
+  buildCondition,
+  collectDiagnoses,
+  deferredDiagnosisIssues,
+} from "./messages/condition.js";
+export {
+  PROCEDURE_STATUS_UNKNOWN,
+  addMinutes,
+  buildProcedure,
+  collectProcedures,
+  deferredProcedureIssues,
+} from "./messages/procedure.js";
+export {
+  COVERAGE_STATUS_UNKNOWN,
+  COVERAGE_SUBSCRIBER_ID_EXTENSION_URL,
+  IN1_SUBSCRIBER_NUMBER_TYPE,
+  buildCoverage,
+  collectCoverages,
+  deferredCoverageIssues,
+  insuranceCompanyName,
+} from "./messages/coverage.js";
+export { emitEncounterDiagnosis, withEncounterDiagnosis } from "./messages/encounter.js";
+export { toFhirEntityIdentifier, withCodeableText } from "./messages/reference.js";
+export type { EntityIdentifier } from "./messages/reference.js";
+
 // ── Terminology value translation: the $translate-shaped ConceptMap engine + maps (Phase 6) ──────
 export {
   toFhirCodeableConceptVia,

@@ -93,12 +93,47 @@ rather than omissions, and each one would look like a bug to someone who did not
   carried only for a message whose MSH-12 is readable and earlier than 2.7. Absent and unreadable
   both fail closed, dropped with a diagnostic.
 
+**`DG1` to `Condition`, `PR1` to `Procedure` and `IN1` to `Coverage` followed, and they add three
+more resource types to the same bundle.** Each is wired to the bundle Patient by the IG's own
+ADT_A01 message-map rows (`Condition[1].subject.reference=Patient[1].id`,
+`Procedure.subject.reference=Patient[1].id`, `Coverage.beneficiary.reference=Patient[1].id`), each
+Condition is referenced back from `Encounter.diagnosis` when the same message produced an Encounter,
+and with no Patient in the bundle all three are withheld and declared per occurrence. Five things
+about them are decisions rather than omissions:
+
+- **`Coverage.status` is never asserted, and that is the whole point of how it ships.**
+  `Coverage.status` occurs ZERO times in the published IN1 map, and R4 makes the element required
+  under a required binding whose every member is a positive claim about a policy. So it is emitted as
+  a VALUE-ABSENT element carrying `data-absent-reason` `unknown` plus
+  `TRANSFORM_REQUIRED_ELEMENT_UNKNOWN`. Do not "fix" that by reaching for `active`: nothing in an IN1
+  states one. Its emit-schema entry is modelled WITHOUT the R4 binding on purpose, because the
+  value-absent element must satisfy the cardinality while asserting no member of the value set.
+- **`payor` decides whether a Coverage exists at all.** It is required 1..1 and IN1-4 is its only
+  source, so an IN1 that names no insurance company is withheld with a `TRANSFORM_ELEMENT_DROPPED`
+  naming the occurrence. When it IS named, the payor carries the name as a `display` and NO literal
+  reference, because no Organization resource is built, and the missing resource is declared.
+- **`Procedure.status` is the map's own answer, not the message's.** The PR1 map's sort-order 0 row
+  reads "The value mapping depends on the message context ... If not clear, use `unknown`", and no
+  PR1 component states a procedure status, so every Procedure carries `unknown`. The emit schema
+  carries R4's required EventStatus binding so the fixed value is checked rather than trusted.
+- **DG1-21 grounds exactly one status.** The row assigns `entered-in-error` and names no source code;
+  its own comment reads "Other values (A and U) don't map to anything", and Table 0206 publishes
+  `A`, `D`, `S`, `U`, `X`. `D` (Delete) is the code the assignment covers; every other published
+  code leaves `verificationStatus` absent and flagged. `Condition.clinicalStatus` has no row at all,
+  so it is absent, which can fail R4's `con-3` invariant under a full profile validator: that is a
+  declared gap, and filling it from nothing is the fabrication this library refuses.
+- **A period needs a start precise enough to add minutes to.** PR1-7 is minutes and the map requires
+  PR1-5 to reach minute granularity, so the branch is decided by what the CONVERSION could carry: a
+  PR1-5 that `toFhirDateTime` reduces to date precision (naked or partial-precision) yields
+  `performedDateTime` and a declared `performedPeriod.end`, never an end computed from a date.
+
 **And the completeness baselines were superseded, not recaptured.** `completeness-goldens.json` is a
 capture of one commit and recapturing it from a tree that carries the change would launder the
-evidence it exists to be. The three recorded inputs carrying an AL1 are declared in
+evidence it exists to be. The recorded inputs carrying an AL1, a DG1, a PR1 or an IN1 are declared in
 `test/messages/segment-completeness.test.ts` instead, and the assertions prove their bundles are the
-recorded ones once the new allergies are removed, and that every recorded issue is still raised in
-its recorded order. Add to that declaration when a later change legitimately moves another one.
+recorded ones once the later resource types are removed, and that every recorded issue is still
+raised in its recorded order. Add to that declaration when a later change legitimately moves another
+one.
 
 Phase 7 opened the **reverse direction, narrowly**: `toV2Patient` and `toV2Observation` emit a
 complete v2 message carrying a `PID` or an `OBX`, each requiring a caller-supplied trigger. Two of

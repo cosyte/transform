@@ -2,7 +2,8 @@
  * `toFhir`, the message-level entry point: assemble a parsed HL7 v2 message into a FHIR R4
  * **message Bundle** (a `MessageHeader` first, then the focal resources), grounded on the IG message
  * and segment maps. The **ADT** family becomes **Patient + Encounter** (+ `RelatedPerson`
- * from NK1, + one `AllergyIntolerance` per AL1); the **ORU^R01** results graph becomes
+ * from NK1, + one `AllergyIntolerance` per AL1, + one `Condition` per DG1, one `Procedure` per PR1
+ * and one `Coverage` per IN1); the **ORU^R01** results graph becomes
  * `DiagnosticReport` + `Observation`; the
  * order-entry graph gives **ORM_O01 / OML_O21** ORC/OBR → `ServiceRequest` and **RXO** (+ RXR, + the
  * order's **TQ1** schedule) → `MedicationRequest`; and the thin IG singles give **VXU_V04**
@@ -51,9 +52,12 @@ import { createNamingSystem } from "../terminology/naming-system.js";
 import type { TransformContext, TransformOptions } from "../terminology/context.js";
 import { collectAllergies, emitAllergyIntolerance } from "./allergy-intolerance.js";
 import { buildAppointment, collectAppointment } from "./appointment.js";
+import { buildCondition, collectDiagnoses, deferredDiagnosisIssues } from "./condition.js";
+import { buildCoverage, collectCoverages, deferredCoverageIssues } from "./coverage.js";
 import { buildDiagnosticReport } from "./diagnostic-report.js";
 import { buildDocumentReference, collectDocument } from "./document-reference.js";
-import { buildEncounter } from "./encounter.js";
+import { buildEncounter, emitEncounterDiagnosis } from "./encounter.js";
+import { buildProcedure, collectProcedures, deferredProcedureIssues } from "./procedure.js";
 import { EMIT_SCHEMAS } from "./emit-schemas.js";
 import { buildImmunization, collectImmunizationGroups } from "./immunization.js";
 import { buildMedicationRequest } from "./medication-request.js";
@@ -270,12 +274,14 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
 
   // PV1 → Encounter, subject wired to the Patient (omitted if no valid Patient).
   let encounterFullUrl: string | undefined;
+  let encounterEntryIndex = -1;
   const visitView = msg.visit;
   if (visitView !== undefined) {
     const built = buildEncounter(visitView, patientFullUrl, ctx);
     issues.push(...built.issues);
     if (built.value !== undefined && passesEmitGate(built.value, "PV1", "Encounter", issues)) {
       encounterFullUrl = ids.next();
+      encounterEntryIndex = focalEntries.length;
       focalEntries.push({ fullUrl: encounterFullUrl, resource: built.value });
       reach.markFirstOfType("PV1");
     }
@@ -333,6 +339,105 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
     allergyFullUrls.push(url);
     focalEntries.push({ fullUrl: url, resource: emitted.value });
     reach.mark(al1);
+  }
+
+  // DG1 → Condition, one per occurrence, subject wired to the bundle Patient. The IG's ADT_A01
+  // message map fixes that wiring (Condition[1].subject.reference = Patient[1].id) and the segment
+  // map is reusable, so it is applied wherever a DG1 occurs. With no Patient there is nothing to
+  // anchor a diagnosis to: it is withheld and declared per occurrence, never emitted with a dangling
+  // reference. The rows the guide maps to resources this library does not build are declared for the
+  // occurrence either way, so a deferred row a message valued is never silently absent.
+  const conditionFullUrls: string[] = [];
+  const diagnoses = collectDiagnoses(msg);
+  for (let i = 0; i < diagnoses.length; i++) {
+    const dg1 = diagnoses[i];
+    if (dg1 === undefined) continue;
+    const location = `DG1[${String(i)}]`;
+    issues.push(...deferredDiagnosisIssues(dg1));
+    if (patientFullUrl === undefined) {
+      issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, location, "Condition.subject"));
+      continue;
+    }
+    const built = buildCondition(dg1, patientFullUrl, ctx, location);
+    issues.push(...built.issues);
+    if (built.value === undefined) continue;
+    if (!passesEmitGate(built.value, location, "Condition", issues)) continue;
+    const url = ids.next();
+    conditionFullUrls.push(url);
+    focalEntries.push({ fullUrl: url, resource: built.value });
+    reach.mark(dg1);
+  }
+  if (diagnoses.length > 0) {
+    // The message map's third DG1 target. No EpisodeOfCare is built here, so a diagnosis ties to an
+    // Encounter or to nothing: declared once for the message, the way the other unbuilt targets are.
+    issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "DG1", "EpisodeOfCare"));
+  }
+
+  // The message map's other DG1 row: Encounter[1].diagnosis.reference = Condition[1].id. The
+  // Encounter joined the bundle before its diagnoses existed and the produced nodes are immutable,
+  // so the entry is replaced by the same Encounter carrying the back-references, re-gated first.
+  if (conditionFullUrls.length > 0 && encounterEntryIndex >= 0) {
+    const emitted = focalEntries[encounterEntryIndex];
+    if (emitted !== undefined) {
+      const linked = emitEncounterDiagnosis(emitted.resource, conditionFullUrls, clearsEmitGate);
+      issues.push(...linked.issues);
+      if (linked.value !== undefined) {
+        focalEntries[encounterEntryIndex] = { fullUrl: emitted.fullUrl, resource: linked.value };
+      }
+    }
+  }
+
+  // PR1 → Procedure, one per occurrence, subject wired to the bundle Patient
+  // (Procedure.subject.reference = Patient[1].id in the ADT_A01 message map).
+  const procedureFullUrls: string[] = [];
+  const procedures = collectProcedures(msg);
+  for (let i = 0; i < procedures.length; i++) {
+    const pr1 = procedures[i];
+    if (pr1 === undefined) continue;
+    const location = `PR1[${String(i)}]`;
+    issues.push(...deferredProcedureIssues(pr1));
+    if (patientFullUrl === undefined) {
+      issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, location, "Procedure.subject"));
+      continue;
+    }
+    const built = buildProcedure(pr1, patientFullUrl, ctx);
+    issues.push(...built.issues);
+    if (built.value === undefined) continue;
+    if (!passesEmitGate(built.value, location, "Procedure", issues)) continue;
+    const url = ids.next();
+    procedureFullUrls.push(url);
+    focalEntries.push({ fullUrl: url, resource: built.value });
+    reach.mark(pr1);
+  }
+
+  // The PV1-20 financial class also targets Coverage[1] in the message map. That row is not built
+  // here, and a valued PV1-20 is a coverage the bundle does not carry: declared, never silent.
+  const visitSegment = msg.allSegments().find((seg) => seg.type === "PV1");
+  if (visitSegment !== undefined && visitSegment.field(20).value !== "") {
+    issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "PV1.20", "Coverage"));
+  }
+
+  // IN1 → Coverage, one per occurrence, beneficiary wired to the bundle Patient
+  // (Coverage.beneficiary.reference = Patient[1].id in the ADT_A01 message map).
+  const coverageFullUrls: string[] = [];
+  const coverages = collectCoverages(msg);
+  for (let i = 0; i < coverages.length; i++) {
+    const in1 = coverages[i];
+    if (in1 === undefined) continue;
+    const location = `IN1[${String(i)}]`;
+    issues.push(...deferredCoverageIssues(in1));
+    if (patientFullUrl === undefined) {
+      issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, location, "Coverage.beneficiary"));
+      continue;
+    }
+    const built = buildCoverage(in1, patientFullUrl, ctx, location);
+    issues.push(...built.issues);
+    if (built.value === undefined) continue;
+    if (!passesEmitGate(built.value, location, "Coverage", issues)) continue;
+    const url = ids.next();
+    coverageFullUrls.push(url);
+    focalEntries.push({ fullUrl: url, resource: built.value });
+    reach.mark(in1);
   }
 
   // ORU → the DiagnosticReport + Observation results graph (Phase 3). OBR anchors a DiagnosticReport;
@@ -532,6 +637,9 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
     patientFullUrl,
     encounterFullUrl,
     ...allergyFullUrls,
+    ...conditionFullUrls,
+    ...procedureFullUrls,
+    ...coverageFullUrls,
     ...diagnosticReportFullUrls,
     ...orderResourceFullUrls,
     ...immunizationFullUrls,
