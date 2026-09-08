@@ -88,8 +88,14 @@ export {
   OBSERVATION_STATUS_MAP,
   HL70078_INTERPRETATION_CODES,
   V3_OBSERVATION_INTERPRETATION_SYSTEM,
+  OBSERVATION_VALUE_ATTACHMENT_EXTENSION_URL,
+  ED_BASE64_ENCODING,
+  SAMPLED_DATA_ABSENT_POINT,
+  SAMPLED_DATA_UNGROUNDED,
 } from "./messages/observation.js";
 export { DIAGNOSTIC_REPORT_STATUS_MAP } from "./messages/diagnostic-report.js";
+export { SPM_SHIPMENT_IDENTIFIER_TYPE, buildSpecimen } from "./messages/specimen.js";
+export { buildAnnotations } from "./messages/note.js";
 
 // ── Message-level assembly: HL7 v2 ORM/OML → ServiceRequest, RXO → MedicationRequest (Phase 4) ────
 export { REQUEST_STATUS_MAP } from "./messages/service-request.js";

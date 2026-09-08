@@ -327,12 +327,17 @@ describe("toFhir: ORU value-type discrimination edges", () => {
     expect(serializeResource(result.bundle)).toContain('"valueDateTime":"2026-07-21"');
   });
 
-  it("a value type with no first-class FHIR target (NA) preserves the raw value as string + flags it", () => {
-    const result = toFhir(wrap(obx({ 1: "1", 2: "NA", 3: "W^Waveform^LN", 5: "1^2^3", 11: "F" })), {
-      generateId: seq(),
-    });
+  it("a value type the IG maps but this library cannot ground (RP) preserves the raw value + flags it", () => {
+    // `RP` is the one OBX-2 with a nominal extension target the guide's own comment marks unsettled
+    // ("To be resolved when we resolve DocumentReference and valueAttachment"), so it stays on the
+    // fail-safe floor: the raw value as a string, the drop declared, and no attachment invented.
+    const result = toFhir(
+      wrap(obx({ 1: "1", 2: "RP", 3: "D^Doc^LN", 5: "http://x/1^APP^pdf^Base64", 11: "F" })),
+      { generateId: seq() },
+    );
     const json = serializeResource(result.bundle);
     expect(json).toContain('"valueString"');
+    expect(json).not.toContain("valueAttachment");
     expect(
       result.issues.some(
         (i) =>

@@ -4,7 +4,8 @@
  * and segment maps. The **ADT** family becomes **Patient + Encounter** (+ `RelatedPerson`
  * from NK1, + one `AllergyIntolerance` per AL1, + one `Condition` per DG1, one `Procedure` per PR1
  * and one `Coverage` per IN1); the **ORU^R01** results graph becomes
- * `DiagnosticReport` + `Observation`; the
+ * `DiagnosticReport` + `Observation` (+ one `Specimen` per SPM of the report's SPECIMEN group,
+ * referenced from the report that scopes it); the
  * order-entry graph gives **ORM_O01 / OML_O21** ORC/OBR → `ServiceRequest` and **RXO** (+ RXR, + the
  * order's **TQ1** schedule) → `MedicationRequest`; and the thin IG singles give **VXU_V04**
  * RXA/RXR/ORC → `Immunization`,
@@ -34,7 +35,7 @@
  * @packageDocumentation
  */
 
-import type { Hl7Message } from "@cosyte/hl7";
+import type { Hl7Message, Segment } from "@cosyte/hl7";
 import {
   complex,
   primitive,
@@ -70,6 +71,7 @@ import { buildRelatedPerson } from "./related-person.js";
 import { IdAllocator } from "./reference.js";
 import { SegmentReachLedger } from "./segment-completeness.js";
 import { buildServiceRequest } from "./service-request.js";
+import { buildSpecimen } from "./specimen.js";
 import { readTq1 } from "./tq1-timing.js";
 
 /**
@@ -460,9 +462,15 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
       const resultFullUrls: string[] = [];
       const observationEntries: Entry[] = [];
       for (let i = 0; i < group.observations.length; i++) {
-        const obx = group.observations[i];
-        if (obx === undefined) continue;
-        const built = buildObservation(obx, patientFullUrl, encounterFullUrl, ctx);
+        const observation = group.observations[i];
+        if (observation === undefined) continue;
+        const built = buildObservation(
+          observation.obx,
+          patientFullUrl,
+          encounterFullUrl,
+          ctx,
+          observation.notes,
+        );
         issues.push(...built.issues);
         if (
           built.value !== undefined &&
@@ -471,15 +479,37 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
           const url = ids.next();
           resultFullUrls.push(url);
           observationEntries.push({ fullUrl: url, resource: built.value });
-          reach.mark(obx);
+          // The OBSERVATION-group NTEs contributed their text to the Observation just emitted.
+          reach.mark(observation.obx, ...observation.notes);
         }
       }
+
+      // SPM → Specimen, one per SPECIMEN group occurrence. Built here but held back: the map wires
+      // the specimen to the report that scopes it, so a report the gate withholds takes its
+      // specimens with it rather than leaving entries nothing in the bundle points at.
+      const specimenFullUrls: string[] = [];
+      const specimenEntries: Entry[] = [];
+      const emittedSpecimens: Segment[] = [];
+      for (let i = 0; i < group.specimens.length; i++) {
+        const spm = group.specimens[i];
+        if (spm === undefined) continue;
+        const built = buildSpecimen(spm, patientFullUrl, ctx);
+        issues.push(...built.issues);
+        if (built.value === undefined) continue;
+        if (!passesEmitGate(built.value, `SPM[${String(i)}]`, "Specimen", issues)) continue;
+        const url = ids.next();
+        specimenFullUrls.push(url);
+        specimenEntries.push({ fullUrl: url, resource: built.value });
+        emittedSpecimens.push(spm);
+      }
+
       const report = buildDiagnosticReport(
         group.obr,
         resultFullUrls,
         patientFullUrl,
         encounterFullUrl,
         ctx,
+        specimenFullUrls,
       );
       issues.push(...report.issues);
       if (
@@ -490,6 +520,10 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
         diagnosticReportFullUrls.push(reportUrl);
         focalEntries.push({ fullUrl: reportUrl, resource: report.value });
         reach.mark(group.obr);
+        // The Specimens join only now, with the report that scopes them: withheld together or
+        // present together, so neither side of the wiring is ever left pointing at nothing.
+        focalEntries.push(...specimenEntries);
+        reach.mark(...emittedSpecimens);
       }
       // The Observations follow their report in the bundle (references resolve regardless of order).
       focalEntries.push(...observationEntries);

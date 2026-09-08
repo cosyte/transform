@@ -84,9 +84,12 @@ ENCOUNTER_CLASS_V3_MAP["I"].code; // => "IMP"
 
 ## Lab results (ORU^R01)
 
-An `ORU^R01` assembles into a **`DiagnosticReport`** per OBR with its **`Observation`** results.
-`OBX-2` discriminates the value type: `NM` → `valueQuantity`, `CWE` → `valueCodeableConcept`, `SN` →
-a structured range/ratio/comparator quantity, `ST`/`TX` → `valueString`, so a result is **never**
+An `ORU^R01` assembles into a **`DiagnosticReport`** per OBR with its **`Observation`** results, plus
+a **`Specimen`** per `SPM` that the report references, and each result's `NTE` comments as
+`Observation.note`. `OBX-2` discriminates the value type: `NM` → `valueQuantity`, `CWE` →
+`valueCodeableConcept`, `SN` → a structured range/ratio/comparator quantity, `DR` → `valuePeriod`,
+`NR` → `valueRange`, `TM` → `valueTime`, `NA` → `valueSampledData`, a `Base64` `ED` → the guide's
+named `valueAttachment` extension, `ST`/`TX` → `valueString`, so a result is **never**
 forced into a `Quantity` it isn't. The result-status maps are the clinical-safety heart of the graph
 and are exported for inspection: a **corrected** or **cancelled** result is modelled exactly and
 **never emitted as `final`**, and a status the IG map has no target for leaves `status` absent (the

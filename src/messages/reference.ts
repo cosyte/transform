@@ -195,9 +195,29 @@ export function withCodeableText(concept: FhirComplex, textValue: string): FhirC
  * ```
  */
 export function dataAbsent(reasonCode: string): ReturnType<typeof primitive> {
-  const ext = complex([
+  return primitive(undefined, { extension: [dataAbsentReason(reasonCode)] });
+}
+
+/** The `data-absent-reason` extension node itself, shared by the primitive and complex forms. */
+function dataAbsentReason(reasonCode: string): FhirComplex {
+  return complex([
     { name: "url", value: primitive(DATA_ABSENT_REASON_URL) },
     { name: "valueCode", value: primitive(reasonCode) },
   ]);
-  return primitive(undefined, { extension: [ext] });
+}
+
+/**
+ * A value-absent FHIR **complex** element carrying only a `data-absent-reason` extension: the
+ * counterpart of {@link dataAbsent} for a required element whose type is a datatype rather than a
+ * primitive, so the cardinality is satisfied **without fabricating any part of the value**.
+ *
+ * @param reasonCode - The `data-absent-reason` code (e.g. `"unknown"`).
+ * @example
+ * ```ts
+ * // used for SampledData.origin, which R4 requires and the IG's NA map has no source row for
+ * // dataAbsentComplex("unknown"); // { extension: [{ url: …/data-absent-reason, valueCode: "unknown" }] }
+ * ```
+ */
+export function dataAbsentComplex(reasonCode: string): FhirComplex {
+  return complex([{ name: "extension", value: list([dataAbsentReason(reasonCode)]) }]);
 }

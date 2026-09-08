@@ -15,13 +15,40 @@
  * | OBX-8 Abnormal Flags | `Observation.interpretation` | {@link HL70078_INTERPRETATION_CODES} |
  * | OBX-11 Result Status | `Observation.status` | {@link OBSERVATION_STATUS_MAP} (HL70085) |
  * | OBX-14 Date/Time of Observation | `Observation.effectiveDateTime` | {@link toFhirDateTime} |
+ * | (OBSERVATION-group NTE) | `Observation.note` | {@link buildAnnotations} (`NTE[ServiceRequest]`) |
+ *
+ * **What OBX-2 selects, row by row** (`ConceptMap-segment-obx-to-observation.html`, the OBX-5 rows):
+ *
+ * | OBX-2 | FHIR target | datatype map |
+ * |---|---|---|
+ * | `NM` | `valueQuantity` | `NM[Quantity]` |
+ * | `SN` | `valueQuantity` (with a comparator) / `valueRange` / `valueRatio` | the row's own conditions |
+ * | `CWE`/`CE`/`CF`/`CNE`/`IS` | `valueCodeableConcept` | `CWE[CodeableConcept]` |
+ * | `DT`/`DTM`/`TS` | `valueDateTime` | `DTM[DateTime]` |
+ * | `ST`/`TX`/`FT` | `valueString` | (direct) |
+ * | `DR` | `valuePeriod` | `DR[Period]` |
+ * | `NR` | `valueRange` | `NR[Range]` |
+ * | `TM` | `valueTime` | (direct, an R4 `time`) |
+ * | `NA` | `valueSampledData` | `NA[SampledData]` |
+ * | `ED` **and** OBX-5.4 = `Base64` | the {@link OBSERVATION_VALUE_ATTACHMENT_EXTENSION_URL} extension | `ED[Attachment]` |
+ * | `RP`, `ID`, anything else | `valueString` + flagged | (no settled target) |
  *
  * **The "never a confident wrong result" fail-safes:**
- * - **OBX-2 drives `value[x]`.** `NM`→`valueQuantity`, `CWE`/`CE`/`CF`/`CNE`/`IS`→`valueCodeableConcept`,
- *   `SN`→structured (`valueQuantity` with a comparator / `valueRange` / `valueRatio`), `ST`/`TX`/`FT`→
- *   `valueString`. A value type with no first-class target here (`NA`, `ED`, `DR`, `TM`, `NR`, unknown)
- *   preserves the raw value as `valueString` and flags {@link ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED}
- *   (the richer FHIR type is deferred), never a fabricated `Quantity`.
+ * - **OBX-2 drives `value[x]`**, per the table above, and every row of it degrades to the raw OBX-5
+ *   text as `valueString` + {@link ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED} rather than emit a value
+ *   the map cannot ground: a `DR` neither of whose bounds is a dateTime this library will emit, an
+ *   `NR` neither of whose bounds is a faithful `decimal`, a `TM` carrying a UTC offset (an R4 `time`
+ *   admits none, and discarding one would move the instant), an `NA` carrying a magnitude `decimal`
+ *   cannot hold unaltered, an `ED` whose OBX-5.4 is not `Base64` (both ED rows are conditioned on
+ *   it), and `RP`, whose extension target the guide's own comment marks unsettled.
+ * - **The published NA row spells its attribute `Observation.valueSampedData`.** That is a typo in
+ *   the guide; the R4 element is `valueSampledData` and that is what is emitted.
+ * - **A SampledData asserts no origin and no period.** R4 makes both `1..1` and the NA map has no
+ *   source row for either, so they ship value-absent with a `data-absent-reason` and
+ *   {@link ISSUE_CODES.TRANSFORM_REQUIRED_ELEMENT_UNKNOWN}: an `origin` of 0 or a `period` of 1
+ *   would be a magnitude this message never sent, on a waveform.
+ * - **An ED payload is carried, never read.** OBX-5.5 reaches `Attachment.data` byte-for-byte: no
+ *   decode, no re-encode, no normalization, no validation, no truncation.
  * - **A corrected/cancelled result never emits as `final`.** OBX-11 `C`→`corrected`, `X`→`cancelled`,
  *   `D`/`W`→`entered-in-error` (HL70085). A status code with **no** HL70085 target leaves
  *   `Observation.status` absent (flagged {@link ISSUE_CODES.TRANSFORM_CODE_UNMAPPED}); the required-`status`
@@ -37,8 +64,16 @@
  * @packageDocumentation
  */
 
-import type { CWE, Field, Segment } from "@cosyte/hl7";
-import { complex, primitive, list, type FhirComplex, type FhirNode } from "@cosyte/fhir";
+import { parseDtm, type CWE, type Field, type Segment } from "@cosyte/hl7";
+import {
+  complex,
+  decimal,
+  primitive,
+  list,
+  validatePrimitiveValue,
+  type FhirComplex,
+  type FhirNode,
+} from "@cosyte/fhir";
 
 import { toFhirCodeableConcept } from "../datatypes/codeable-concept.js";
 import { toFhirDateTime } from "../datatypes/datetime.js";
@@ -47,7 +82,9 @@ import { ISSUE_CODES } from "../diagnostics/codes.js";
 import { issue, type TransformIssue } from "../diagnostics/issue.js";
 import type { ConvertResult } from "../diagnostics/result.js";
 import type { TransformContext } from "../terminology/context.js";
-import { reference } from "./reference.js";
+import { ALTERNATE_CODES_EXTENSION_URL } from "./allergy-intolerance.js";
+import { buildAnnotations } from "./note.js";
+import { dataAbsent, dataAbsentComplex, reference } from "./reference.js";
 
 /**
  * The v3 ObservationInterpretation canonical system (FHIR `Observation.interpretation` binding).
@@ -129,6 +166,59 @@ export const OBSERVATION_STATUS_MAP: Readonly<Record<string, string>> = Object.f
   X: "cancelled",
 });
 
+/**
+ * The extension URL the OBX map **fixes** on the `IF OBX-2 EQUALS "ED" AND IF OBX-5.4 EQUALS
+ * "Base64"` rows, transcribed from the map's own `Observation.extension.url` assignment. R4 has no
+ * `Observation.valueAttachment`, so the guide carries the R5 element as this named extension.
+ *
+ * @example
+ * ```ts
+ * import { OBSERVATION_VALUE_ATTACHMENT_EXTENSION_URL } from "@cosyte/transform";
+ * OBSERVATION_VALUE_ATTACHMENT_EXTENSION_URL.endsWith("extension-Observation.valueAttachment"); // true
+ * ```
+ */
+export const OBSERVATION_VALUE_ATTACHMENT_EXTENSION_URL =
+  "https://hl7.org/fhir/5.0/StructureDefinition/extension-Observation.valueAttachment";
+
+/**
+ * The OBX-5.4 encoding the OBX map conditions **both** of its `ED` rows on. Any other encoding
+ * (`A`, `Hex`, `Ascii`, a local token) leaves those rows unapplied, so no attachment is built.
+ *
+ * @example
+ * ```ts
+ * import { ED_BASE64_ENCODING } from "@cosyte/transform";
+ * ED_BASE64_ENCODING; // "Base64"
+ * ```
+ */
+export const ED_BASE64_ENCODING = "Base64";
+
+/**
+ * The `SampledData.data` token the Implementation Considerations chapter's own worked example
+ * directs for a data point a repetition did not carry (`"set .dimensions to 4 and use E for the
+ * data points not present"`). It is the FHIR-defined "error" token, and it is written **only** for
+ * an absent position, never for a value that arrived and could not be converted.
+ *
+ * @example
+ * ```ts
+ * import { SAMPLED_DATA_ABSENT_POINT } from "@cosyte/transform";
+ * SAMPLED_DATA_ABSENT_POINT; // "E"
+ * ```
+ */
+export const SAMPLED_DATA_ABSENT_POINT = "E";
+
+/**
+ * The `data-absent-reason` code carried by `SampledData.origin` and `SampledData.period`, the two
+ * R4-required elements of that datatype that **no row of the IG's NA map, and no line of the
+ * Implementation Considerations chapter it points at, supplies a source for**.
+ *
+ * @example
+ * ```ts
+ * import { SAMPLED_DATA_UNGROUNDED } from "@cosyte/transform";
+ * SAMPLED_DATA_UNGROUNDED; // "unknown"
+ * ```
+ */
+export const SAMPLED_DATA_UNGROUNDED = "unknown";
+
 /** The FHIR `Quantity.comparator` codes an SN.1 comparator can populate (SN `=`/`<>` do not). */
 const SN_COMPARATORS: ReadonlySet<string> = new Set([">", "<", ">=", "<="]);
 
@@ -143,6 +233,201 @@ const STRING_VALUE_TYPES: ReadonlySet<string> = new Set(["ST", "TX", "FT"]);
 function rawComponent(field: Field, index: number): string | undefined {
   const c = field.repetitions[0]?.components[index]?.subcomponents[0];
   return c === undefined || c === "" ? undefined : c;
+}
+
+/**
+ * Whether a field carries nothing at all, asked of its **whole** repetition tree rather than of
+ * `Field.value` (the first subcomponent of the first component of the first repetition). An OBX-5
+ * of `^20260722` is empty by the latter question and is plainly not empty: a composite value type
+ * has to be asked the composite question or the emptiness test silently drops content.
+ */
+function fieldEmpty(field: Field): boolean {
+  return field.repetitions.every((r) =>
+    r.components.every((c) => c.subcomponents.every((s) => s === "")),
+  );
+}
+
+/**
+ * `DR` → `Period` per the IG **DR to Period** datatype map: `DR.1` to `Period.start` and `DR.2` to
+ * `Period.end`, both `0..1`, both through the `DTM[DateTime]` map. Nothing else is mapped, so a
+ * missing bound stays missing: the observation time, the message time and the other bound are all
+ * refused as substitutes. Returns `undefined` when neither component yields a dateTime.
+ */
+function buildPeriodValue(
+  field: Field,
+  ctx: TransformContext,
+  issues: TransformIssue[],
+): FhirComplex | undefined {
+  const props: { name: string; value: FhirNode }[] = [];
+  for (const [index, name] of [
+    [0, "start"],
+    [1, "end"],
+  ] as const) {
+    const raw = rawComponent(field, index);
+    if (raw === undefined) continue;
+    const converted = toFhirDateTime(parseDtm(raw), ctx.options);
+    issues.push(...converted.issues);
+    if (converted.value !== undefined) props.push({ name, value: primitive(converted.value) });
+  }
+  return props.length === 0 ? undefined : complex(props);
+}
+
+/**
+ * One `Range` bound: a `SimpleQuantity` carrying the magnitude and **nothing else**. The NR map
+ * grounds `Range.low.value` and `Range.high.value` and no unit, code or system anywhere, so none is
+ * written, and OBX-6 is deliberately not borrowed for it. The magnitude keeps its exact lexical
+ * form through the string-backed FHIR `decimal`; a form `decimal` cannot carry faithfully yields no
+ * bound and a value-free {@link ISSUE_CODES.TRANSFORM_QUANTITY_VALUE_INVALID}, never a rescaled one.
+ */
+function rangeBound(
+  raw: string | undefined,
+  fhirPath: string,
+  issues: TransformIssue[],
+): FhirComplex | undefined {
+  if (raw === undefined) return undefined;
+  try {
+    return complex([{ name: "value", value: primitive(decimal(raw)) }]);
+  } catch {
+    issues.push(issue(ISSUE_CODES.TRANSFORM_QUANTITY_VALUE_INVALID, "OBX.5", fhirPath));
+    return undefined;
+  }
+}
+
+/** `NR` → `Range` per the IG **NR to Range** map, or `undefined` when neither bound converts. */
+function buildRangeValue(field: Field, issues: TransformIssue[]): FhirComplex | undefined {
+  const low = rangeBound(rawComponent(field, 0), "Range.low.value", issues);
+  const high = rangeBound(rawComponent(field, 1), "Range.high.value", issues);
+  const props: { name: string; value: FhirNode }[] = [];
+  if (low !== undefined) props.push({ name: "low", value: low });
+  if (high !== undefined) props.push({ name: "high", value: high });
+  return props.length === 0 ? undefined : complex(props);
+}
+
+/**
+ * A v2 `TM` read as a FHIR `time`, or `undefined` when it is not one this library will emit.
+ *
+ * The OBX map routes `TM` straight to `Observation.valueTime` with no datatype map, so the R4
+ * `time` value domain is the whole contract, and it admits **no timezone offset and no partial
+ * precision**. A v2 TM may carry both. Discarding a `+0530` would move the clinical instant by
+ * hours with nothing said, and padding `1430` to `14:30:00` would fabricate a precision the sender
+ * did not send: both are refused here, and the caller falls back to the raw text. The candidate is
+ * checked against `@cosyte/fhir`'s own `time` domain rather than trusted to this shape test alone.
+ */
+function timeValue(raw: string): string | undefined {
+  const parts = /^(\d{2})(\d{2})(\d{2})(\.\d{1,4})?$/.exec(raw);
+  if (parts === null) return undefined;
+  const candidate = `${parts[1] ?? ""}:${parts[2] ?? ""}:${parts[3] ?? ""}${parts[4] ?? ""}`;
+  return validatePrimitiveValue(candidate, "time") === "ok" ? candidate : undefined;
+}
+
+/**
+ * `NA` → `SampledData` per the IG **NA to SampledData** map and the "Numeric Array to Sampled Data
+ * Mapping" section of the Implementation Considerations chapter its comment points at.
+ *
+ * `.dimensions` is "the number of values present within each repeat separated by the component
+ * delimiter", read off the widest repetition so a short or absent row does not shrink the array's
+ * declared width. A field carrying **one** repetition is the chapter's own vector case (its 8-value
+ * example sets `.dimensions` to `1`): with no second repetition there is no second dimension to
+ * count, and each value is its own time point. `.data` is the values in row-major order, space
+ * separated, with {@link SAMPLED_DATA_ABSENT_POINT} for every position a repetition did not carry,
+ * which is exactly the set of positions the chapter's sparse example enumerates as not present.
+ *
+ * Returns `undefined` when any value that DID arrive is not a magnitude FHIR `decimal` carries
+ * faithfully: the caller then falls back to the raw text rather than shipping a rewritten waveform.
+ */
+function buildSampledData(field: Field, issues: TransformIssue[]): FhirComplex | undefined {
+  const rows = field.repetitions.map((r) => r.components.map((c) => c.subcomponents[0] ?? ""));
+  if (rows.length === 0) return undefined;
+  const width = Math.max(...rows.map((r) => r.length));
+  const dimensions = rows.length === 1 ? 1 : width;
+
+  const points: string[] = [];
+  for (const row of rows) {
+    for (let i = 0; i < width; i++) {
+      const cell = row[i] ?? "";
+      if (cell === "") {
+        points.push(SAMPLED_DATA_ABSENT_POINT);
+        continue;
+      }
+      try {
+        // `decimal` throws on a lexical form FHIR's decimal cannot carry unaltered (a leading `+`,
+        // a leading zero, a trailing dot): the whole array is refused rather than canonicalized.
+        // The wire text itself is what is written, so the magnitude keeps its exact precision.
+        decimal(cell);
+        points.push(cell);
+      } catch {
+        issues.push(
+          issue(ISSUE_CODES.TRANSFORM_QUANTITY_VALUE_INVALID, "OBX.5", "SampledData.data"),
+        );
+        return undefined;
+      }
+    }
+  }
+
+  // R4 makes `origin` and `period` required, and the map grounds neither: they ship value-absent
+  // with a data-absent-reason, which satisfies the cardinality while asserting no magnitude.
+  for (const path of ["SampledData.origin", "SampledData.period"]) {
+    issues.push(issue(ISSUE_CODES.TRANSFORM_REQUIRED_ELEMENT_UNKNOWN, "OBX.5", path));
+  }
+  return complex([
+    { name: "origin", value: dataAbsentComplex(SAMPLED_DATA_UNGROUNDED) },
+    { name: "period", value: dataAbsent(SAMPLED_DATA_UNGROUNDED) },
+    { name: "dimensions", value: primitive(decimal(String(dimensions))) },
+    { name: "data", value: primitive(points.join(" ")) },
+  ]);
+}
+
+/**
+ * `ED` (encoded data) → the IG-named `valueAttachment` extension, per the OBX map's two
+ * `IF OBX-2 EQUALS "ED" AND IF OBX-5.4 EQUALS "Base64"` rows and the **ED to Attachment** datatype
+ * map behind the second of them: `ED.3` (OBX-5.3) to `Attachment.contentType`, `ED.5` (OBX-5.5) to
+ * `Attachment.data`, and `ED.2` to an `alternate-codes` extension on the Attachment **only** when
+ * `ED.3` is unvalued. `ED.1` and `ED.4` have no target.
+ *
+ * **The payload is carried, never read.** OBX-5.4 already declares it Base64 and the row is
+ * conditioned on that, so it is copied into `Attachment.data` exactly as received: not decoded, not
+ * re-encoded, not normalized, not length-checked, not truncated. This library has no business
+ * deciding a binary is malformed, and a "repaired" attachment is the worst kind of confident wrong
+ * value. Returns `undefined` when OBX-5.5 carries nothing to attach.
+ */
+function buildAttachmentExtension(field: Field, issues: TransformIssue[]): FhirNode | undefined {
+  const payload = rawComponent(field, 4);
+  if (payload === undefined) return undefined;
+
+  const attachment: { name: string; value: FhirNode }[] = [];
+  const subtype = rawComponent(field, 2);
+  const typeOfData = rawComponent(field, 1);
+  if (subtype === undefined && typeOfData !== undefined) {
+    // The ED map's `IF ED.3 NOT VALUED` row: the type of data is carried as an alternate code
+    // rather than guessed into a MIME `contentType` this message never stated.
+    issues.push(issue(ISSUE_CODES.TRANSFORM_CODE_UNMAPPED, "OBX.5", "Attachment.contentType"));
+    attachment.push({
+      name: "extension",
+      value: list([
+        complex([
+          { name: "url", value: primitive(ALTERNATE_CODES_EXTENSION_URL) },
+          {
+            name: "valueCodeableConcept",
+            value: complex([
+              {
+                name: "coding",
+                value: list([complex([{ name: "code", value: primitive(typeOfData) }])]),
+              },
+            ]),
+          },
+        ]),
+      ]),
+    });
+  }
+  if (subtype !== undefined) attachment.push({ name: "contentType", value: primitive(subtype) });
+  attachment.push({ name: "data", value: primitive(payload) });
+
+  return list([
+    complex([
+      { name: "url", value: primitive(OBSERVATION_VALUE_ATTACHMENT_EXTENSION_URL) },
+      { name: "valueAttachment", value: complex(attachment) },
+    ]),
+  ]);
 }
 
 /** Reconstruct an SN's human string (`>90`, `10-20`, `1:2`) from its raw components, for a fallback. */
@@ -231,6 +516,49 @@ function buildSnValue(
 }
 
 /**
+ * The five value types this discrimination maps through a datatype (or extension) target rather
+ * than through `Field.value`. Each is a composite whose first component is not the whole value, so
+ * emptiness is asked of the whole field and the fallback carries the whole OBX-5 text.
+ */
+const COMPOSITE_VALUE_TYPES: ReadonlySet<string> = new Set(["DR", "NR", "TM", "NA", "ED"]);
+
+/**
+ * The IG-mapped target for one of {@link COMPOSITE_VALUE_TYPES}, or `undefined` when this OBX-5
+ * carries nothing that target can be built from faithfully (the caller then falls back).
+ */
+function buildMappedValue(
+  field: Field,
+  vt: string,
+  ctx: TransformContext,
+  issues: TransformIssue[],
+): { name: string; value: FhirNode } | undefined {
+  if (vt === "DR") {
+    const period = buildPeriodValue(field, ctx, issues);
+    return period === undefined ? undefined : { name: "valuePeriod", value: period };
+  }
+  if (vt === "NR") {
+    const range = buildRangeValue(field, issues);
+    return range === undefined ? undefined : { name: "valueRange", value: range };
+  }
+  if (vt === "TM") {
+    // TM is a v2 primitive, so the whole field is the time; a component structure it never had
+    // would only be a damaged line, and `timeValue` refuses one.
+    const time = timeValue(field.text);
+    return time === undefined ? undefined : { name: "valueTime", value: primitive(time) };
+  }
+  if (vt === "NA") {
+    const sampled = buildSampledData(field, issues);
+    // The OBX map's own NA row spells this attribute `valueSampedData`, which is a typo in the
+    // published guide: R4 names the element `valueSampledData`, and that is what is emitted.
+    return sampled === undefined ? undefined : { name: "valueSampledData", value: sampled };
+  }
+  // ED, and only under the OBX map's `IF OBX-5.4 EQUALS "Base64"` condition both its rows carry.
+  if (rawComponent(field, 3) !== ED_BASE64_ENCODING) return undefined;
+  const extension = buildAttachmentExtension(field, issues);
+  return extension === undefined ? undefined : { name: "extension", value: extension };
+}
+
+/**
  * Discriminate OBX-5 by OBX-2 value type into the correct FHIR `Observation.value[x]` property, or
  * `undefined` when OBX-5 is empty. Never assumes `Quantity`; a value type with no first-class target
  * degrades to `valueString` + a {@link ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED} flag, never fabricated.
@@ -244,6 +572,20 @@ function buildValue(
   const field = obx.field(5);
   const rawValue = field.value;
   const vt = valueType.toUpperCase();
+
+  if (COMPOSITE_VALUE_TYPES.has(vt)) {
+    // An empty OBX-5 is nothing to carry and nothing to flag, exactly as every already-mapped
+    // value type treats one. The question is asked of the whole field: `Field.value` reads only
+    // the first component, and a DR that valued only its end bound is not an empty field.
+    if (fieldEmpty(field)) return undefined;
+    const mapped = buildMappedValue(field, vt, ctx, issues);
+    if (mapped !== undefined) return mapped;
+    // The IG-mapped type could not carry this value faithfully: the raw OBX-5 text is preserved in
+    // full (never truncated to its first component, which would drop the rest of a composite) and
+    // the drop is flagged, which is the same fail-safe floor this library has always had here.
+    issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "OBX.5", "Observation.value[x]"));
+    return valueStringProp(field.text);
+  }
 
   if (vt === "NM") {
     const q = quantityFromRawMagnitude(field.asNm().raw, obx.field(6).asCwe(), ctx);
@@ -276,8 +618,10 @@ function buildValue(
   if (rawValue === "") return undefined;
   if (STRING_VALUE_TYPES.has(vt)) return valueStringProp(rawValue);
 
-  // A value type with no first-class FHIR value[x] here (NA, ED, RP, DR, TM, NR, ID, unknown): the raw
-  // value is preserved as a string and the richer typed mapping is flagged as deferred, never guessed.
+  // A value type with no first-class FHIR value[x] here (RP, ID, unknown): the raw value is
+  // preserved as a string and the richer typed mapping is flagged as deferred, never guessed. `RP`
+  // has a nominal extension target whose own IG comment marks it unsettled ("To be resolved when we
+  // resolve DocumentReference and valueAttachment"), so it stays here on purpose.
   issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "OBX.5", "Observation.value[x]"));
   return valueStringProp(rawValue);
 }
@@ -324,6 +668,9 @@ function buildInterpretation(obx: Segment, issues: TransformIssue[]): FhirNode |
  * @param subjectFullUrl - The `urn:uuid:` fullUrl of the bundle's Patient, wired to `Observation.subject`.
  * @param encounterFullUrl - The `urn:uuid:` fullUrl of the bundle's Encounter, wired to `.encounter`.
  * @param ctx - The transform context (naming-system registry + timezone policy).
+ * @param notes - The `NTE` segments of this OBX's own OBSERVATION group → `Observation.note`. Only
+ *   that group's row has a target; a PATIENT-level or ORDER_OBSERVATION-level NTE has none, so the
+ *   caller passes none here and the occurrence is reported as unread instead.
  * @example
  * ```ts
  * import { parseHL7 } from "@cosyte/hl7";
@@ -336,6 +683,7 @@ export function buildObservation(
   subjectFullUrl: string | undefined,
   encounterFullUrl: string | undefined,
   ctx: TransformContext,
+  notes: readonly Segment[] = [],
 ): ConvertResult<FhirComplex> {
   const issues: TransformIssue[] = [];
   const props: { name: string; value: FhirNode }[] = [
@@ -385,6 +733,10 @@ export function buildObservation(
   // OBX-8 → Observation.interpretation (HL70078; unrecognized flag surfaced, never coerced to normal).
   const interpretation = buildInterpretation(obx, issues);
   if (interpretation !== undefined) props.push({ name: "interpretation", value: interpretation });
+
+  // The OBSERVATION group's NTE segments → Observation.note (ORU_R01 row 4.2.4.3.3, via NTE[ServiceRequest]).
+  const note = buildAnnotations(notes, ctx, issues);
+  if (note !== undefined) props.push({ name: "note", value: note });
 
   // OBX-7 → Observation.referenceRange.text (the IG maps it to `.text`; never decomposed/evaluated).
   const refRange = obx.field(7).value;

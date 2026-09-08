@@ -583,6 +583,133 @@ describe("message boundary: fail-safe, value-free, references resolve, Patient v
     );
   });
 
+  it("never throws and keeps every diagnostic value-free over the structured OBX value types, SPM and NTE", () => {
+    // The paths that carry the richest content into a bundle are the ones a diagnostic must say the
+    // least about: an attachment payload, a specimen identifier, a note's text, and an observation
+    // magnitude. Every generated value below carries the leak sentinel except the magnitudes, which
+    // are checked by their own literal, and `assertResult` holds the four standing invariants.
+    const MAGNITUDES = ["987654321.125", "-987654321.125"] as const;
+    const composite = fc.constantFrom(
+      // DR: both bounds, one bound, an end alone (invisible to `Field.value`), and unparseable ones.
+      "20260721143000-0500^20260722153000-0500",
+      "20260721143000-0500",
+      "^20260722153000-0500",
+      `${SENTINEL}^${SENTINEL}`,
+      "20260721143000",
+      // NR / NA magnitudes, faithful and not, plus the array shapes the chapter's examples use.
+      `${MAGNITUDES[0]}^${MAGNITUDES[1]}`,
+      "+7^007",
+      "1.2^-3.5^5.2~2.0^3.1^-6.2~3.5^7.8^-1.3",
+      "^2^3^4~5^^^8~9^10~~17^18^19^20",
+      `1^${SENTINEL}^3`,
+      // TM, zoned and partial.
+      "143000",
+      "143000-0500",
+      "1430",
+      // ED, with and without the Base64 condition and with and without a subtype.
+      `APP^AP^application/pdf^Base64^${SENTINEL}QkFTRTY0`,
+      `APP^AP^^Base64^${SENTINEL}QkFTRTY0`,
+      `APP^AP^application/pdf^Hex^${SENTINEL}QkFTRTY0`,
+      // The shapes a damaged line publishes.
+      "",
+      "^",
+      "^^^^",
+      "~",
+      '""',
+      "\\T\\",
+      SENTINEL,
+    );
+    const arb = fc.record({
+      obrStatus: fc.constantFrom("F", "M", ""),
+      obx: fc.array(
+        fc.record({
+          vt: fc.constantFrom("DR", "NR", "TM", "NA", "ED", "RP", "NM", "ZZ"),
+          val: composite,
+          status: fc.constantFrom("F", "R", ""),
+          notes: fc.array(fc.oneof(token, freeTextToken, delimiterOnlyText), { maxLength: 2 }),
+        }),
+        { maxLength: 3 },
+      ),
+      leadingNote: fc.option(token, { nil: undefined }),
+      spm: fc.array(
+        fc.record({
+          id: optToken,
+          type: optToken,
+          collected: fc.constantFrom("", "20260721143000-0500^20260721150000-0500", SENTINEL),
+          description: optToken,
+          parent: optToken,
+          availability: optToken,
+        }),
+        { maxLength: 2 },
+      ),
+    });
+
+    fc.assert(
+      fc.property(arb, (p) => {
+        const lines = [
+          "MSH|^~\\&|LAB|F|EHR|H|20260101120000-0500||ORU^R01|MSGID1|P|2.5.1",
+          "PID|1||MRN1^^^HOSP^MR||Doe^Jane||19900101|F",
+        ];
+        // A PATIENT-level NTE: the ORU map publishes no target for it, so it must reach nothing.
+        if (p.leadingNote !== undefined) lines.push(`NTE|1|L|${p.leadingNote}`);
+        lines.push(`OBR|1||FILL1|T^Test^LN${"|".repeat(21)}${p.obrStatus}`);
+        for (const [i, o] of p.obx.entries()) {
+          lines.push(`OBX|${String(i + 1)}|${o.vt}|C^Code^LN||${o.val}|u^u^UCUM|||||${o.status}`);
+          for (const [j, n] of o.notes.entries()) {
+            lines.push(
+              `NTE|${String(j + 1)}|L|${n}|GI^General^HL70364|W^Who^Wrote|20260721170000-0500`,
+            );
+          }
+        }
+        for (const [i, s] of p.spm.entries()) {
+          lines.push(
+            [
+              "SPM",
+              String(i + 1),
+              s.id ?? "",
+              s.parent ?? "",
+              s.type ?? "",
+              ...Array.from({ length: 9 }, () => ""),
+              s.description ?? "",
+              "",
+              "",
+              s.collected,
+              "",
+              s.availability ?? "",
+            ].join("|"),
+          );
+        }
+        lines.push("SPM"); // an SPM with no fields at all
+
+        let result: TransformResult;
+        try {
+          result = toFhir(parseHL7(lines.join("\r")), {
+            namingSystem: registry,
+            generateId: seqId,
+          });
+        } catch (err) {
+          throw new Error("toFhir threw on an ORU carrying SPM/NTE and structured OBX values", {
+            cause: err,
+          });
+        }
+        assertResult(result);
+
+        // No observation magnitude reaches a diagnostic either, and no magnitude carries a sentinel
+        // for `assertResult` to have caught: these two literals are the whole check.
+        const serialized = JSON.stringify(result.issues);
+        for (const magnitude of MAGNITUDES) expect(serialized).not.toContain(magnitude);
+
+        // A specimen the bundle does not contain is never referenced by a report that it does, and
+        // a report the gate withheld leaves no specimen entry behind: both directions, on the wire.
+        const wire = serializeResource(result.bundle);
+        if (!wire.includes('"resourceType":"Specimen"')) {
+          expect(wire).not.toContain('"specimen"');
+        }
+      }),
+      { numRuns },
+    );
+  });
+
   it("never throws on hostile arbitrary input that still parses as HL7", () => {
     fc.assert(
       fc.property(fc.string({ maxLength: 400 }), (raw) => {
