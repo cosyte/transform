@@ -8,15 +8,7 @@
  */
 
 import { spawnSync } from "node:child_process";
-import {
-  cpSync,
-  linkSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -146,10 +138,17 @@ function managedPaths(): string[] {
  *
  * ▶ ONE ROOT PER SUITE, RESET BETWEEN TESTS, NOT ONE ROOT PER TEST. The two package tarballs are
  * several megabytes each and the temp filesystem is small and shared with every other worker on the
- * machine, so a fresh root per test churns tens of megabytes for no benefit. The tarballs are also
- * HARD-LINKED where the platform allows it, which costs no space at all; a test that breaks one
- * REPLACES the link rather than writing through it, so the repository's own copy can never be
- * touched, and `reset()` re-links it afterwards.
+ * machine, so a fresh root per test churns tens of megabytes for no benefit.
+ *
+ * ▶ EVERY FILE IS A COPY. HARD LINKS WERE TRIED AND THEY ARE A TRAP, AND IT TOOK CI TO SHOW IT. A
+ * link costs no space, and this suite's own `write()` unlinked before writing, so it looked safe.
+ * What it missed is that the thing under test WRITES: `pnpm run conformance` in its default mode
+ * writes `result.json` and `report.md` into the root it is given, with a plain `writeFileSync` this
+ * suite does not control. Linked, that wrote THROUGH into the repository's own committed artifacts
+ * and corrupted them for every later test in the run. It never reproduced locally, because there
+ * `os.tmpdir()` is a different filesystem and `linkSync` fails with `EXDEV` so the copy fallback
+ * took over; on the CI runner the two share a filesystem, the link succeeded, and the suite went
+ * red. A copy cannot write through to anything, whatever the code under test does with it.
  *
  * @returns The scratch root.
  */
@@ -161,11 +160,7 @@ export function scratchRoot(): ScratchRoot {
     const to = join(path, relative);
     mkdirSync(dirname(to), { recursive: true });
     rmSync(to, { force: true });
-    try {
-      linkSync(from, to);
-    } catch {
-      cpSync(from, to);
-    }
+    cpSync(from, to);
   };
 
   for (const relative of managedPaths()) materialize(relative);
@@ -175,7 +170,6 @@ export function scratchRoot(): ScratchRoot {
     write(relative, contents) {
       const target = join(path, relative);
       mkdirSync(dirname(target), { recursive: true });
-      // Unlink first: writing to a hard link would write THROUGH it, into the repository.
       rmSync(target, { force: true });
       writeFileSync(target, contents, "utf8");
     },

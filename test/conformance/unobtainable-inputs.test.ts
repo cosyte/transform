@@ -9,6 +9,7 @@
  * pinned input, broken one way at a time, under `os.tmpdir()` and never in this repository.
  */
 
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -37,7 +38,20 @@ const US_CORE = "hl7.fhir.us.core";
 
 let scratch: ScratchRoot;
 
+/** The digest of every repository file this suite mirrors, taken before anything is broken. */
+const digestsAtStart: Record<string, string> = {};
+
 beforeAll(() => {
+  for (const relative of [
+    join(CORPUS_DIR, CORPUS_FILE),
+    "documentation/conformance/result.json",
+    "documentation/conformance/report.md",
+    "test/_support/conformance-claims.json",
+  ]) {
+    digestsAtStart[relative] = createHash("sha256")
+      .update(readFileSync(join(REPO_ROOT, relative)))
+      .digest("hex");
+  }
   scratch = scratchRoot();
 });
 
@@ -214,11 +228,27 @@ describe("the scratch root is restored between cases, so no refusal above leaked
     expect(outcome.code, outcome.stderr).toBe(0);
   });
 
-  it("never wrote through a hard link into this repository's own pinned packages", () => {
-    // The repository's copies still match their pins, which is the property `write()` unlinks first
-    // to protect.
+  it("left this repository's own files exactly as it found them", () => {
+    // ▶ THE CASE THAT CLOSES THE WRITE-THROUGH CLASS, AND CI HAD TO SHOW IT ONCE. The scratch root
+    // used to HARD-LINK the files it mirrors. `pnpm run conformance` in its default mode writes
+    // `result.json` and `report.md` into the root it is given, so on a machine where the temp
+    // directory shares a filesystem with the repository the link succeeded and that write landed in
+    // the REPOSITORY, corrupting the committed artifacts for every later test in the run. The
+    // scratch root now copies, and this case is what would notice if that ever changed back.
     const { base, profiles } = loadPinnedPackages(REPO_ROOT);
     expect(base.resources.size).toBeGreaterThan(0);
     expect(profiles.resources.size).toBeGreaterThan(0);
+
+    for (const relative of [
+      join(CORPUS_DIR, CORPUS_FILE),
+      "documentation/conformance/result.json",
+      "documentation/conformance/report.md",
+      "test/_support/conformance-claims.json",
+    ]) {
+      const now = createHash("sha256")
+        .update(readFileSync(join(REPO_ROOT, relative)))
+        .digest("hex");
+      expect(now, `${relative} was modified by this suite`).toBe(digestsAtStart[relative]);
+    }
   });
 });
