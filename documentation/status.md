@@ -1,4 +1,4 @@
-The `Status` section of `CLAUDE.md`, relocated unchanged so the always-read file stays
+The Status section of `CLAUDE.md`, relocated unchanged so the always-read file stays
 inside its byte budget. `CLAUDE.md` keeps the heading and points here. Paths are written
 relative to the repository root, as they were where this text came from.
 
