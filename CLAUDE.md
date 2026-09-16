@@ -28,103 +28,18 @@ as a trap is clinical-safety content.
 
 ## Status
 
-- **Phases 1-6 shipped**: datatype converters + diagnostic channel, ADT/ORU/ORM-OML/RXO/VXU/SIU/MDM
-  message graphs, and the IG value-ConceptMap translation layer. Full per-phase inventory:
-  `documentation/agent-notes.md#shipped-phase-history-phases-16`.
-- **`AL1` is now built, `IAM` is still not.** An AL1 in any message becomes an `AllergyIntolerance`
-  wired to the bundle Patient, so bundles carry a resource type they did not before and the
-  completeness diagnostic no longer flags an AL1 it emits. **▶ `AllergyIntolerance.reaction.severity`
-  IS DELIBERATELY NEVER POPULATED** and neither is a `category` the IG's own map has no target for:
-  the guide publishes TWO maps over Table 0127 with different unmapped sets, so `MA` yields a type
-  and no category and that is the answer, not a gap to fill. Why, and the fixed `clinicalStatus`,
-  the alternate-codes extension, the withheld cases and the withdrawn AL1-6:
-  `documentation/agent-notes.md#shipped-phase-history-phases-16`.
-- **`DG1`, `PR1` and `IN1` are now built too: `Condition`, `Procedure`, `Coverage`, all wired to the
-  bundle Patient**, with each Condition referenced back from `Encounter.diagnosis`. **▶
-  `Coverage.status` IS NEVER ASSERTED**: the IN1 map publishes no row for it, so it ships
-  value-absent with a `data-absent-reason` of `unknown` and a
-  `TRANSFORM_REQUIRED_ELEMENT_UNKNOWN`, and its emit-schema entry deliberately carries NO required
-  binding so that shape satisfies the cardinality. **▶ `Coverage.payor` DECIDES WHETHER THE COVERAGE
-  EXISTS**: IN1-4 is its only source, so an unnamed insurer withholds the whole resource, and a named
-  one is a `display` with no literal reference because no Organization is built. **▶
-  `Procedure.status` IS THE `unknown` THE MAP'S OWN ROW DIRECTS**, never `completed`. `DG1-21`
-  grounds exactly one status (`D` to `entered-in-error`) and `Condition.clinicalStatus` has no row at
-  all, so a Condition here can fail R4's `con-3`. Every deferred row of the three maps is declared
-  with a diagnostic rather than dropped, and the completeness baselines were SUPERSEDED, never
-  recaptured. **▶ THE `PV1-20` DECLARATION IS GUARDED ON THE MESSAGE CARRYING AN `IN1`**: it is the
-  one declaration sourced from a segment this reading does not otherwise touch, and ungated it added
-  an issue to a message carrying none of the three, which must produce exactly what it produced
-  before. All of it: `documentation/agent-notes.md#shipped-phase-history-phases-16`.
-- **Phase 7 (FHIR→v2) shipped NARROWLY, and the narrowness is the point**: `toV2Patient` and
-  `toV2Observation` emit a **complete** v2 message (`ADT^<trigger>` + PID, `ORU^<trigger>` + OBX)
-  from the subset of the IG segment maps whose **inverse is one-to-one**. The **trigger is a required
-  argument on every entry point** and is never inferred: no FHIR resource carries one.
-  **▶ THE IG PUBLISHES NO FHIR-TO-V2 MAP**, so a many-to-one forward row has no usable inverse and is
-  refused, never resolved to its most likely source code; and **round-trip is asserted only as
-  "parses back", never as "equals"**. **▶ AND ABSENT IS NOT THE SAME AS SILENT**: a v2-REQUIRED field
-  the resource gives no source for (PID-3, PID-5, OBX-11) stays absent and RAISES
-  `TRANSFORM_V2_REQUIRED_FIELD_ABSENT`, and a conversion that grounds no field at all raises
-  `TRANSFORM_NO_V2_MESSAGE_EMITTED` instead of returning an empty success. **The usage cells behind
-  those rows are asserted, NOT extracted** (the pass that wrote them had no network egress), so
-  re-extract before trusting or widening them. The `Patient` + `Encounter` visit-carrying ADT is
-  **deferred, not dropped**, and **▶ THE UPSTREAM REASON FOR THE DEFERRAL IS GONE WHILE THE SHAPE IS
-  STILL NOT BUILT**: the parser exported no ADT assembly entry point when it was deferred, and
-  `@cosyte/hl7` `0.0.10` exports `buildAdt` (measured by a call that compiles and runs, in
-  `test/upstream-capabilities.test.ts`). Nothing else about the deferral changed, so do not read
-  "the builder exists" as "the shape is ready": hand-assembling PID + PV1 here would still invert
-  the tier split, and the IG grounding is still owed. Every measurement, the refusal set, and the
-  deferral: `documentation/agent-notes.md#the-reverse-direction-and-what-it-does-not-claim`; the
-  dependency refresh that took the measurement: `documentation/hl7-refresh/record.md`. Phase **8
-  (profiles)** and deeper terminology remain deferred.
-- **Never quote a version here.** This line read "not yet published to npm" for several releases
-  after first publish, which is part of why a `VERSION` constant stuck at `"0.0.0"` shipped unnoticed.
-  Derive it: `npm view @cosyte/transform version`.
-- **▶ PUBLISHED IS NOT INSTALLABLE.** `@cosyte/transform` is on the registry and
-  **`npm install @cosyte/transform` FAILS `E404`**, because its `@cosyte/fhir` peer is absent from
-  the registry: that peer's own publish is refused with a **persistent, unexplained `E403` on
-  `PUT`**, tracked as `FHIR-NPM-NAME`. Both halves travel together or neither is useful.
-- **▶ THE "NAME-SIMILARITY" READING IS RETRACTED. DO NOT RENAME ANYTHING**, not the package, not the
-  scope, not an export. `FHIR-NPM-NAME` is a label, not a diagnosis; the error never asked for a
-  rename. **And this repo's older wording (`npm 404, a human-gated publish`) IS FLAGGED STALE**: the
-  registry refuses at policy and **there is no approval button to press.** It is quoted, dated and
-  disputed in the notes; **relocating a disputed claim must not launder it into fact.** Derive,
-  never recall: `npm view @cosyte/fhir version`. **Visibility and publish state are independent**;
-  never infer one from the other. Why:
-  `documentation/agent-notes.md#publish-state-and-the-stale-claim-inside-it`.
-- **Consumes two cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer dependencies**, and the
-  two are no longer consumed the same way for dev/test. **`@cosyte/hl7` is a plain registry
-  devDependency** resolved through `pnpm-lock.yaml`; **▶ DO NOT RE-VENDOR IT**, and do not add
-  `vendor/cosyte-hl7-*.tgz` back, because a second copy of that library in this tree is what
-  removing it was for. **`@cosyte/fhir` alone stays a vendored `pnpm pack` tarball** in `vendor/`
-  (ADR 0001 + umbrella ADR 0008; refresh with `pnpm vendor:refresh`, pinned sha `7a099b2`), for one
-  reason and one only: the registry does not have it. **They were never both unpublished, and that
-  wording was stale**; it is the `fhir` peer alone that makes this package uninstallable.
-  **Third-party runtime deps: zero.**
+**▶ Moved, unchanged, to [`documentation/status.md`](documentation/status.md). READ IT BEFORE
+YOU MAP ANYTHING**: it is the cursor, and it names the resources that are built, the values that
+are deliberately never populated, and the claims already flagged stale. The narrative:
+`documentation/agent-notes.md#shipped-phase-history-phases-16`,
+`documentation/agent-notes.md#the-reverse-direction-and-what-it-does-not-claim` and
+`documentation/agent-notes.md#publish-state-and-the-stale-claim-inside-it`.
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 
-This repo inherits the canonical toolchain by depending on the published `@cosyte/*` config packages,
-not by copying files. The source of truth is the meta-repo's `documentation/conventions.md`: this is
-a summary.
-
-- **Language:** TypeScript (strict, full rigor set incl. `noUncheckedIndexedAccess`) via
-  `@cosyte/tsconfig`. **Target ES2023**, `NodeNext`. TypeScript 5.9.x, exact-pinned.
-- **Build:** dual ESM + CJS + `.d.ts` via `tsup` (`@cosyte/tsup-config`); `attw` is a publish gate
-  (per-condition types: `.d.ts` for `import`, `.d.cts` for `require`). The `attw` script is
-  **`scripts/attw.mjs`, not the bare CLI**: see the guardrail below.
-- **Node:** **>= 22** (CI matrix 22 + 24).
-- **Package manager:** `pnpm@10`.
-- **Lint/format:** **ESLint 10** + unified `typescript-eslint` (type-checked) via
-  `@cosyte/eslint-config`; Prettier via `@cosyte/prettier-config`. Lint at `--max-warnings=0`.
-- **Testing:** **Vitest 4** + v8 coverage (`@cosyte/vitest-config`), per-directory >= 90 gates on
-  `src/datatypes`, `src/diagnostics`, `src/terminology` and `src/messages`. Property + fuzz
-  (`fast-check`) over **two** boundaries: `test/datatypes/boundary.property.test.ts` and
-  `test/messages/property.test.ts`, asserting never-throw, only registered value-free issues, no dangling
-  `urn:uuid:` reference, and an emit gate against `@cosyte/fhir.validateResource`.
-- **CI/CD:** thin callers of the reusable `cosyte/.github` workflows, plus two repo-local workflows
-  (`no-internal-refs`, `no-emdash`). **The checks BIND**: ruleset `ci-required-checks`, id `19914044`.
-- **Runtime deps:** **Zero third-party.** `@cosyte/hl7` + `@cosyte/fhir` are peer deps (ADR 0001).
-- **License:** MIT.
+**▶ Moved, unchanged, to [`documentation/tech-stack.md`](documentation/tech-stack.md).** This
+repo inherits the canonical toolchain by depending on the published `@cosyte/*` config packages,
+not by copying files, and the source of truth is the meta-repo's `documentation/conventions.md`.
 
 ## Branch protection
 
@@ -169,26 +84,9 @@ the version the tests actually exercise, unwatched on both routes**, so it stays
 
 Full narrative, every measurement: `documentation/agent-notes.md#the-attw-guardrail-in-full`.
 
-- **▶ `attw` SAYS "does not contain types" AND EXITS 0, SO THE `attw` SCRIPT IS A WRAPPER, NOT THE
-  BARE CLI.** `getExitCode.js` returns 0 before the problem list is read; no `--profile`,
-  `--ignore-rules` or config setting reaches that early return. For a package that ships types, that
-  sentence means **a broken publish reported as a pass**.
-- **The race only supplies the condition**: every `tsup` build has a **~1.6–2.0 s** window with no
-  `.d.ts` on disk, reproduced with zero concurrency. **So the answer is not a lock, a lease or a
-  build queue:** the gate must be able to say its own inputs were missing, whatever removed them.
-- **`scripts/attw.mjs` carries two nets that catch different things**: a path preflight (catches the
-  build window and _names_ the missing file) and a post-check on the untyped sentence (catches
-  declarations on disk but excluded from the tarball). **Do not collapse them into one.**
-- **The post-check reads a string, so what would hide that string is refused by option NAME,
-  wholesale, not by value**: `--quiet`, `--format`, `--config-path`, and `.attw.json` settings.
-  A harmless value is refused anyway; that is the deliberate trade.
-- **Do not reduce the wrapper to the bare CLI**: it reds 10 of `test/scripts/attw-gate.test.ts`'s 13
-  tests, which is how the suite was checked for bite rather than assumed to have it.
-- **A green `attw` has never meant a consumer can install the peer**: measured, `attw` never
-  resolves `@cosyte/fhir` at all. And a **complete but stale `dist/`** passes both nets.
-- **This is a per-repo script and the prose does NOT port with the code.** Re-measure every number on
-  the package you port it to. Derive who still runs the bare CLI:
-  `rg -l --glob '**/package.json' '"attw":' /workspace`.
+**▶ The traps moved, unchanged, to
+[`documentation/guardrail-attw.md`](documentation/guardrail-attw.md). Read them before you touch
+`scripts/attw.mjs`, the publish gate, or either of the two nets the wrapper carries.**
 
 ### The PHI scanner
 
@@ -196,58 +94,18 @@ Measurements, the grid, the refuters, and the `--staged` ARGV traps (`--diff-fil
 `--no-renames`, STATUS not mode, re-measure the stride):
 `documentation/agent-notes.md#the-phi-scanner-guardrail-in-full`. **No counts.**
 
-- **▶ THE CLAIM IS EXACTLY: it refuses (exit 2) every entry it ENUMERATES, and every path NAMED
-  DIRECTLY, that is not a regular file.** "Follows nothing" is looser and **two refuter passes
-  measured it FALSE**; do not tighten it back, and never close it by following. **`lstat` answers
-  for the FINAL COMPONENT ONLY**: touch `buildTargetsForPaths` and **re-measure, never re-assert**.
-  **A refusal never echoes the link target**, and that binds the prose: a _shape_, never an example.
-- **▶ THERE ARE THREE ROUTES, NOT TWO** (`all`, `--staged`, `<path>`), all running the content
-  passes. **Enumerate all three before calling anything additive.**
-- **▶ SCOPE IS THE TRACKED CORPUS, RECONCILED AGAINST `git ls-files` EVERY RUN**, because
-  **the `fixtures` root HAD NEVER EXISTED ON ANY COMMIT** and went unopened on every run ever made while
-  the run printed clean. **A count cannot detect that**, nor can an existence check: an EMPTIED root
-  opens nothing. **Roots stay DISJOINT** or nested files report twice. The `*.md` walk skip is
-  gone (additive); `src/**.ts` was the **`--staged`** bound, now widened. **Not one rule.**
-- **▶ WIDEN BY UNION AND PROVE THE GRID: every base `1` still `1`.** One cell is not:
-  **`phi-scan package.json` on the npm publisher mailbox**, declared with `EMAIL` (a **path AND an
-  address**). **Every allow-list entry is ROUTE-BLIND** and clears on `--staged`; every tag but
-  `EMAIL` is FILE-blind. **Named, never scrubbed.**
-- **An exemption is a LITERAL PATH, never a predicate, and reaches the ALL route only**: the vendored
-  gzip tarballs are the whole list, and `<path>` still reads them.
-- **▶ `--allow-fixture` IS RECORDED AND REFUSED, NEVER HONORED**: unlogged, rejected before a target
-  is read; logged, still `2` after reporting every target it did not withdraw. **Exit 0 in NO mode.**
-  Only the allow-list can clear one: `documentation/agent-notes.md#the-bypass-recorded-and-refused`.
-- **Exit `2` is every failure to complete; `1` is HITS FOUND. A regular-file root is `2` HERE,
-  derived from this contract; siblings differ, never port one.** A non-directory root refuses first,
-  because **`existsSync` FOLLOWS**: a dangling one printed clean over an off-disk corpus. An
-  **absent** root is fine.
-- **Enumerating buys the SSN/email floor and NOTHING else**, so the HL7 v2 pass ships **in addition
-  to** it, never instead: the floor finds **zero** in this repo's `PID|` fixtures. **No standalone
-  `.hl7` ships: every message is a `.ts` literal.**
-- **Four residuals are disclosed, NOT closed**, named in the notes; the reconciliation is **path
-  sets, not bytes**; **the enumerate-then-read race precondition HAPPENED.**
-- **Throwaway repos under `os.tmpdir()`; never write a violator here. The scanner's own test file is
-  IN the corpus**: payloads assemble at runtime, never as literals.
+**▶ The traps moved, unchanged, to
+[`documentation/guardrail-phi-scanner.md`](documentation/guardrail-phi-scanner.md). Read them
+before you touch `scripts/phi-scan.ts`, its roots, its allow-list or its exit codes.**
 
 ### The agent-instruction contract gate
 
 Full narrative, every measurement:
 `documentation/agent-notes.md#the-agent-instruction-contract-gate-in-full`.
 
-- **▶ THIS FILE AND `documentation/agent-notes.md` ARE A CHECKED CONTRACT**:
-  `pnpm check:agent-notes`. Refuses a missing archive, an empty section, a dead `#anchor`, an
-  unresolvable file pointer here, an archive `##` nothing here points at. Exit `2` = could not
-  decide, `1` = violations.
-- **▶ EXISTENCE IS NOT OBSERVATION**, and **a count cannot detect it**: a count counts the roots
-  that DID exist. It reconciles what it OPENED against `git ls-files`. **Never re-add a
-  `tracked.has()` pre-check before a read**: that made every branch unreachable, at zero firings,
-  while this line sold it as protection.
-- **▶ EACH SPACE IS ITS OWN HYPHEN in an anchor slug; runs do NOT collapse.** Collapsing passed a
-  dead pointer and reddened a working one; our spaced-em-dash headings are that shape.
-- **It proves a heading is POINTED AT, never that the one-liner says what the section says**: the
-  deliberate-omission trap has no identifier to grep for. **Enumerate those by hand.**
-- **Two routes, not removable by one edit**: the suite in `ci / verify` (which inherits the two
-  levers above) and a step in `no-internal-refs` (which does not). `verify.sh` runs only the first.
+**▶ The traps moved, unchanged, to
+[`documentation/guardrail-agent-notes-gate.md`](documentation/guardrail-agent-notes-gate.md).
+Read them before you touch `scripts/check-agent-notes.ts` or either contract file.**
 
 ## Standing disciplines (every change)
 
