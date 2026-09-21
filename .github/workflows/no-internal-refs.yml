@@ -13,13 +13,42 @@ name: Public-surface gate
 # workflow accordingly. This needs to not happen again." A sweep regresses the first time
 # someone writes `(TRANSFORM-7)` into a README; a job that reds does not.
 #
-# WHAT ACTUALLY SCANS, AND WHERE THE RULE LIVES. `pnpm check:no-internal-refs`, which is
-# this repository's own checker. The job below delegates the plumbing (checkout, pnpm,
-# Node) to the shared gate workflow, which carries no pattern, no allow-list and no file
-# selection of its own: it prepares the tree, runs the command, and lets the command's
-# exit status decide the job. The detection rules, the self-tests and the known project
-# prefixes all stay here, because what counts as a project prefix and what counts as a
-# domain designator is a property of this package.
+# WHAT ACTUALLY SCANS, AND WHERE THE RULES LIVE. `pnpm ci:no-internal-refs`, named below as
+# the command the shared gate runs, and it is TWO of this repository's own checkers rather
+# than one. The job delegates the plumbing (checkout, pnpm, Node) to the shared gate
+# workflow, which carries no pattern, no allow-list and no file selection of its own: it
+# prepares the tree, runs the command, and lets the command's exit status decide the job.
+# The detection rules, the self-tests and the known project prefixes all stay here, because
+# what counts as a project prefix and what counts as a domain designator is a property of
+# this package.
+#
+# ONE COMMAND FOR BOTH, AND WHY IT IS A `package.json` SCRIPT RATHER THAN TWO LINES HERE.
+# The shared workflow runs the command through an UNQUOTED expansion, `$SURFACE_COMMAND`
+# under `set -euo pipefail`. Word splitting produces WORDS, never operators, so a value
+# carrying `&&` hands `&&` to the FIRST program as an argument and the second gate never
+# runs at all, with the job still green. Measured in a shell, not reasoned about. A single
+# program is the only shape that can carry both, and `ci:no-internal-refs` is that program.
+#
+# THE AGENT-INSTRUCTION CONTRACT (always-read CLAUDE.md + on-demand
+# documentation/agent-notes.md) IS THE SECOND HALF OF THAT COMMAND. It rides in THIS job on
+# purpose, and the reason is the banner below: a required job gates everything it runs, so a
+# gate added to this command is required the moment it lands, with no ruleset edit and
+# therefore no window in which open pull requests strand pending on a context nothing has
+# emitted yet.
+#
+# IT IS ALSO ENFORCED A SECOND, INDEPENDENT WAY, and that is deliberate rather than
+# belt-and-braces habit. test/scripts/agent-notes-contract.test.ts runs the same gate from
+# inside `ci / verify`. But that route inherits this repo's documented "THE GATE CAN LEAVE
+# THE JOB" hole verbatim -- the `include` glob in vitest.config.ts and the `test` and
+# `test:coverage` script bodies can each drop the suite with the job still green. This
+# command depends on none of those three levers, so no one of them removes both routes.
+#
+# BARE `node`, NOT `tsx`, inside `ci:no-internal-refs`, so this job stays a checkout plus a
+# node -- no lockfile install, which is what keeps it cheap next to the full ci.yml matrix.
+# The local `pnpm check:agent-notes` runs the same file through tsx because this package's
+# engine floor is Node 22; the shared gate's `setup-node` takes the newest 22.x, where type
+# stripping is native (it has been from 22.18). The two paths are pinned to agree by a test
+# in the suite above, which takes the Node 24 leg of the ci matrix.
 #
 # THE JOB ID IS LOAD-BEARING. A called job's check run is named
 # `<caller job id> / <inner job id>`, so the job id `no-internal-refs` below publishes
@@ -33,9 +62,9 @@ name: Public-surface gate
 # red on its next run, and remediating each is its own deliberate piece of work. A shared
 # pipeline is the wrong place to land a rule most of its callers cannot yet satisfy.
 #
-# Keeping it out of ci.yml also keeps it cheap: this job is a checkout and a handful of greps
-# over 9 markdown/JSON files and 31 source files, while ci.yml drives the full Node 22 + 24
-# matrix plus the release-dry-run job.
+# Keeping it out of ci.yml also keeps it cheap: this job is a checkout, a handful of greps
+# over 9 markdown/JSON files and 31 source files, and one node run over the three contract
+# files, while ci.yml drives the full Node 22 + 24 matrix plus the release-dry-run job.
 #
 # WHAT THIS DOES NOT CHECK, deliberately: the PR title, the PR body, and commit messages.
 # THIS rule says identifiers BELONG in the commit, the PR and the changeset, so a PR-text
@@ -47,7 +76,8 @@ name: Public-surface gate
 # re-reads the finished body bytes and refuses to publish a violating one. This job covers
 # the repo's own files; that one covers what gets published to the releases page.
 #
-# Run it locally with `pnpm check:no-internal-refs`.
+# Run the two halves locally with `pnpm check:no-internal-refs` and `pnpm check:agent-notes`.
+# `pnpm ci:no-internal-refs` is the pair in the shape CI runs them, and it needs no install.
 
 on:
   push:
@@ -68,6 +98,11 @@ jobs:
     # published reference that commit was released as, so the release note stays
     # findable from here.
     uses: cosyte/.github/.github/workflows/gate-no-internal-refs.yml@84ecccd771cbc9c1ece003a3f8ff61415360395b # workflows-2026-09-18-84ecccd771cb
+    with:
+      # NOT the shared default, which is `pnpm check:no-internal-refs` and is the first
+      # gate alone. This job has always run two, and the command is where the second one
+      # lives now: see "ONE COMMAND FOR BOTH" above before narrowing this line.
+      command: pnpm ci:no-internal-refs
     # No more than the scan needs. A called workflow's GITHUB_TOKEN can only be
     # downgraded by its caller, and this gate reads the tree and nothing else.
     permissions:

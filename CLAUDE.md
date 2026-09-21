@@ -121,8 +121,11 @@ a summary.
   (`fast-check`) over **two** boundaries: `test/datatypes/boundary.property.test.ts` and
   `test/messages/property.test.ts`, asserting never-throw, only registered value-free issues, no dangling
   `urn:uuid:` reference, and an emit gate against `@cosyte/fhir.validateResource`.
-- **CI/CD:** thin callers of the reusable `cosyte/.github` workflows, plus two repo-local workflows
-  (`no-internal-refs`, `no-emdash`). **The checks BIND**: ruleset `ci-required-checks`, id `19914044`.
+- **CI/CD:** thin callers of the reusable `cosyte/.github` workflows, the two gate workflows
+  (`no-internal-refs`, `no-emdash`) included; the scanners they name stay in this repo. A called
+  job's check run is `<caller job id> / <inner job id>`, so the contexts read
+  `no-internal-refs / public-surface`, `no-emdash / tracked-files` and `no-emdash / messages`.
+  **The checks BIND**: ruleset `ci-required-checks`, id `19914044`.
 - **Runtime deps:** **Zero third-party.** `@cosyte/hl7` + `@cosyte/fhir` are peer deps (ADR 0001).
 - **License:** MIT.
 
@@ -247,7 +250,10 @@ Full narrative, every measurement:
 - **It proves a heading is POINTED AT, never that the one-liner says what the section says**: the
   deliberate-omission trap has no identifier to grep for. **Enumerate those by hand.**
 - **Two routes, not removable by one edit**: the suite in `ci / verify` (which inherits the two
-  levers above) and a step in `no-internal-refs` (which does not). `verify.sh` runs only the first.
+  levers above) and the command the `no-internal-refs` job runs, `pnpm ci:no-internal-refs` (which
+  inherits neither). `verify.sh` runs only the first. **That command is a single program on
+  purpose**: the shared gate word-splits it, so a `&&` between two gates is passed to the first one
+  as an argument and the second never runs.
 
 ## Standing disciplines (every change)
 
@@ -311,5 +317,5 @@ Mirrors the three disciplines in the meta-repo's `documentation/conventions.md`,
    `.github/workflows/no-emdash.yml` also gates the PR title, body and commit range. It landed
    **with** its sweep: a gate before the sweep reds `main`, a sweep before the gate grows it back.
    **Count the bytes in Python, never `grep`** (the container `grep` reads `0` here), and
-   **`no-emdash-messages` must never be required** (Dependabot pastes upstream release notes into a
-   PR body). Counts, exemptions, traps: `documentation/agent-notes.md#no-em-dash-anywhere`.
+   **`no-emdash / messages` must never be required** (Dependabot pastes upstream release notes into
+   a PR body). Counts, exemptions, traps: `documentation/agent-notes.md#no-em-dash-anywhere`.
