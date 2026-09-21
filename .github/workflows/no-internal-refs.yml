@@ -13,7 +13,21 @@ name: Public-surface gate
 # workflow accordingly. This needs to not happen again." A sweep regresses the first time
 # someone writes `(TRANSFORM-7)` into a README; a job that reds does not.
 #
-# WHY A SEPARATE WORKFLOW, and not a job in ci.yml. The reusable pipeline is not an option:
+# WHAT ACTUALLY SCANS, AND WHERE THE RULE LIVES. `pnpm check:no-internal-refs`, which is
+# this repository's own checker. The job below delegates the plumbing (checkout, pnpm,
+# Node) to the shared gate workflow, which carries no pattern, no allow-list and no file
+# selection of its own: it prepares the tree, runs the command, and lets the command's
+# exit status decide the job. The detection rules, the self-tests and the known project
+# prefixes all stay here, because what counts as a project prefix and what counts as a
+# domain designator is a property of this package.
+#
+# THE JOB ID IS LOAD-BEARING. A called job's check run is named
+# `<caller job id> / <inner job id>`, so the job id `no-internal-refs` below publishes
+# `no-internal-refs / public-surface`, which is the context a branch ruleset must require.
+# Renaming the job detaches that requirement with no error anywhere, and a required
+# context nothing emits blocks every pull request.
+#
+# WHY A SEPARATE WORKFLOW, and not a job in ci.yml. The shared ci pipeline is not an option:
 # this repo's `ci` job calls cosyte/.github/.github/workflows/ci.yml@main, which runs a fixed
 # ladder and no arbitrary repo script. Adding this there would also flip every other caller
 # red on its next run, and remediating each is its own deliberate piece of work. A shared
@@ -33,8 +47,7 @@ name: Public-surface gate
 # re-reads the finished body bytes and refuses to publish a violating one. This job covers
 # the repo's own files; that one covers what gets published to the releases page.
 #
-# Run it locally with `pnpm check:no-internal-refs`, which is also on the meta-repo's
-# `scripts/verify.sh transform` ladder.
+# Run it locally with `pnpm check:no-internal-refs`.
 
 on:
   push:
@@ -46,49 +59,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 jobs:
-  # The job id is the check-run context name a branch ruleset requires. Renaming it silently
-  # detaches the required check, so the ruleset stops protecting anything while still looking
-  # configured. Rename both together or neither.
+  # The check-run context prefix. See the note above before touching this id.
   no-internal-refs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      # The script self-tests before it reports: it proves each rule still matches its own
-      # positive sample AND still lets through the reference material it was most likely to
-      # destroy (`PID-3`, `OBX-5`, `RXA-20`, `HL7-V2`, `FHIR-R4`, `FHIR-core`, a Phase III
-      # trial, the CSP Study Phase field names). It refuses to print OK from a scan that did
-      # not read all of its input. No `|| true`, no `continue-on-error`: a check that cannot
-      # fail is documentation.
-      - name: Check the public surface
-        run: bash scripts/check-no-internal-refs.sh
-
-      # THE AGENT-INSTRUCTION CONTRACT (always-read CLAUDE.md + on-demand
-      # documentation/agent-notes.md). It rides in THIS job on purpose, and the reason is the
-      # banner above: a required job gates all of its steps, so a step added here is required
-      # the moment it lands, with no ruleset edit and therefore no window in which open PRs
-      # strand pending on a context nothing has emitted yet.
-      #
-      # IT IS ALSO ENFORCED A SECOND, INDEPENDENT WAY, and that is deliberate rather than
-      # belt-and-braces habit. test/scripts/agent-notes-contract.test.ts runs the same gate
-      # from inside `ci / verify`. But that route inherits this repo's documented "THE GATE
-      # CAN LEAVE THE JOB" hole verbatim -- the `include` glob in vitest.config.ts and the
-      # `test`/`test:coverage` script bodies in package.json can each drop the suite with the
-      # job still green. This step depends on neither, so the two routes cannot be removed by
-      # the same edit.
-      #
-      # BARE `node`, NOT `tsx`, so this job stays a checkout plus a node -- no pnpm, no
-      # lockfile install, which is what keeps it cheap next to the full ci.yml matrix. Node 24
-      # strips types natively; the local `pnpm check:agent-notes` runs the same file through
-      # tsx because the repo's engine floor is 22. The two paths are pinned to agree by a test
-      # in the suite above, so a divergence reds rather than being assumed away.
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "24"
-
-      - name: Check the agent-instruction contract
-        run: node scripts/check-agent-notes.ts
+    # Pinned to the 40 character commit, not to the tag beside it: a tag can be moved
+    # or deleted by anyone who gains write access to the workflow's repository, so a
+    # tag is not an immutable reference and is not a pin. The trailing comment is the
+    # published reference that commit was released as, so the release note stays
+    # findable from here.
+    uses: cosyte/.github/.github/workflows/gate-no-internal-refs.yml@84ecccd771cbc9c1ece003a3f8ff61415360395b # workflows-2026-09-18-84ecccd771cb
+    # No more than the scan needs. A called workflow's GITHUB_TOKEN can only be
+    # downgraded by its caller, and this gate reads the tree and nothing else.
+    permissions:
+      contents: read
