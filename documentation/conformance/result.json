@@ -612,7 +612,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.hospitalization",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -624,43 +624,43 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.identifier.system",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.location",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.meta",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.participant",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.reasonCode",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.reasonReference",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.serviceProvider",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -672,7 +672,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.type",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 2
@@ -736,19 +736,19 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "RelatedPerson.active",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "RelatedPerson.address",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "RelatedPerson.telecom",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 1
@@ -806,7 +806,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "AllergyIntolerance.verificationStatus",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 0
@@ -871,31 +871,31 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.class",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.class:group",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.class:plan",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.identifier",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.identifier:memberid",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -907,13 +907,13 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.relationship",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.subscriberId",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 2
@@ -1206,7 +1206,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.hospitalization",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -1218,43 +1218,43 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.identifier.system",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.location",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.meta",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.participant",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.reasonCode",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.reasonReference",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.serviceProvider",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -1266,7 +1266,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.type",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 2
@@ -1653,7 +1653,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.hospitalization",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -1665,43 +1665,43 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.identifier.system",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.location",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.meta",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.participant",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.reasonCode",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.reasonReference",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.serviceProvider",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -1713,7 +1713,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.type",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 2
@@ -1771,7 +1771,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "AllergyIntolerance.verificationStatus",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 0
@@ -1836,25 +1836,25 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.class",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.class:group",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.class:plan",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.identifier:memberid",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -1866,7 +1866,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.identifier.type",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -1878,13 +1878,13 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.relationship",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.subscriberId",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 3
@@ -1942,19 +1942,19 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "ServiceRequest.category",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "ServiceRequest.category:us-core",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "ServiceRequest.requester",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 0
@@ -2275,7 +2275,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.hospitalization",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -2287,43 +2287,43 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.identifier.system",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.location",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.meta",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.participant",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.reasonCode",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.reasonReference",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.serviceProvider",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -2335,7 +2335,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.type",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 2
@@ -2393,7 +2393,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "AllergyIntolerance.verificationStatus",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 0
@@ -2458,25 +2458,25 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.class",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.class:group",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.class:plan",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.identifier:memberid",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -2488,7 +2488,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.identifier.type",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -2500,13 +2500,13 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.relationship",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Coverage.subscriberId",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 3
@@ -2564,19 +2564,19 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "ServiceRequest.category",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "ServiceRequest.category:us-core",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "ServiceRequest.requester",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 0
@@ -2865,7 +2865,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Patient.identifier.system",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 1
@@ -2923,7 +2923,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.hospitalization",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -2935,43 +2935,43 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.identifier.system",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.location",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.meta",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.participant",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.reasonCode",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.reasonReference",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.serviceProvider",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -2983,7 +2983,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.type",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 2
@@ -3054,7 +3054,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "DiagnosticReport.category",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -3066,31 +3066,31 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "DiagnosticReport.category:LaboratorySlice",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "DiagnosticReport.issued",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "DiagnosticReport.meta",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "DiagnosticReport.performer",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "DiagnosticReport.resultsInterpreter",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 3
@@ -3154,7 +3154,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.category",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -3166,45 +3166,31 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.category:us-core",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.dataAbsentReason",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.meta",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.performer",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.specimen",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
-                },
-                {
-                  "code": "INVARIANT_UNCHECKED",
-                  "severity": "information",
-                  "path": "Observation.value[x]",
-                  "message": "A resource invariant could not be evaluated by the bounded FHIRPath engine; it is reported unchecked rather than assumed to pass.",
-                  "constraint": "us-core-3"
-                },
-                {
-                  "code": "INVARIANT_UNCHECKED",
-                  "severity": "information",
-                  "path": "Observation.value[x]",
-                  "message": "A resource invariant could not be evaluated by the bounded FHIRPath engine; it is reported unchecked rather than assumed to pass.",
-                  "constraint": "us-core-4"
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 2
@@ -3268,7 +3254,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.category",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -3280,45 +3266,31 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.category:us-core",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.dataAbsentReason",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.meta",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.performer",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.specimen",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
-                },
-                {
-                  "code": "INVARIANT_UNCHECKED",
-                  "severity": "information",
-                  "path": "Observation.value[x]",
-                  "message": "A resource invariant could not be evaluated by the bounded FHIRPath engine; it is reported unchecked rather than assumed to pass.",
-                  "constraint": "us-core-3"
-                },
-                {
-                  "code": "INVARIANT_UNCHECKED",
-                  "severity": "information",
-                  "path": "Observation.value[x]",
-                  "message": "A resource invariant could not be evaluated by the bounded FHIRPath engine; it is reported unchecked rather than assumed to pass.",
-                  "constraint": "us-core-4"
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 2
@@ -3382,7 +3354,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.category",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -3394,31 +3366,31 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.category:us-core",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.dataAbsentReason",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.meta",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.performer",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.specimen",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 2
@@ -3665,7 +3637,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Patient.identifier.system",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 1
@@ -3723,7 +3695,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.hospitalization",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -3735,43 +3707,43 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.identifier.system",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.location",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.meta",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.participant",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.reasonCode",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.reasonReference",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.serviceProvider",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -3783,7 +3755,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Encounter.type",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 2
@@ -3841,7 +3813,7 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "DocumentReference.author",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "CARDINALITY_MIN",
@@ -3853,31 +3825,31 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "DocumentReference.category",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "DocumentReference.content.attachment.url",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "DocumentReference.content.format",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "DocumentReference.context",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "DocumentReference.date",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 1
@@ -4240,31 +4212,31 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.encounter",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.location",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.performer",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.primarySource",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.statusReason",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 0
@@ -4329,37 +4301,37 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.encounter",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.location",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.lotNumber",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.performer",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.primarySource",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.statusReason",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 0
@@ -4424,37 +4396,37 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.encounter",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.location",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.lotNumber",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.performer",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.primarySource",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Immunization.statusReason",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 0
@@ -4518,13 +4490,13 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.category",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.performer",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 1
@@ -4588,13 +4560,13 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.category",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.performer",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 1
@@ -4658,13 +4630,13 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.category",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.performer",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 1
@@ -4728,13 +4700,13 @@
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.category",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 },
                 {
                   "code": "MUST_SUPPORT_ABSENT",
                   "severity": "information",
                   "path": "Observation.performer",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement: this is informational, never an error."
+                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
               "errorCount": 1

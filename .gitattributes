@@ -1,9 +1,10 @@
-# The vendored `@cosyte/fhir` tarball is a third-party archive that this repository consumes for
-# dev and test (ADR 0001; refresh it with `pnpm vendor:refresh`). `@cosyte/hl7` used to sit beside
-# it and no longer does: it is a registry devDependency resolved through `pnpm-lock.yaml`, so
-# nothing vendored carries it. The glob is kept rather than narrowed to one filename because it is
-# the shape `vendor/` has always had, and a rename must not silently escape it.
-# Declaring the archive keeps git from ever treating it as text, and it is the declaration that
+# `vendor/*.tgz` is the declaration for a third-party archive kept directly under `vendor/`. It
+# matches no tracked file today: both `@cosyte/*` siblings are registry devDependencies resolved
+# through `pnpm-lock.yaml`, so no `pnpm pack` tarball is vendored. The glob stays as the shape
+# `vendor/` has always had rather than being narrowed to one filename, so a rename cannot silently
+# escape it, and the declared-binary count pinned in `test/scripts/no-emdash-gate.test.ts` moves
+# the moment a file matches it.
+# Declaring an archive keeps git from ever treating it as text, and it is the declaration that
 # `scripts/check-no-emdash.mjs` partitions on: a DEFLATE stream can hold the em dash's UTF-8
 # bytes by coincidence, and there is no edit that removes a byte from someone else's compressed
 # stream.

@@ -216,12 +216,11 @@ describe("check-no-emdash: the tracked tree", () => {
     // AND THE SKIP COUNT IS PINNED, NOT MERELY SHAPED. A path exclusion added to
     // the gate's skip condition raises this number, and a refuter showed that a
     // shape-only assertion here leaves such an exclusion completely green. The
-    // number is THREE vendored archives now, not one: the `@cosyte/fhir` pack
-    // tarball plus the two pinned FHIR definition packages the conformance
-    // harness reads. Each is declared in `.gitattributes` with its reason, and
-    // this pin is what makes adding a fourth a visible, deliberate act rather
-    // than a line nobody has to defend.
-    expect(r.out).toContain("3 declared binary");
+    // number is TWO vendored archives: the pinned FHIR definition packages the
+    // conformance harness reads. Both are declared in `.gitattributes` with
+    // their reason, and this pin is what makes adding a third a visible,
+    // deliberate act rather than a line nobody has to defend.
+    expect(r.out).toContain("2 declared binary");
     // And a red run names the file when it is dirty, which is what makes the
     // membership observable rather than inferred.
     const dirty = scanText(`x${EM}y`);

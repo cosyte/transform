@@ -305,9 +305,9 @@ const BANNED_DASH = new RegExp(`\\s*${String.fromCodePoint(0x2014)}\\s*`, "g");
  * Normalise a diagnostic before it enters a committed artifact.
  *
  * ▶ THE PUBLISHED RESULT IS A TRACKED FILE, AND A TRACKED FILE MAY NOT CARRY THAT CHARACTER. The
- * diagnostic text comes from `@cosyte/fhir`, which is a different repository under a different
- * convention, and exactly one of its lines uses the banned dash as a clause separator. Rewriting the
- * separator as a colon is what the directive itself prescribes, it is confined to that one character,
+ * diagnostic text comes from `@cosyte/fhir`, which is a different repository, so whether a line of
+ * it uses the banned dash as a clause separator is not decided here. Rewriting the separator as a
+ * colon is what the directive itself prescribes, it is confined to that one character,
  * and it is done HERE, at the single boundary where third-party text enters a committed artifact,
  * rather than by hand-editing the generated file afterwards. The upstream wording is otherwise
  * untouched, and the finding's `code` is carried beside it, so a reader who wants the library's exact
