@@ -918,29 +918,31 @@ describe("phi-scan: --staged widened by union, and it exempts nothing", () => {
     expect(r.stderr).toContain("NOTES.txt");
   });
 
-  it("the all-route exemption list does NOT reach --staged, nor the named-path route", () => {
+  it("no exemption covers a tracked archive in vendor/, so the all route refuses it", () => {
     // The rule a sibling paid an INTRODUCED major for: an exemption that
     // reaches the commit-blocking route SUBTRACTS a detection the base had.
-    // `vendor/` is excused by the reconciliation only. Staging one of those
-    // literal paths still blocks, and naming it still scans it.
+    // `RECONCILE_EXEMPT` excuses no path at all, so a tracked archive directly
+    // under `vendor/`, outside every walk root, is refused by the all route
+    // rather than excused, and the other two routes are unchanged.
     const root = makeRepo();
     mkdirSync(join(root, "vendor"));
-    const tarball = join(root, "vendor", "cosyte-fhir-0.0.0.tgz");
-    writeFileSync(tarball, SYNTHETIC_PHI);
+    writeFileSync(join(root, "vendor", "sibling.tgz"), SYNTHETIC_PHI);
 
     // `vendor/` is outside the staged route's scope exactly as it was at base,
     // so this is unchanged rather than newly exempt.
-    git(root, ["add", "vendor/cosyte-fhir-0.0.0.tgz"]);
+    git(root, ["add", "vendor/sibling.tgz"]);
     expect(runIn(root, ["--staged"]).code).toBe(0);
 
-    // But the named-path route reads it, and reports what it finds.
-    const named = runIn(root, ["vendor/cosyte-fhir-0.0.0.tgz"]);
+    // The named-path route reads it, and reports what it finds.
+    const named = runIn(root, ["vendor/sibling.tgz"]);
     expect(named.code, `stderr: ${named.stderr}`).toBe(1);
     expect(named.stderr).toContain(SSN);
 
-    // And the reconciliation excuses it rather than refusing over it.
+    // And the reconciliation refuses over it, naming it: nothing excuses it.
     const all = runIn(root, []);
-    expect(all.code, `stderr: ${all.stderr}`).toBe(0);
+    expect(all.code, `stderr: ${all.stderr}`).toBe(2);
+    expect(all.stderr).toContain("vendor/sibling.tgz");
+    expect(all.stderr).toContain("never opened");
   });
 });
 

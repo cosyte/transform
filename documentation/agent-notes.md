@@ -295,6 +295,13 @@ npm view @cosyte/fhir version
 **Visibility and publish state are independent**, never infer one from the other. And **never move a
 published version backwards** (umbrella ADR 0001).
 
+**Reading of 2026-09-25: the absent-peer blockage is closed.** `npm view @cosyte/fhir version`
+answers `0.1.0`, and `npm install @cosyte/transform @cosyte/hl7 @cosyte/fhir` into an empty directory
+installed all three and imported each one. This repository's dev and test tree resolves both peers
+from the registry through `pnpm-lock.yaml`, so no vendored copy remains. What cleared the `E403` is
+not recorded here. This reading carries a date like every other one above, and goes stale the same
+way: derive it with the commands above rather than trusting it.
+
 ## Branch protection (and the limits of this claim)
 
 `main` is protected by the repository ruleset **`ci-required-checks`** (id `19914044`,
@@ -403,18 +410,13 @@ cannot hold `security-events: write`) has been observed.
 
 `.github/dependabot.yml` configures weekly `npm` and `github-actions` updates. Before it existed this
 repo showed **zero** open Dependabot PRs, which meant nothing was looking, not that nothing was stale.
-Two limits are written into that file rather than left to be discovered: automatic **security** update
-PRs are a repo setting that currently reads `disabled`, and **Dependabot never resolves a
-`file:vendor/*.tgz` specifier**, so a vendored tarball -- the version the tests actually exercise --
-is unwatched by both the `file:` route and the peer-dep route and stays a `pnpm vendor:refresh` job by
-hand.
+One limit is written into that file rather than left to be discovered: automatic **security** update
+PRs are a repo setting that currently reads `disabled`.
 
-**That limit now covers ONE sibling rather than two, and the halves diverged deliberately.**
-`@cosyte/hl7` is a registry devDependency resolved through `pnpm-lock.yaml`, so the `npm` ecosystem
-route in `.github/dependabot.yml` reaches it like any other package and the by-hand job no longer
-applies to it. `@cosyte/fhir` is still `file:vendor/cosyte-fhir-0.0.0.tgz` and still unwatched, and it
-stays that way until the registry has it. **Do not read the two as one dependency any more**: a
-sentence that treats them together was true when both were vendored and is not true now.
+**Both siblings are registry devDependencies** resolved through `pnpm-lock.yaml`, so the `npm`
+ecosystem route in `.github/dependabot.yml` reaches the versions the tests actually exercise like any
+other package. No `file:` specifier and no by-hand refresh job remain, and **no sibling goes back
+under `vendor/` as a `pnpm pack` tarball**: a copy there is a version no dependency route watches.
 
 ## The `attw` guardrail, in full
 
@@ -615,13 +617,14 @@ commit-blocking `--staged` too) and that reach is pinned from both directions by
 asserted. Without the entry the choice was a worse hole (exempting the whole file) or an unusable
 gate (every commit touching `package.json` blocked).
 
-**▶ THE ALL-ROUTE EXEMPTION LIST IS TWO LITERAL PATHS AND IT NEVER REACHES A BLOCKING ROUTE.** The
-two vendored `pnpm pack` tarballs are gzip archives: their bytes are not the text they carry, so a
-text pass over them is neither a detection nor a clearance, and both are gated at their own source
-repositories. Measured before the change, the fhir tarball produced exactly one hit, seven bytes of
-DEFLATE output matching the email shape, which changes with every repack. **A literal path, never a
-predicate; the all route only; `<path>` still reads them.** If `pnpm vendor:refresh` renames one the
-gate refuses naming the new path, which is the safe direction and is deliberate.
+**▶ THE ALL-ROUTE EXEMPTION LIST IS EMPTY, AND AN ENTRY WOULD NEVER REACH A BLOCKING ROUTE.** An
+entry qualifies only when a tracked file's bytes are not the text it carries, such as a gzip archive,
+where a text pass is neither a detection nor a clearance. No tracked file qualifies: both siblings
+are registry devDependencies, so no `pnpm pack` tarball is tracked, and an exemption for a path
+nothing tracks is a line the next reader has to disprove. **A literal path, never a predicate; the
+all route only; `<path>` still reads it.** A file added directly under `vendor/` sits outside every
+walk root, so the reconciliation refuses over it, naming it, which is the safe direction and is
+deliberate.
 
 **▶ `.git` IS A REGULAR FILE IN A SUBMODULE WORKING TREE**, not a directory, and this repository is
 consumed as one. It is skipped by literal name: it is git's own metadata, never tracked, and in a
@@ -1177,13 +1180,12 @@ an exemption that silently grows to cover the generated half. The archive is als
 **on-disk canary**: a scan that reports it clean has gone blind rather than found good news, and
 the gate refuses rather than reporting that as a pass.
 
-**`vendor/cosyte-fhir-0.0.0.tgz`, declared `binary` in `.gitattributes`, and it is the ONLY declared
-path now.** A DEFLATE stream can hold `E2 80 94` by coincidence; there is no edit that removes a byte
-from someone else's compressed archive, and a vendored tarball is third-party content this repo
-consumes rather than authors. The fhir archive carries none today. **The measurement that used to
-sit here was taken on `vendor/cosyte-hl7-0.0.0.tgz` (1 occurrence)**; that path is gone, because
-`@cosyte/hl7` became a registry devDependency, so the declared set is one path rather than two and
-the count it carried retired with it. **`.gitattributes` is not a silencer**: the gate REFUSES any
+**The two pinned FHIR definition packages under `vendor/fhir-packages/`, declared `binary` in
+`.gitattributes`, are the ONLY declared paths.** A DEFLATE stream can hold `E2 80 94` by
+coincidence; there is no edit that removes a byte from someone else's compressed archive, and a
+published package is third-party content this repo consumes rather than authors. Neither carries
+one today. No `@cosyte/*` `pnpm pack` tarball is tracked, because every sibling is a registry
+devDependency. **`.gitattributes` is not a silencer**: the gate REFUSES any
 `binary` declaration outside `vendor/`, so widening the exclusion means editing the gate
 deliberately. And a declaration about a file's BYTES says nothing about its NAME, so tracked
 filenames are scanned whatever that file says.

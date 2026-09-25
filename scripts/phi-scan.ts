@@ -414,15 +414,15 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
  * nothing the walk opened before can stop being opened.
  *
  * ▶ `vendor/` ITSELF IS DELIBERATELY ABSENT, AND `vendor/fhir-packages` IS
- * DELIBERATELY PRESENT. The two are not in tension. `vendor/` proper holds a
- * `pnpm pack` gzip tarball of a sibling package that is REPACKED on every
- * refresh, and see `RECONCILE_EXEMPT` for why a text scan over bytes that change
- * on every repack is neither a detection nor a clearance. `vendor/fhir-packages`
- * holds published FHIR definition packages PINNED BY sha256, plus a plain-text
- * provenance record beside them, and the provenance record is text this scan
- * should read. Declaring the directory rather than exempting the tarballs is the
- * order this script's own remedy prescribes: widen the walk first, exempt only
- * what genuinely cannot be scanned.
+ * DELIBERATELY PRESENT. The two are not in tension. Nothing is tracked in
+ * `vendor/` outside `vendor/fhir-packages`, so a file added there is outside
+ * every root and the reconciliation refuses over it (exit 2, named) until
+ * someone decides where it belongs. `vendor/fhir-packages` holds published FHIR
+ * definition packages PINNED BY sha256, plus a plain-text provenance record
+ * beside them, and the provenance record is text this scan should read.
+ * Declaring the directory rather than exempting the tarballs is the order this
+ * script's own remedy prescribes: widen the walk first, exempt only what
+ * genuinely cannot be scanned.
  *
  * ▶ AND THE TARBALL CELLS ARE MEASURED, NOT ASSUMED. `pnpm phi-scan
  * vendor/fhir-packages/<either tarball>` exits 0 with no hits, and it will keep
@@ -447,43 +447,28 @@ const WALK_ROOT_NAMES = [
 const WALK_ROOTS = WALK_ROOT_NAMES.map((name) => join(REPO_ROOT, name));
 
 /**
- * The tracked paths `reconcileWithGit` excuses, as LITERAL PATHS.
+ * The tracked paths `reconcileWithGit` excuses, as LITERAL PATHS. The set is
+ * EMPTY: every tracked path sits under a walk root or at the repository root,
+ * so the reconciliation excuses nothing, and an exemption for a path nothing
+ * tracks is a line the next reader has to disprove.
  *
- * ▶ THREE RULES, AND EACH WAS PAID FOR ELSEWHERE IN THIS ECOSYSTEM:
+ * ▶ THREE RULES FOR ANY ENTRY, AND EACH WAS PAID FOR ELSEWHERE IN THIS ECOSYSTEM:
  *   1. A literal path, NEVER a predicate. A predicate reads as a tidy rule and
  *      then applies to files nobody enumerated when they wrote it.
  *   2. It reaches the ALL route only. `--staged` is the commit-blocking
  *      pre-commit gate and exempts nothing; `<path>` scans exactly what it is
- *      handed, so `pnpm phi-scan vendor/<tarball>` still reads those bytes and
+ *      handed, so `pnpm phi-scan <exempt path>` still reads those bytes and
  *      still reports what it finds. NO DETECTION EITHER ROUTE HAD IS
  *      SUBTRACTED.
  *   3. It is enumerated here in source, so adding one is a reviewed act and a
  *      diff, never a silently-widening glob.
  *
- * WHY THIS ONE: it is a gzip archive. Its bytes are not the text it carries, so
- * scanning it is neither a detection nor a clearance: a name inside it is
- * compressed and unreadable to any text pass, and a clean result over it would
- * be evidence of nothing. It is a `pnpm pack` output of a sibling `@cosyte/*`
- * repository, gated by its own PHI scanner at its own source. Measured before
- * the exemption was written, the fhir tarball produced exactly one hit: seven
- * bytes of DEFLATE output that happen to match the email shape, and that change
- * with every repack. It is written as a shape rather than quoted, because this
- * file is inside the scan's own corpus and a quoted violator here would red the
- * gate on every run.
- *
- * ▶ THE LIST SHRANK WHEN `@cosyte/hl7` STOPPED BEING VENDORED. It is now a
- * registry devDependency resolved through `pnpm-lock.yaml`, so
- * `vendor/cosyte-hl7-0.0.0.tgz` no longer exists and its entry went with it: an
- * exemption for a path nothing tracks is a line the next reader has to disprove.
- * Removing it subtracts NO detection, because the reconciliation only ever
- * consulted this set for paths `git ls-files` still returns.
- *
- * ▶ IF `pnpm vendor:refresh` EVER RENAMES A TARBALL, THIS LIST GOES STALE AND
- * THE GATE REFUSES (exit 2) NAMING THE NEW PATH. That is the safe direction and
- * it is deliberate: the remedy is to update this list, never to loosen it into a
- * `vendor/**` pattern. The name is pinned in `scripts/vendor-refresh.sh`.
+ * WHAT QUALIFIES: a tracked file whose bytes are not the text it carries, such
+ * as a gzip archive. A name inside one is compressed and unreadable to any text
+ * pass, so scanning it is neither a detection nor a clearance, and a clean
+ * result over it would be evidence of nothing.
  */
-const RECONCILE_EXEMPT = new Set(["vendor/cosyte-fhir-0.0.0.tgz"]);
+const RECONCILE_EXEMPT: ReadonlySet<string> = new Set<string>();
 
 // ---------------------------------------------------------------------------
 // Types

@@ -330,23 +330,33 @@ describe("the conservative-emit gate decides whether a produced Condition may sh
   });
 
   it("REFUSES the same Condition with its required subject removed", () => {
-    // The mutation the schema entry exists to catch: without it the gate waves this through, so
-    // this expectation is what proves the check can fail rather than merely being present.
+    // The mutation the schema entry exists to catch. The case above is the control: the same
+    // Condition WITH its subject passes under the same schemas, so the refusal asserted here is
+    // caused by the missing subject and the check is shown to fail rather than merely be present.
     const subjectless = complex(
       (built.value as FhirComplex).properties.filter((p) => p.name !== "subject"),
     );
+    const missingSubject = "error CARDINALITY_MIN at Condition.subject";
     const withEntry = validateResource(subjectless, {
       mode: "lenient",
       schemas: EMIT_SCHEMAS,
     });
     expect(withEntry.valid).toBe(false);
-    expect(withEntry.issues.map((i) => i.expression)).toContain("Condition.subject");
+    expect(withEntry.issues.map((i) => `${i.severity} ${i.code} at ${i.expression}`)).toContain(
+      missingSubject,
+    );
 
+    // Without the entry the Condition is refused too, by the same diagnostic: `@cosyte/fhir`
+    // enforces R4's own `Condition.subject` 1..1. So the refusal is asserted with and without the
+    // entry, and neither schema set lets a subjectless Condition ship.
     const withoutEntry = validateResource(subjectless, {
       mode: "lenient",
       schemas: EMIT_SCHEMAS.filter((s) => s.type !== "Condition"),
     });
-    expect(withoutEntry.valid).toBe(true);
+    expect(withoutEntry.valid).toBe(false);
+    expect(withoutEntry.issues.map((i) => `${i.severity} ${i.code} at ${i.expression}`)).toContain(
+      missingSubject,
+    );
   });
 });
 

@@ -79,27 +79,23 @@ as a trap is clinical-safety content.
 - **Never quote a version here.** This line read "not yet published to npm" for several releases
   after first publish, which is part of why a `VERSION` constant stuck at `"0.0.0"` shipped unnoticed.
   Derive it: `npm view @cosyte/transform version`.
-- **▶ PUBLISHED IS NOT INSTALLABLE.** `@cosyte/transform` is on the registry and
-  **`npm install @cosyte/transform` FAILS `E404`**, because its `@cosyte/fhir` peer is absent from
-  the registry: that peer's own publish is refused with a **persistent, unexplained `E403` on
-  `PUT`**, tracked as `FHIR-NPM-NAME`. Both halves travel together or neither is useful.
+- **▶ PUBLISHED AND INSTALLABLE, BOTH PEERS INCLUDED** (read 2026-09-25): `@cosyte/fhir` is on the
+  registry, and `npm install @cosyte/transform @cosyte/hl7 @cosyte/fhir` resolves and imports all
+  three. The `E404` on the absent peer and the `E403` that kept it absent are dated history in the
+  notes. Derive the current state, never recall it.
 - **▶ THE "NAME-SIMILARITY" READING IS RETRACTED. DO NOT RENAME ANYTHING**, not the package, not the
   scope, not an export. `FHIR-NPM-NAME` is a label, not a diagnosis; the error never asked for a
   rename. **And this repo's older wording (`npm 404, a human-gated publish`) IS FLAGGED STALE**: the
-  registry refuses at policy and **there is no approval button to press.** It is quoted, dated and
+  registry refused at policy and **there was no approval button to press.** It is quoted, dated and
   disputed in the notes; **relocating a disputed claim must not launder it into fact.** Derive,
   never recall: `npm view @cosyte/fhir version`. **Visibility and publish state are independent**;
   never infer one from the other. Why:
   `documentation/agent-notes.md#publish-state-and-the-stale-claim-inside-it`.
-- **Consumes two cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer dependencies**, and the
-  two are no longer consumed the same way for dev/test. **`@cosyte/hl7` is a plain registry
-  devDependency** resolved through `pnpm-lock.yaml`; **▶ DO NOT RE-VENDOR IT**, and do not add
-  `vendor/cosyte-hl7-*.tgz` back, because a second copy of that library in this tree is what
-  removing it was for. **`@cosyte/fhir` alone stays a vendored `pnpm pack` tarball** in `vendor/`
-  (ADR 0001 + umbrella ADR 0008; refresh with `pnpm vendor:refresh`, pinned sha `7a099b2`), for one
-  reason and one only: the registry does not have it. **They were never both unpublished, and that
-  wording was stale**; it is the `fhir` peer alone that makes this package uninstallable.
-  **Third-party runtime deps: zero.**
+- **Consumes two cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer dependencies**, and for
+  dev/test **both are plain registry devDependencies** resolved through `pnpm-lock.yaml`. **▶ DO NOT
+  RE-VENDOR EITHER**: no `pnpm pack` tarball of a sibling goes back under `vendor/`, because a second
+  copy of a library in this tree is a version no dependency route watches, and the PHI scan refuses
+  a tracked file there. **Third-party runtime deps: zero.**
 
 ## Tech Stack (the shared `@cosyte/*` standard)
 
@@ -141,9 +137,9 @@ steps it still runs, the gate that can leave the job, the thin coverage backstop
 
 ## Dependency watching
 
-Weekly `npm` + `github-actions` via `.github/dependabot.yml`. **Two limits leave a vendored tarball,
-the version the tests actually exercise, unwatched on both routes**, so it stays a by-hand
-`pnpm vendor:refresh` job, and WHICH sibling: `documentation/agent-notes.md#dependency-watching`.
+Weekly `npm` + `github-actions` via `.github/dependabot.yml`. **Both siblings are registry
+devDependencies, so the `npm` entry watches the versions the tests actually exercise**; security
+update PRs are a separate repo setting: `documentation/agent-notes.md#dependency-watching`.
 
 ## Engineering Guardrails
 
@@ -215,8 +211,8 @@ Measurements, the grid, the refuters, and the `--staged` ARGV traps (`--diff-fil
   **`phi-scan package.json` on the npm publisher mailbox**, declared with `EMAIL` (a **path AND an
   address**). **Every allow-list entry is ROUTE-BLIND** and clears on `--staged`; every tag but
   `EMAIL` is FILE-blind. **Named, never scrubbed.**
-- **An exemption is a LITERAL PATH, never a predicate, and reaches the ALL route only**: the vendored
-  gzip tarballs are the whole list, and `<path>` still reads them.
+- **An exemption is a LITERAL PATH, never a predicate, and reaches the ALL route only**: the list is
+  empty, and `<path>` reads whatever it is handed.
 - **▶ `--allow-fixture` IS RECORDED AND REFUSED, NEVER HONORED**: unlogged, rejected before a target
   is read; logged, still `2` after reporting every target it did not withdraw. **Exit 0 in NO mode.**
   Only the allow-list can clear one: `documentation/agent-notes.md#the-bypass-recorded-and-refused`.
