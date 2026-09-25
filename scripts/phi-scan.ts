@@ -406,6 +406,9 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
  * ▶ ROOTS MUST STAY DISJOINT. `test` covers `test/fixtures` rather than sitting
  * beside it: declaring both would report every nested file twice.
  *
+ * `examples` holds the runnable example programs, which carry inline v2
+ * segments like the test fixtures do, so the walk reads them on every run.
+ *
  * ▶ WIDEN BY UNION, NEVER BY REPLACEMENT. Each entry here is "in addition to";
  * the previous list (`test/fixtures` + `src`) is a strict SUBSET of this one, so
  * nothing the walk opened before can stop being opened.
@@ -434,6 +437,7 @@ const WALK_ROOT_NAMES = [
   ".github",
   "docs-content",
   "documentation",
+  "examples",
   "scripts",
   "src",
   "test",

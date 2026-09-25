@@ -25,7 +25,8 @@ on the word "validated": today it says none of the seven published test messages
 that is clean against R4 plus those profiles, and it lists every finding. The summary is under
 [Conformance: measured, not asserted](#conformance-measured-not-asserted).
 
-> **Status:** pre-alpha (`0.0.x`), published to npm. This release ships the
+> **Status:** `0.1`, published to npm. While the package is below 1.0, a breaking change ships in a
+> minor version and is called out in the changelog. This release ships the
 > six safety-critical datatype converters and the value-free diagnostic channel, the
 > message-level assembly, HL7 v2 **ADT → FHIR Patient + Encounter**, the **ORU^R01 → FHIR
 > DiagnosticReport + Observation** results graph, the order-entry graph (**ORM_O01 /
@@ -46,15 +47,16 @@ npm install @cosyte/transform @cosyte/hl7 @cosyte/fhir
 ```
 
 `@cosyte/hl7` and `@cosyte/fhir` are **peer dependencies**: the transform maps between the models
-they own. Its own third-party runtime dependencies are **zero**.
+they own, so you install them beside it and parse with `@cosyte/hl7` before you transform. Its own
+third-party runtime dependencies are **zero**.
 
-**That command does not work yet.** This package is published, but `@cosyte/fhir` is not on the
-registry, so npm fails with `ERESOLVE` and refuses to resolve that peer. Until it publishes, consume
-this package from source or a workspace link.
+Requires Node `>=22.0.0`. The package ships dual ESM and CommonJS builds with type declarations for
+both, so `import` and `require` both work.
 
 ## Convert a datatype
 
 ```ts
+import { serializeResource } from "@cosyte/fhir";
 import { toFhirHumanName } from "@cosyte/transform";
 
 const { value, issues } = toFhirHumanName({
@@ -62,7 +64,10 @@ const { value, issues } = toFhirHumanName({
   givenName: "Jane",
   nameTypeCode: "L", // HL7 Table 0200 "Legal name" → FHIR name-use "official"
 });
-// value: a FHIR HumanName node; issues: [] (clean, fully mapped)
+
+console.log(value === undefined ? "no value" : serializeResource(value));
+// {"use":"official","family":"Public","given":["Jane"]}
+console.log(issues); // [] (clean, fully mapped)
 ```
 
 Each converter returns `{ value, issues }`: the FHIR datatype node it could faithfully produce, plus
