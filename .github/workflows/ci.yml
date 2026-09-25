@@ -50,3 +50,24 @@ jobs:
     uses: cosyte/.github/.github/workflows/ci.yml@main
     with:
       run-phi-scan: true
+
+  # The runnable examples under examples/: each imports @cosyte/transform by name, which resolves
+  # through this package's own `exports` to the built dist/, so the job builds first; the peers
+  # @cosyte/hl7 and @cosyte/fhir come from this repository's devDependencies. Each example checks
+  # its own output and exits non-zero on a mismatch; `pnpm examples` fails if any of them does, or
+  # if it finds none to run. Actions are pinned to a commit, as in the org's other jobs.
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm typecheck:examples
+      - run: pnpm lint:examples
+      - run: pnpm examples
+      - run: pnpm phi-scan:examples

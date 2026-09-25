@@ -2,7 +2,7 @@
 "@cosyte/transform": patch
 ---
 
-Corroborate every HL7 v2 field number the PHI scanner reads against a published HL7 v2.5.1, and read seven PHI-bearing fields it previously disclosed as unread (PHI-SCAN-RESIDUALS).
+No runtime impact: the repository's own PHI scanner now checks every HL7 v2 field number it reads against a published HL7 v2.5.1, and reads seven PHI-bearing fields it previously disclosed as unread.
 
 The segment field list is the detector in this package: the cross-cutting SSN/email floor finds nothing in a corpus whose messages are inline v2 string literals, so a wrong field number is either a missed leak or a false positive on a clinical field. Fifteen numbers had never been checked against any published source (the whole GT1 row, plus PID-6, PID-9, PID-19, PID-20, NK1-30, NK1-33, IN1-18 and IN1-19). All fifteen are now checked against the v2.5.1 segment attribute tables in Chapter 3 (PID 3.4.2, NK1 3.4.5) and Chapter 6 (GT1 6.5.5, IN1 6.5.6), cross-checked against a second version-pinned publication, and none of them was wrong. The GT1 clause citation was: it said 6.5.4.
 
