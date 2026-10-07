@@ -35,8 +35,7 @@ that is clean against R4 plus those profiles, and it lists every finding. The su
 > via `toFhir(msg)`, and **terminology value translation** of coded fields: route/site,
 > appointment type, order priority, and substitution are value-translated through their IG
 > `mappedVia` ConceptMaps via `toFhirCodeableConceptVia`, fail-safe on any code the IG leaves unmapped.
-> The v2→FHIR direction is feature-complete for the IG-covered message set. It ships a
-> **narrow reverse path**, FHIR → v2: `toV2Patient(patient, trigger)` and
+> It also ships a **narrow reverse path**, FHIR → v2: `toV2Patient(patient, trigger)` and
 > `toV2Observation(observation, trigger)` emit a complete v2 message carrying a `PID` or an `OBX`.
 > Deeper terminology, profiles, and any wider FHIR → v2 conversion are not implemented.
 
