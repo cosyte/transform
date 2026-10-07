@@ -6,7 +6,7 @@ sidebar_position: 1
 
 # Core concepts
 
-`@cosyte/transform` borrows the cosyte parser suite's **disciplines**: fail-safe on ambiguity, stable
+`@cosyte/transform` borrows the Cosyte parser suite's **disciplines**: fail-safe on ambiguity, stable
 typed diagnostics, immutable output, without being a byte parser. There is no wire format here; both
 endpoints are typed models. What replaces Postel's Law is the **fail-safe rule**.
 
