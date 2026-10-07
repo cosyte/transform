@@ -9,7 +9,7 @@ sidebar_position: 1
 Turn a parsed HL7 v2 message into **valid FHIR R4**, without reading the 900-page v2 spec, without
 hand-writing a ConceptMap, and **without ever being handed a confident wrong FHIR value**.
 
-`@cosyte/transform` is the healthcare **transformation** layer of the cosyte suite. Unlike the
+`@cosyte/transform` is the healthcare **transformation** layer of the Cosyte suite. Unlike the
 parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://github.com/cosyte/hl7)
 composites and produces validated [`@cosyte/fhir`](https://github.com/cosyte/fhir) model nodes,
 grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`).
