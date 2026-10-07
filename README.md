@@ -7,8 +7,8 @@
 
 # @cosyte/transform
 
-> HL7 v2 → FHIR R4 transformation for Node.js and TypeScript: **IG-grounded, fail-safe, value-free
-> diagnostics; never a confident wrong FHIR value**.
+> HL7 v2 → FHIR R4 transformation for Node.js and TypeScript: **IG-grounded, with value-free
+> diagnostics**.
 
 `@cosyte/transform` is the healthcare **transformation** layer of the Cosyte suite. Unlike the
 parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://github.com/cosyte/hl7)
@@ -191,8 +191,7 @@ number is reproducible against a pin rather than against whatever was current; `
 regenerates it, and the test suite fails when the published result and a live run disagree.
 
 **And silence is not completeness.** Every segment occurrence that contributed nothing to a resource
-in the returned bundle raises one value-free issue naming it, so you can read the issues list instead
-of diffing the message against the bundle: `TRANSFORM_SEGMENT_NOT_EMITTED` when the IG publishes a
+in the returned bundle raises one value-free issue naming it: `TRANSFORM_SEGMENT_NOT_EMITTED` when the IG publishes a
 segment map for that name (a gap here), `TRANSFORM_SEGMENT_NO_IG_MAP` when it publishes none, or when
 the name could not be classified at all (a gap in the standard, or a damaged line). The location is
 `DG1[2]` for a name that passes the v2 segment-identifier shape, 1-based among that name's

@@ -16,7 +16,7 @@ typed reason (e.g. `TRANSFORM_TIMESTAMP_INVALID`).
 
 ## A field I expected is missing from the output
 
-A missing FHIR element usually comes with a diagnostic explaining the refusal:
+A missing FHIR element can come with a diagnostic explaining the refusal:
 
 - **`Identifier.system` is absent** → `TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED`: the assigning
   authority wasn't resolvable. Seed it via `createNamingSystem({ authorities: { … } })`. The value is

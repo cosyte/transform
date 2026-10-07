@@ -6,8 +6,8 @@ sidebar_position: 1
 
 # @cosyte/transform
 
-Turn a parsed HL7 v2 message into **valid FHIR R4**, without reading the 900-page v2 spec, without
-hand-writing a ConceptMap, and **without ever being handed a confident wrong FHIR value**.
+Turn a parsed HL7 v2 message into **valid FHIR R4**, without reading the 900-page v2 spec and
+without hand-writing a ConceptMap.
 
 `@cosyte/transform` is the healthcare **transformation** layer of the Cosyte suite. Unlike the
 parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://github.com/cosyte/hl7)
@@ -38,9 +38,9 @@ produces a Bundle that is clean against R4 plus those profiles, and it lists eve
 > emit a complete v2 message carrying a `PID` or an `OBX`, lossy by design and never a round-trip.
 > Deeper terminology, profiles, and any wider FHIR → v2 conversion are not implemented.
 
-## The fail-safe promise
+## The fail-safe rule
 
-Every conversion is grounded on the IG and is **fail-safe**: an unmapped code, an ambiguous datatype,
+Every conversion is grounded on the IG: an unmapped code, an ambiguous datatype,
 a v2 timestamp with no timezone, or an unresolvable assigning authority becomes a **typed, value-free
 diagnostic**, never a silent default, never a fabricated value, never a guessed UTC offset.
 
