@@ -10,7 +10,7 @@ the notes are the measurement.** Re-measure before you soften either.
 
 **`@cosyte/transform`**: a developer-focused **HL7 v2 → FHIR R4 transformation** library for
 Node.js/TypeScript, published under the Cosyte brand. Open-source (MIT). **Not a parser.** It is the
-cosyte **transformation tier**, one layer _above_ the parser suite: a **consumer** that takes an
+Cosyte **transformation tier**, one layer _above_ the parser suite: a **consumer** that takes an
 already-parsed `@cosyte/hl7` message and produces a validated `@cosyte/fhir` model. Grounded on the
 official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`, STU Edition 1).
 
@@ -91,7 +91,7 @@ as a trap is clinical-safety content.
   never recall: `npm view @cosyte/fhir version`. **Visibility and publish state are independent**;
   never infer one from the other. Why:
   `documentation/agent-notes.md#publish-state-and-the-stale-claim-inside-it`.
-- **Consumes two cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer dependencies**, and for
+- **Consumes two Cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer dependencies**, and for
   dev/test **both are plain registry devDependencies** resolved through `pnpm-lock.yaml`. **▶ DO NOT
   RE-VENDOR EITHER**: no `pnpm pack` tarball of a sibling goes back under `vendor/`, because a second
   copy of a library in this tree is a version no dependency route watches, and the PHI scan refuses

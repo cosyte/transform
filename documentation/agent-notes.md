@@ -245,7 +245,7 @@ repository including this quotation. **Not one word, claim, qualifier or identif
 sweep is recorded here rather than left for a reader to discover, because this section's whole value
 is that it does not overstate what it reproduces.
 
-> **Consumes two cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer dependencies**, vendored
+> **Consumes two Cosyte siblings** (`@cosyte/hl7`, `@cosyte/fhir`) as **peer dependencies**, vendored
 > as `pnpm pack` tarballs in `vendor/` for dev/test (ADR 0001 + umbrella ADR 0008): refresh with
 > `pnpm vendor:refresh`. Pinned shas: hl7 `46d50eb`, fhir `7a099b2`. **They are not both unpublished,
 > and that wording was stale.** `@cosyte/hl7` is on the registry; **`@cosyte/fhir` is not** (npm 404,
@@ -1108,7 +1108,7 @@ a refuter measured that false, and the correction stands rather than the claim.
 ## No em dash, anywhere
 
 **The rule.** Founder directive of 2026-07-24, stated canonically in the knowledgebase brand-voice
-document: cosyte never uses the em dash. Not in a file, not in a filename, not in a commit message,
+document: Cosyte never uses the em dash. Not in a file, not in a filename, not in a commit message,
 not in a PR title or body. Rewrite with a period, a colon, a comma or parentheses. **Never
 re-encode the character**: the HTML entity, both numeric character references, the percent-encoding
 and both JavaScript escapes are banned on the same footing as the literal, and each has its own arm

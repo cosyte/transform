@@ -13,7 +13,7 @@ The cosyte parsers are **siblings that mirror each other's API and do not import
 dependencies**. That zero-dep rule is a **supply-chain gate**: healthcare integrators vet every
 dependency, so a parser ships Node-stdlib-only.
 
-`@cosyte/transform` is **not a parser**. It is the first cosyte package one tier *above* the parsers:
+`@cosyte/transform` is **not a parser**. It is the first Cosyte package one tier *above* the parsers:
 a **consumer** whose entire reason to exist is to bridge two of them. It takes an already-parsed
 `@cosyte/hl7` composite and produces an `@cosyte/fhir` model node (validated against
 `validateResource`). It therefore **must** depend on `@cosyte/hl7` and `@cosyte/fhir` at runtime:
@@ -32,10 +32,10 @@ and (b) how do we consume two **unpublished** (`0.0.0`) siblings before PUB-FLIP
    "@cosyte/fhir"`, never a copy.
 
 2. **Third-party runtime `dependencies` stay at exactly zero.** The zero-dep rule governs
-   **third-party** supply-chain surface. `@cosyte/hl7`/`@cosyte/fhir` are **first-party cosyte code we
+   **third-party** supply-chain surface. `@cosyte/hl7`/`@cosyte/fhir` are **first-party Cosyte code we
    already vet, build, and ship**: categorically different from pulling a random npm package. So
    `package.json#dependencies` is `{}` and `scripts/verify.sh transform` enforces the count at 0; the
-   two cosyte deps live under `peerDependencies` (+ vendored `devDependencies`), where the cap does
+   two Cosyte deps live under `peerDependencies` (+ vendored `devDependencies`), where the cap does
    not count them. A higher layer consuming the lower layers is the point of having layers, and this
    posture must **not** leak back into the parser tier.
 

@@ -8,7 +8,7 @@ sidebar_position: 1
 
 `@cosyte/transform` ships dual **ESM + CJS** builds with per-condition type declarations, so it works
 from either module system without configuration. Its own **third-party runtime dependencies are
-zero**: it depends only on two cosyte siblings.
+zero**: it depends only on two Cosyte siblings.
 
 > **Status:** published on npm, and so are both of its peer dependencies, so the command below
 > installs it. For the current published version, ask the registry

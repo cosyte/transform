@@ -241,7 +241,7 @@
 
 - 9fd8f24: The npm `description` no longer carries an em dash (`EMDASH-CONFORMANCE`).
 
-  The brand rule bans U+2014 on every cosyte surface, and this string is the most visible one the
+  The brand rule bans U+2014 on every Cosyte surface, and this string is the most visible one the
   package has: it is the subtitle on the npm package page and the one line shown in every npm search
   result. It now reads with a colon, which is what the rule's own remedy list names first.
 
@@ -292,7 +292,7 @@ shipped, and the empty section stubs that existed to receive the next hand-writt
 
 The entries below follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the generated
 sections above use the format Changesets writes, which is a version heading and a list of the
-changes that release consumed. Versions follow the cosyte pre-alpha ladder, `0.0.x` until first
+changes that release consumed. Versions follow the Cosyte pre-alpha ladder, `0.0.x` until first
 alpha, rather than [Semantic Versioning](https://semver.org/spec/v2.0.0.html) alone.
 
 ### Fixed

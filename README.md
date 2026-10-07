@@ -10,7 +10,7 @@
 > HL7 v2 → FHIR R4 transformation for Node.js and TypeScript: **IG-grounded, fail-safe, value-free
 > diagnostics; never a confident wrong FHIR value**.
 
-`@cosyte/transform` is the healthcare **transformation** layer of the cosyte suite. Unlike the
+`@cosyte/transform` is the healthcare **transformation** layer of the Cosyte suite. Unlike the
 parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://github.com/cosyte/hl7)
 composites and produces validated [`@cosyte/fhir`](https://github.com/cosyte/fhir) model nodes,
 grounded on the official **HL7 Version 2 to FHIR** Implementation Guide (`hl7.fhir.uv.v2mappings`).
