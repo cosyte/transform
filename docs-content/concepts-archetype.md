@@ -12,8 +12,8 @@ endpoints are typed models. What replaces Postel's Law is the **fail-safe rule**
 
 ## The fail-safe rule
 
-A transformed message drives treatment, filing, and identity matching, so the library's whole promise
-is: **never emit a confident wrong FHIR value.** On any of these ambiguities:
+A transformed message drives treatment, filing, and identity matching, so the converters refuse to
+guess. On any of these ambiguities:
 
 - a v2 timestamp with a time-of-day but **no timezone** (FHIR forbids time without a zone),
 - an assigning authority that can't be **resolved to a system URI**,
@@ -56,7 +56,7 @@ An occurrence counts as having reached a resource only if the assembly took a va
 of it **into a resource that is in the bundle**. Being read and refused is not reaching: an `RXE`
 this library counts rather than assembles is reported, and so is a resource the emit gate withheld.
 A segment whose values were all dropped by a datatype or terminology step is **not** reported here,
-because the resource built from it did reach the bundle and the dropped values have their own codes.
+because the resource built from it did reach the bundle.
 
 ### Reading the location
 
