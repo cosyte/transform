@@ -21,8 +21,9 @@ messages, and the outcome is published in the repository as `documentation/confo
 Read that before relying on the word "validated": today it says none of the seven published messages
 produces a Bundle that is clean against R4 plus those profiles, and it lists every finding.
 
-> **Status:** pre-alpha (`0.0.x`). The package **is published on npm**, but it **cannot be installed
-> from npm yet**: see [Installation](./installation). This release ships the
+> **Status:** `0.1`, published to npm. While the package is below 1.0, a breaking change ships in a
+> minor version and is called out in the changelog. See [Installation](./installation). This release
+> ships the
 > six safety-critical datatype converters and the value-free diagnostic channel, and
 > message-level assembly via `toFhir(msg)` for HL7 v2 **ADT → Patient + Encounter**
 > (+ **AL1 → AllergyIntolerance**, **DG1 → Condition**, **PR1 → Procedure** and
@@ -32,8 +33,7 @@ produces a Bundle that is clean against R4 plus those profiles, and it lists eve
 > IG singles **VXU_V04 → Immunization**, **SIU_S12 → Appointment**, and **MDM_T02 →
 > DocumentReference**, plus **terminology value translation** of coded fields: route/site,
 > appointment type, order priority, substitution, and the AL1 allergy tables, translated through
-> their IG `mappedVia` ConceptMaps. The
-> v2→FHIR direction is feature-complete for the IG-covered message set. A **narrow reverse path**
+> their IG `mappedVia` ConceptMaps. A **narrow reverse path**
 > also ships, FHIR → v2: `toV2Patient(patient, trigger)` and `toV2Observation(observation, trigger)`
 > emit a complete v2 message carrying a `PID` or an `OBX`, lossy by design and never a round-trip.
 > Deeper terminology, profiles, and any wider FHIR → v2 conversion are not implemented.
@@ -51,9 +51,8 @@ npm install @cosyte/transform @cosyte/hl7 @cosyte/fhir
 ```
 
 `@cosyte/hl7` and `@cosyte/fhir` are **peer dependencies**: the transform maps between the models
-they own, so you install them alongside it. **That command does not work yet:** `@cosyte/fhir` is not
-on the registry, so npm fails with `ERESOLVE` and refuses to resolve that peer. Until it publishes,
-consume this package from source or a workspace link. [Installation](./installation) has the detail.
+they own, so you install them alongside it. All three are on npm, and the command above installs
+them together. [Installation](./installation) has the detail.
 
 ## Next
 

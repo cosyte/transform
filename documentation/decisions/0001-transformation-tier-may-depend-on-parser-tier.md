@@ -1,4 +1,4 @@
-# 0001: The transformation tier may depend on the cosyte parser tier; third-party runtime deps stay zero
+# 0001: The transformation tier may depend on the Cosyte parser tier; third-party runtime deps stay zero
 
 - **Status:** Accepted (2026-07-21)
 - **Scope:** `@cosyte/transform`
@@ -8,7 +8,7 @@
 
 ## Context
 
-The cosyte parsers are **siblings that mirror each other's API and do not import one another**:
+The Cosyte parsers are **siblings that mirror each other's API and do not import one another**:
 `@cosyte/hl7` is the reference the others copy, and each ships **zero third-party runtime
 dependencies**. That zero-dep rule is a **supply-chain gate**: healthcare integrators vet every
 dependency, so a parser ships Node-stdlib-only.
