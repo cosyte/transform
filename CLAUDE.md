@@ -30,11 +30,12 @@ pnpm check:no-emdash
 pnpm ci:no-internal-refs
 ```
 
-`package.json` pins pnpm 10; use `corepack pnpm` where the `pnpm` on PATH is another major. CI also
-runs checks with no script here: an ESM and a CJS import of the built `dist/`, actionlint, CodeQL
-(`.github/workflows/codeql.yml`), and the shared pre-publish job that packs the tarball and installs
-it into an empty directory. What the required checks prove and do not:
-`documentation/agent-notes.md#branch-protection-and-the-limits-of-this-claim`.
+`package.json` pins pnpm 10, and scripts and tests call a bare `pnpm`: where the one on PATH is
+another major, put corepack's first (`corepack enable --install-directory <dir> pnpm`, then prepend
+`<dir>` to PATH). CI also runs checks with no script here: an ESM and a CJS import of the built
+`dist/`, actionlint, CodeQL (`.github/workflows/codeql.yml`), and the shared pre-publish job that
+packs the tarball and installs it into an empty directory. What the required checks prove and do
+not: `documentation/agent-notes.md#branch-protection-and-the-limits-of-this-claim`.
 
 ## Hazard
 
