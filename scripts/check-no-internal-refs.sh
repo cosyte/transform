@@ -121,6 +121,7 @@
 # In scope:
 #   * README.md            the repo's front page, and shipped inside the npm tarball
 #   * LICENSE              shipped inside the npm tarball
+#   * TRADEMARKS.md        shipped inside the npm tarball, and linked from the README
 #   * docs-content/        every tracked file, including sidebars.json: this is the content
 #                          published to docs.cosyte.com
 #   * package.json         the npm-visible metadata ONLY (`description`, `keywords`),
@@ -788,7 +789,7 @@ fail_with_hits() {
 cd "$(git rev-parse --show-toplevel)"
 
 # The public surface, as paths. Each is justified in the SCAN SURFACE note at the top.
-SURFACE_PATHS=(README.md LICENSE docs-content)
+SURFACE_PATHS=(README.md LICENSE TRADEMARKS.md docs-content)
 
 # Every named surface path must still be tracked. Without this, renaming or deleting
 # README.md makes the gate scan less and still print OK, which is the same silent-green
@@ -822,9 +823,9 @@ command -v node >/dev/null || {
 }
 UNKNOWN_TARBALL_DOCS=$(node -e '
   const pkg = JSON.parse(require("fs").readFileSync("package.json", "utf8"));
-  // Scanned by this gate:            README.md, LICENSE
+  // Scanned by this gate:            README.md, LICENSE, TRADEMARKS.md
   // Excluded deliberately, reasons in SCAN SURFACE: CHANGELOG.md, dist
-  const known = new Set(["README.md", "LICENSE", "CHANGELOG.md", "dist"]);
+  const known = new Set(["README.md", "LICENSE", "TRADEMARKS.md", "CHANGELOG.md", "dist"]);
   process.stdout.write((pkg.files ?? []).filter((f) => !known.has(f)).join(" "));
 ')
 if [ -n "$UNKNOWN_TARBALL_DOCS" ]; then

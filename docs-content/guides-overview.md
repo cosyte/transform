@@ -2,6 +2,7 @@
 id: guides-overview
 title: Guides
 sidebar_position: 1
+description: "Resolve assigning authorities, supply a sender's timezone, and emit a v2 message from a FHIR resource."
 ---
 
 # Guides

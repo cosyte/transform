@@ -1,7 +1,7 @@
 <a href="https://cosyte.com">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://cosyte.com/tile/cosyte-lockup-tile-on-dark-1200x300.png">
-    <img alt="Cosyte: a plus mark set in two overlapping rounded squares, one solid and one outlined, beside the Cosyte wordmark" src="https://cosyte.com/tile/cosyte-lockup-tile-on-light-1200x300.png">
+    <img alt="The Cosyte logo on its own white ground: the icon beside the word Cosyte." src="https://cosyte.com/tile/cosyte-lockup-tile-on-light-1200x300.png">
   </picture>
 </a>
 
@@ -25,7 +25,7 @@ on the word "validated": today it says none of the seven published test messages
 that is clean against R4 plus those profiles, and it lists every finding. The summary is under
 [Conformance: measured, not asserted](#conformance-measured-not-asserted).
 
-> **Status:** `0.1`, published to npm. While the package is below 1.0, a breaking change ships in a
+> **Status:** the 0.1 line, published to npm. While the package is below 1.0, a breaking change ships in a
 > minor version and is called out in the changelog. This release ships the
 > six safety-critical datatype converters and the value-free diagnostic channel, the
 > message-level assembly, HL7 v2 **ADT → FHIR Patient + Encounter**, the **ORU^R01 → FHIR
@@ -49,7 +49,7 @@ npm install @cosyte/transform @cosyte/hl7 @cosyte/fhir
 they own, so you install them beside it and parse with `@cosyte/hl7` before you transform. Its own
 third-party runtime dependencies are **zero**.
 
-Requires Node `>=22.0.0`. The package ships dual ESM and CommonJS builds with type declarations for
+Requires Node.js 22 or later, tested on 22 and 24. The package ships dual ESM and CommonJS builds with type declarations for
 both, so `import` and `require` both work.
 
 ## Convert a datatype
@@ -101,7 +101,7 @@ of issues as a FHIR `OperationOutcome` with `toOperationOutcome(issues)`.
 
 `toFhir(msg)` takes a parsed `@cosyte/hl7` **ADT** message and returns a FHIR R4 **message `Bundle`**:
 a `MessageHeader`, then the `Patient` and `Encounter` (and `RelatedPerson`, one
-`AllergyIntolerance` per `AL1`, one `Condition` per `DG1`, one `Procedure` per `PR1` and one
+`AllergyIntolerance` per `AL1`, one `Condition` per `DG1`, one `Procedure` per `PR1`, and one
 `Coverage` per `IN1`) it describes, plus the value-free issues, each map grounded firsthand
 on the IG's segment/table ConceptMaps.
 
@@ -146,7 +146,7 @@ rather than emitted: an allergy to nothing, or one pointing at nobody, is worse 
 AL1-6 is legacy input only, read as `onsetDateTime` for a message earlier than 2.7 (the version that
 withdrew the field) and dropped with a diagnostic otherwise.
 
-The diagnosis, procedure and coverage a message carries are read the same way. Each is wired to the
+The diagnosis, procedure, and coverage a message carries are read the same way. Each is wired to the
 bundle Patient, and each `Condition` is referenced back from `Encounter.diagnosis` when the message
 also described a visit; with no Patient to anchor them all three are withheld and declared, never
 emitted pointing at nobody. Three refusals are worth knowing before you consume them.
@@ -202,7 +202,7 @@ segment map for that name (a gap here), `TRANSFORM_SEGMENT_NO_IG_MAP` when it pu
 the name could not be classified at all (a gap in the standard, or a damaged line). The location is
 `DG1[2]` for a name that passes the v2 segment-identifier shape, 1-based among that name's
 occurrences, and `[#4]` for one that does not, with no part of the name reproduced. Being read and
-refused is not reaching: a counted `RXE`, an orphan `OBX` and a resource the emit gate withheld are
+refused is not reaching: a counted `RXE`, an orphan `OBX`, and a resource the emit gate withheld are
 all reported. A flagged segment is still not transformed: you learn what is missing, not what it
 said.
 
@@ -221,11 +221,11 @@ An order's **`TQ1`** becomes the schedule that order carries: `dosageInstruction
 `MedicationRequest`, `occurrenceTiming` on the `ServiceRequest` (and a group that would also yield an
 `occurrenceDateTime` from `OBR-6` emits the timing alone and flags the dropped one, because
 `occurrence[x]` is a choice). `TQ1-3` grounds `Timing.code` from the HL70335 repeat-pattern rows,
-`repeat.period`, `repeat.periodUnit` and `repeat.when` from the HL70528 rows the guide gives a
+`repeat.period`, `repeat.periodUnit`, and `repeat.when` from the HL70528 rows the guide gives a
 `v3-TimingEvent` target; `TQ1-7` / `TQ1-8` give `repeat.boundsPeriod`; `TQ1-10` and `TQ1-11` are
 carried verbatim to the two different targets the guide names, `dosageInstruction.additionalInstruction.text`
 and the resource's own `text` narrative. Both are `TX`, a v2 primitive with no component structure,
-so they are read **whole**: a raw `^`, `&` or `~` inside a free-text instruction is content, and a
+so they are read **whole**: a raw `^`, `&`, or `~` inside a free-text instruction is content, and a
 taper written `2 tabs^then 1 tab` arrives with its second half intact rather than truncated at the
 first delimiter, right down to a delimiter the instruction ends on, or a row that is nothing but
 delimiters. Only a row that carries a value
@@ -246,7 +246,7 @@ each withholds the whole `Timing` and raises a value-free diagnostic naming the 
 half-built timing would read to the receiving system as a complete dosing instruction, which is the
 one outcome this library will not produce.
 
-The thin single-trigger families complete the IG-covered message set: **VXU_V04** RXA (+
+The thin single-trigger families round out the message families this library assembles: **VXU_V04** RXA (+
 RXR route, ORC) → `Immunization` (status via the IG's three conditioned rows: a delete action →
 `entered-in-error`, an unvalued RXA-20 → `completed`, else the HL70322 → event-status ConceptMap, with a
 valued-but-unmapped code withheld), **SIU_S12** SCH/AIS/PID → `Appointment` (status via the
@@ -262,7 +262,7 @@ priority (HL70485), and the five **AL1** allergy maps (HL70127 to category and t
 criticality, and the two original-code identity maps behind the alternate-codes extension),
 translating the source table code to its FHIR target coding, additively (the raw
 coding is preserved alongside the derived one). It is fail-safe by refusal: a code the IG map leaves in
-its `(unmapped)` group is flagged, never coerced to a neighbour. Fields whose IG target is **SNOMED CT**
+its `(unmapped)` group is flagged, never coerced to a neighbor. Fields whose IG target is **SNOMED CT**
 (RXR-4 method, SCH-7 reason) stay structural, because SNOMED is not bundled (BYO ConceptMap), and fields the
 IG ships no value map for (TXA-2 document type, RXA-5 vaccine code) are carried as-is, never invented.
 
@@ -316,4 +316,8 @@ not conformant, and this is where you find that out rather than at the receiver.
 
 ## License
 
-MIT © Cosyte
+MIT © Cosyte LLC. See [LICENSE](https://github.com/cosyte/transform/blob/main/LICENSE).
+
+HL7, FHIR, and the other standards and code systems named here belong to their owners, and this
+package is not affiliated with or endorsed by any of them. See
+[TRADEMARKS.md](https://github.com/cosyte/transform/blob/main/TRADEMARKS.md).

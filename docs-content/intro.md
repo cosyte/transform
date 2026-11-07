@@ -2,12 +2,13 @@
 id: intro
 title: Getting started
 sidebar_position: 1
+description: "What @cosyte/transform maps from HL7 v2 to FHIR R4, the fail-safe rule it follows, and what it does not cover yet."
 ---
 
 # @cosyte/transform
 
-Turn a parsed HL7 v2 message into **valid FHIR R4**, without reading the 900-page v2 spec and
-without hand-writing a ConceptMap.
+Turn a parsed HL7 v2 message into **FHIR R4**, mapped from the HL7 Version 2 to FHIR Implementation
+Guide, without reading the 900-page v2 spec and without hand-writing a ConceptMap.
 
 `@cosyte/transform` is the healthcare **transformation** layer of the Cosyte suite. Unlike the
 parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://github.com/cosyte/hl7)
@@ -21,7 +22,7 @@ messages, and the outcome is published in the repository as `documentation/confo
 Read that before relying on the word "validated": today it says none of the seven published messages
 produces a Bundle that is clean against R4 plus those profiles, and it lists every finding.
 
-> **Status:** `0.1`, published to npm. While the package is below 1.0, a breaking change ships in a
+> **Status:** the 0.1 line, published to npm. While the package is below 1.0, a breaking change ships in a
 > minor version and is called out in the changelog. See [Installation](./installation). This release
 > ships the
 > six safety-critical datatype converters and the value-free diagnostic channel, and

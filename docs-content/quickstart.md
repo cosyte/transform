@@ -2,6 +2,7 @@
 id: quickstart
 title: Quickstart
 sidebar_position: 1
+description: "Convert a v2 datatype, assemble a FHIR message Bundle from a parsed v2 message, and read the issues each call returns."
 ---
 
 # Quickstart
@@ -91,7 +92,7 @@ a **`Specimen`** per `SPM` that the report references, and each result's `NTE` c
 `NR` → `valueRange`, `TM` → `valueTime`, `NA` → `valueSampledData`, a `Base64` `ED` → the guide's
 named `valueAttachment` extension, `ST`/`TX` → `valueString`, so a result is **never**
 forced into a `Quantity` it isn't. The result-status maps are the clinical-safety heart of the graph
-and are exported for inspection: a **corrected** or **cancelled** result is modelled exactly and
+and are exported for inspection: a **corrected** or **canceled** result is modeled exactly and
 **never emitted as `final`**, and a status the IG map has no target for leaves `status` absent (the
 resource is then withheld) rather than being guessed.
 

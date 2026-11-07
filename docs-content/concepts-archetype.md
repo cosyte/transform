@@ -2,6 +2,7 @@
 id: concepts-archetype
 title: Core concepts
 sidebar_position: 1
+description: "The ideas behind @cosyte/transform: the fail-safe rule, value-free issues and their locations, and mappings grounded on the guide."
 ---
 
 # Core concepts
@@ -88,7 +89,7 @@ publishes no map for this, **or** this name could not be classified", never as a
 The mapped-name set behind the split is transcribed by hand from the HL7 Version 2 to FHIR
 Implementation Guide's Segment Maps index at version **1.0.0** (published **2025-10-07**), retrieved
 **2026-08-22**, and is exported as `IG_MAPPED_SEGMENT_NAMES` beside `IG_SEGMENT_MAPS_VERSION`,
-`IG_SEGMENT_MAPS_PUBLISHED`, `IG_SEGMENT_MAPS_RETRIEVED` and `IG_SEGMENT_MAPS_SOURCE`, so a later
+`IG_SEGMENT_MAPS_PUBLISHED`, `IG_SEGMENT_MAPS_RETRIEVED`, and `IG_SEGMENT_MAPS_SOURCE`, so a later
 release of the guide can be told apart from a defect here.
 
 Two limits worth knowing. A flagged segment is still **not** transformed: you learn what is missing,

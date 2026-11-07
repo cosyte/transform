@@ -2,6 +2,7 @@
 id: installation
 title: Installation
 sidebar_position: 1
+description: "Install @cosyte/transform beside its two peer dependencies, @cosyte/hl7 and @cosyte/fhir, and check which release you have."
 ---
 
 # Installation
@@ -16,7 +17,7 @@ zero**: it depends only on two Cosyte siblings.
 
 ## Prerequisites
 
-- **Node.js >= 22** (the whole `@cosyte/*` suite targets ES2023 / Node 22+).
+- **Node.js 22 or later, tested on 22 and 24** (the whole `@cosyte/*` suite targets ES2023).
 - A package manager: `pnpm`, `npm`, or `yarn`.
 
 ## Install
