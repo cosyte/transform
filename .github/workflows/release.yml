@@ -2,23 +2,27 @@ name: Release
 
 # Thin caller of the shared release pipeline: Changesets -> npm publish (provenance auto-enables when
 # this repo is public) -> docs artifacts -> GitHub release -> repository_dispatch to cosyte/docs.
-# Requires the NPM_TOKEN and DOCS_REPO_DISPATCH_TOKEN secrets (passed via `secrets: inherit`).
+# npm authenticates by trusted publishing (OIDC), so there is no npm token: the package's
+# trusted-publisher entry on npmjs.com names this repository and `release.yml` (this file).
+# `secrets: inherit` passes RELEASE_PR_TOKEN (authors the "Version Packages" PR, so its checks run)
+# and DOCS_REPO_DISPATCH_TOKEN (the docs rebuild); store both as repository or organization
+# secrets, not as `release` environment secrets.
 #
-# ▶ KNOWN TRAP, documented rather than bypassed. The `ci-required-checks` ruleset on this repo
-# (id 19914044) requires five contexts with `bypass_actors: []`. Changesets opens the "Version
-# Packages" PR as `github-actions[bot]` using the default `GITHUB_TOKEN`, and GitHub does not
+# ▶ KNOWN TRAP, WHEN RELEASE_PR_TOKEN IS MISSING. The `ci-required-checks` ruleset on this repo
+# (id 19914044) requires five contexts with `bypass_actors: []`. Without RELEASE_PR_TOKEN the shared
+# workflow opens the "Version Packages" PR with the default `GITHUB_TOKEN`, and GitHub does not
 # start workflow runs for events raised by that token, so that PR arrives with ZERO check runs.
 # Required contexts that never arrive are PENDING, not failing, and with no bypass actors nobody,
 # including an admin, can merge past them. MEASURED, not predicted: PR #10 ("Version Packages",
-# head `2996df7`, opened 2026-07-22) has 0 check runs and reports `mergeStateStatus: BLOCKED`.
-# The escape, done last and immediately before merging, is one commit onto
-# `changeset-release/main`, which raises a normal `pull_request` event and produces all five:
+# head `2996df7`, opened 2026-07-22) had 0 check runs and reported `mergeStateStatus: BLOCKED`.
+# The shared workflow warns in its run when the token is missing. The escape, done last and
+# immediately before merging, is one commit onto `changeset-release/main`, which raises a normal
+# `pull_request` event and produces all five:
 #
 #   gh pr checkout <n> && git commit --allow-empty -m "chore: run CI on the version PR" && git push
 #
 # Adding a bypass actor would also clear it and is DELIBERATELY REJECTED: it would let a human
-# merge a red PR on a healthcare package. The durable fix is to author the Version PR with a PAT
-# in the shared `cosyte/.github` release workflow, which is tracked upstream, not here.
+# merge a red PR on a healthcare package.
 
 on:
   push:
@@ -33,7 +37,7 @@ jobs:
     permissions:
       actions: read # the shared workflow reads this caller's environment protection with it
       contents: write # create tags / the GitHub release
-      id-token: write # npm provenance
+      id-token: write # npm trusted publishing and provenance
       pull-requests: write # open the "Version Packages" PR
     uses: cosyte/.github/.github/workflows/release.yml@main
     with:
