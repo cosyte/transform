@@ -17,9 +17,12 @@
  *  2. EVERY BANNED SPELLING REDS, one case per arm. The arms are not decoration:
  *     the reference sweep of this rule in a sibling repository caught what the
  *     hand sweep missed precisely because a manifest held the named HTML entity
- *     rather than the literal character.
+ *     rather than the literal character. The en dash is banned in the same
+ *     spellings since 2026-11-07, and its arms get the same cases.
  *  3. EVERY NEAR MISS STAYS GREEN. A boundary that does not hold turns this gate
- *     into one people switch off. The hex and decimal references sit one digit
+ *     into one people switch off. The en dash was a near miss here until
+ *     2026-11-07; the horizontal bar and the minus sign stand in for it now,
+ *     because the rule still reaches no other member of the dash family. The hex and decimal references sit one digit
  *     away from different codepoints entirely, the named entity sits inside an
  *     ordinary English word, and the capital-U escape is a real Windows path.
  *     Each was checked as a control alongside its true positive.
@@ -59,6 +62,12 @@
  *     tracked file the gate cannot open is a failure, never a skip. And a
  *     tracked FILENAME carrying the character reds, which scanning contents
  *     never looks at.
+ *  7. THE TWO VERBATIM CAPTURES, BOTH WAYS. The hl7-refresh captures hold an en
+ *     dash in captured upstream output and are excluded by their two literal
+ *     paths. A fixture shows they are admitted, that a file beside them is still
+ *     scanned, that a skip adding any other path refuses, and that a capture no
+ *     longer tracked refuses. The real-tree byte count above pins the list from
+ *     outside the gate, which the gate's own probe cannot do.
  *
  * SECURITY: every subprocess call uses spawnSync with array args. No exec, no
  * shell-form.
@@ -97,6 +106,14 @@ const AMP = "&";
 const NAMED = `${AMP}mdash`;
 const NUM = `${AMP}#`;
 const BS = "\\";
+
+/** U+2013 and its encodings, assembled the same way and for the same reason. */
+const EN_CP = 0x2013;
+const EN = String.fromCodePoint(EN_CP);
+const EN_HEX = EN_CP.toString(16);
+const EN_DEC = String(EN_CP);
+const EN_PCT = [...Buffer.from(EN, "utf8")].map((b) => `%${b.toString(16).toUpperCase()}`).join("");
+const EN_NAMED = `${AMP}ndash`;
 
 interface RunResult {
   code: number;
@@ -175,15 +192,27 @@ describe("check-no-emdash: the tracked tree", () => {
       if (fields[i + 2] === "set") declared.add(fields[i] as string);
     }
 
+    // The two verbatim captures are the only other content skip, and they are
+    // named here literally rather than read from the gate, so a third path added
+    // to the gate's list moves the byte count away from this expectation.
+    const captures = new Set([
+      "documentation/hl7-refresh/surface-pre-refresh.json",
+      "documentation/hl7-refresh/surface-post-refresh.json",
+    ]);
+    for (const c of captures) expect(paths).toContain(c);
+
     let expectedBytes = 0;
     for (const rel of paths) {
-      if (!declared.has(rel)) expectedBytes += statSync(join(REPO_ROOT, rel)).size;
+      if (!declared.has(rel) && !captures.has(rel)) {
+        expectedBytes += statSync(join(REPO_ROOT, rel)).size;
+      }
     }
     expect(expectedBytes).toBeGreaterThan(0);
 
     const r = scanTree();
     expect(r.code, r.out).toBe(0);
     expect(r.out).toContain(`(${String(expectedBytes)} bytes)`);
+    expect(r.out).toContain("2 verbatim capture(s) exempt by literal path");
   });
 
   it("reports the CHANGELOG boundary and its out-of-scope archive on a green run", () => {
@@ -259,10 +288,42 @@ describe("check-no-emdash: every banned spelling reds", () => {
   });
 });
 
+describe("check-no-emdash: every banned en dash spelling reds", () => {
+  const cases: [string, string][] = [
+    ["the literal en dash", `a${EN}b`],
+    ["its percent-encoding, upper case", `a${EN_PCT}b`],
+    ["its percent-encoding, lower case", `a${EN_PCT.toLowerCase()}b`],
+    ["its named entity", `a${EN_NAMED};b`],
+    ["its named entity without its semicolon", `a${EN_NAMED} b`],
+    ["its decimal character reference", `a${NUM}${EN_DEC};b`],
+    ["its decimal reference with leading zeros", `a${NUM}0${EN_DEC};b`],
+    ["its decimal reference without its semicolon", `a${NUM}${EN_DEC} b`],
+    ["its hex character reference", `a${NUM}x${EN_HEX};b`],
+    ["its hex reference in upper case", `a${NUM}X${EN_HEX.toUpperCase()};b`],
+    ["its hex reference with leading zeros", `a${NUM}x0${EN_HEX};b`],
+    ["its JavaScript escape", `a${BS}u${EN_HEX}b`],
+    ["its braced JavaScript escape", `a${BS}u{${EN_HEX}}b`],
+  ];
+
+  for (const [label, specimen] of cases) {
+    it(`reds on ${label}`, () => {
+      const r = scanText(specimen);
+      expect(r.code, r.out).toBe(1);
+      expect(r.out).toContain("FAIL");
+      expect(r.out).toContain("en dash");
+    });
+  }
+});
+
 describe("check-no-emdash: every near miss stays green", () => {
   const cases: [string, string][] = [
     ["a hyphen", "a-b"],
-    ["an en dash, which the rule does not reach", `a${String.fromCodePoint(0x2013)}b`],
+    ["a horizontal bar, which the rule does not reach", `a${String.fromCodePoint(0x2015)}b`],
+    ["a minus sign, which the rule does not reach", `a${String.fromCodePoint(0x2212)}1`],
+    ["the en dash named entity inside a longer word", `${EN_NAMED}board`],
+    ["an en dash decimal reference one digit longer", `${NUM}${EN_DEC}0;`],
+    ["an en dash hex reference one digit longer", `${NUM}x${EN_HEX}5;`],
+    ["a Windows path holding the en dash's capital-U name", `C:${BS}Users${BS}U${EN_HEX}${BS}x`],
     ["the named entity inside a longer word", `${NAMED}board`],
     ["a decimal reference one digit longer", `${NUM}${DEC}0;`],
     ["a hex reference one digit longer", `${NUM}x${HEX}5;`],
@@ -326,7 +387,14 @@ interface RepoOptions {
   filler?: number;
   /** A `.gitattributes` body, e.g. a `binary` declaration to be refused. */
   gitattributes?: string;
+  /** Track the two verbatim captures, each holding an en dash. Omitting them must refuse. */
+  captures?: boolean;
 }
+
+const CAPTURE_PATHS = [
+  "documentation/hl7-refresh/surface-pre-refresh.json",
+  "documentation/hl7-refresh/surface-post-refresh.json",
+];
 
 function git(root: string, args: string[]): void {
   const r = spawnSync("git", args, { cwd: root, encoding: "utf8", timeout: 60_000 });
@@ -340,6 +408,7 @@ function makeRepo(opts: RepoOptions = {}): string {
     boundary = true,
     filler = 90,
     gitattributes,
+    captures = true,
   } = opts;
 
   const root = mkdtempSync(join(tmpdir(), "no-emdash-gate-"));
@@ -361,6 +430,13 @@ function makeRepo(opts: RepoOptions = {}): string {
 
   for (let i = 0; i < filler; i++) {
     writeFileSync(join(root, "filler", `f${String(i)}.md`), "clean\n");
+  }
+
+  if (captures) {
+    mkdirSync(join(root, "documentation", "hl7-refresh"), { recursive: true });
+    for (const p of CAPTURE_PATHS) {
+      writeFileSync(join(root, p), `{ "message": "must be 4 (v2.1${EN}v2.6)" }\n`);
+    }
   }
 
   git(root, ["init", "-q"]);
@@ -531,6 +607,47 @@ describe("check-no-emdash: the refusals, driven through a real scan", () => {
     expect(r.code, r.out).toBe(0);
   });
 
+  it("admits the two verbatim captures by literal path, en dash and all", () => {
+    const r = runGateIn(build());
+    expect(r.code, r.out).toBe(0);
+    expect(r.out).toContain("2 verbatim capture(s) exempt by literal path");
+  });
+
+  it("still scans a file beside the captures: the exclusion is two paths, not a directory", () => {
+    const root = build();
+    writeFileSync(join(root, "documentation", "hl7-refresh", "record.md"), `v2.1${EN}v2.6\n`);
+    git(root, ["add", "-A"]);
+    const r = runGateIn(root);
+    expect(r.code, r.out).toBe(1);
+    expect(r.out).toContain("documentation/hl7-refresh/record.md:1:");
+  });
+
+  it("refuses a skip that adds any other path to the capture list", () => {
+    // The same mutation the binary case above refuses, aimed at the capture
+    // skip instead: one added clause that hides a directory behind it.
+    const root = build();
+    const gate = join(root, "scripts", "check-no-emdash.mjs");
+    const before = readFileSync(gate, "utf8");
+    const skip = "if (VERBATIM_CAPTURES.includes(rel)) {";
+    expect(before).toContain(skip);
+    writeFileSync(
+      gate,
+      before.replace(skip, `if (VERBATIM_CAPTURES.includes(rel) || rel.startsWith("filler/")) {`),
+      "utf8",
+    );
+    const r = runGateIn(root);
+    expect(r.code, r.out).toBe(1);
+    expect(r.out).toContain("REFUSED");
+    expect(r.out).toContain("not exactly its two literal paths");
+  });
+
+  it("refuses when a listed capture is no longer tracked, so the list cannot go stale", () => {
+    const r = runGateIn(build({ captures: false }));
+    expect(r.code, r.out).toBe(1);
+    expect(r.out).toContain("REFUSED");
+    expect(r.out).toContain("listed but not tracked");
+  });
+
   it("treats a tracked file it cannot open as a failure, never a skip", () => {
     const root = build();
     // Tracked in the index, absent from the working tree: the read throws, and
@@ -539,6 +656,16 @@ describe("check-no-emdash: the refusals, driven through a real scan", () => {
     const r = runGateIn(root);
     expect(r.code, r.out).toBe(1);
     expect(r.out).toContain("could not read");
+  });
+
+  it("reds on an en dash in a tracked file, through the real tree scan", () => {
+    const root = build();
+    writeFileSync(join(root, "filler", "f1.md"), `a range 6${EN}7\n`);
+    git(root, ["add", "-A"]);
+    const r = runGateIn(root);
+    expect(r.code, r.out).toBe(1);
+    expect(r.out).toContain("filler/f1.md:1:");
+    expect(r.out).toContain("the literal en dash");
   });
 
   it("reds on a tracked FILENAME carrying the character, which no content scan sees", () => {

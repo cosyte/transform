@@ -13,6 +13,12 @@
  * the HTML entities, the percent-encoding and the JavaScript escapes are banned
  * on the same footing as the literal, and each has its own arm below.
  *
+ * THE EN DASH (U+2013) IS HELD TO THE SAME RULE, since 2026-11-07: no em or en
+ * dashes anywhere, plain hyphens only, and a range is written with "to". Every
+ * arm below exists once for each character, built by the same function, so the
+ * en dash is refused in every spelling the em dash is, and the same change swept
+ * it out of the tree.
+ *
  * THIS GATE DID NOT ARRIVE ON A CLEAN TREE, AND THAT ORDERING IS THE POINT. The
  * same change swept 609 occurrences out of 73 of the 98 tracked files. A gate
  * landing before its sweep reds `main` on arrival; a sweep landing before its
@@ -49,12 +55,12 @@
  * closing it.
  *
  * There is no hole here, because there is nothing to exclude. EVERY spelling
- * below is ASSEMBLED at runtime from the codepoint `0x2014`, and the prose above
- * and below names the forms rather than writing them out, so this file contains
- * none of them as text. It is scanned exactly like every other tracked file, by
- * the same code path, with no special case anywhere. If you add an arm, assemble
- * it; do not paste a literal in, and do not answer a red here by adding an
- * exclusion.
+ * below is ASSEMBLED at runtime from the codepoints `0x2014` and `0x2013`, and
+ * the prose above and below names the forms rather than writing them out, so
+ * this file contains none of them as text. It is scanned exactly like every
+ * other tracked file, by the same code path, with no special case anywhere. If
+ * you add an arm, assemble it; do not paste a literal in, and do not answer a
+ * red here by adding an exclusion.
  *
  * AND THE PROBE ENFORCES THAT RATHER THAN TRUSTING IT. `probe()` check 5b
  * reconciles the set of files this run SKIPPED against the set `.gitattributes`
@@ -84,6 +90,26 @@
  * alternative is an exemption that silently grows to cover the generated half.
  *
  * ---------------------------------------------------------------------------
+ * TWO VERBATIM CAPTURES, EXCLUDED BY LITERAL PATH
+ * ---------------------------------------------------------------------------
+ *
+ * `documentation/hl7-refresh/surface-pre-refresh.json` and
+ * `surface-post-refresh.json` are verbatim captures of upstream output: what
+ * `@cosyte/hl7` 0.0.1 and 0.0.10 emitted over the regression corpus, kept byte
+ * identical on purpose. `documentation/hl7-refresh/record.md` sends a reader to
+ * them for the verbatim bytes of a diagnostic that carries an en dash, and states
+ * that regenerating the baseline reproduces the committed file byte for byte.
+ * Rewriting the dash would make both statements false, so they are the same
+ * class as the changelog archive: a dated record this repository does not edit.
+ *
+ * They are excluded from the CONTENT scan by their two literal paths, never by a
+ * pattern, a directory or a class, so `record.md` beside them is scanned like any
+ * other file, and their NAMES are still scanned. `probe()` check 5b admits
+ * exactly these two paths and refuses any other skip, and refuses as well when
+ * either is no longer tracked, so the list cannot go stale and later cover a
+ * file nobody argued for.
+ *
+ * ---------------------------------------------------------------------------
  * THE BINARY PARTITION IS A DECLARATION, NOT A HEURISTIC
  * ---------------------------------------------------------------------------
  *
@@ -107,11 +133,11 @@
  * KNOWN LIMITS, named rather than discovered later
  * ---------------------------------------------------------------------------
  *
- *  (i)   It matches U+2014 as UTF-8 and as the textual encodings listed below.
- *        It does NOT match an em dash in some other charset (a CP1252 `0x97`
- *        fixture, a UTF-16 document). Such a file scans clean and this gate
- *        stays green. There is none today; every tracked text file decodes as
- *        UTF-8.
+ *  (i)   It matches U+2014 and U+2013 as UTF-8 and as the textual encodings
+ *        listed below. It does NOT match either in some other charset (a
+ *        CP1252 `0x97` fixture, a UTF-16 document). Such a file scans clean
+ *        and this gate stays green. There is none today; every tracked text
+ *        file decodes as UTF-8.
  *  (ii)  The PCRE source spelling of the codepoint (a backslash, an `x`, and the
  *        hex in braces) is NOT banned as literal ASCII text. It is how a
  *        PCRE-based scanner names this codepoint. It renders as nothing;
@@ -131,24 +157,22 @@ import process from "node:process";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 
-/** U+2014, built from the codepoint so this file never spells the character. */
+/** U+2014 and U+2013, built from their codepoints so this file never spells either. */
 const EM = String.fromCodePoint(0x2014);
 const EM_BYTES = Buffer.from(EM, "utf8");
-
-const HEX = (0x2014).toString(16); // the four hex digits
-const DEC = String(0x2014); // the four decimal digits
+const EN = String.fromCodePoint(0x2013);
+const EN_BYTES = Buffer.from(EN, "utf8");
 
 // The remaining spellings, assembled rather than written out, so that this file
 // contains none of them as text and needs no exclusion from its own scan.
-const PCT = [...EM_BYTES].map((b) => `%${b.toString(16).toUpperCase()}`).join("");
 const AMP = "&";
-const NAMED = `${AMP}mdash`;
 const NUM = `${AMP}#`;
 const BS = "\\";
 
 /**
  * Every banned spelling, as [label, RegExp], each paired index-for-index with a
- * specimen built to contain exactly that spelling.
+ * specimen built to contain exactly that spelling: seven arms for the em dash
+ * and the same seven for the en dash.
  *
  * THE ENCODED ARMS ARE NOT DECORATION. The reference sweep of this rule in a
  * sibling repository found the gate caught what the hand sweep missed precisely
@@ -170,28 +194,60 @@ const BS = "\\";
  * that happens to contain a user directory of that name. Measured as a live
  * false positive in a sibling before it was split out.
  */
-const PATTERNS = [
-  ["the literal character", new RegExp(EM, "g")],
-  ["the percent-encoding", new RegExp(PCT, "gi")],
-  ["the named HTML entity", new RegExp(`${NAMED}(?:;|(?![A-Za-z0-9]))`, "gi")],
-  ["the decimal character reference", new RegExp(`${NUM}0*${DEC}(?:;|(?![0-9]))`, "gi")],
-  ["the hex character reference", new RegExp(`${NUM}[xX]0*${HEX}(?:;|(?![0-9A-Fa-f]))`, "g")],
-  ["the JavaScript escape", new RegExp(`${BS}${BS}u${HEX}`, "g")],
-  ["the braced JavaScript escape", new RegExp(`${BS}${BS}u${BS}{0*${HEX}${BS}}`, "g")],
-];
+function armsFor(name, codepoint, entityName) {
+  const char = String.fromCodePoint(codepoint);
+  const HEX = codepoint.toString(16); // the four hex digits
+  const DEC = String(codepoint); // the four decimal digits
+  const PCT = [...Buffer.from(char, "utf8")]
+    .map((b) => `%${b.toString(16).toUpperCase()}`)
+    .join("");
+  const NAMED = `${AMP}${entityName}`;
+  return {
+    patterns: [
+      [`the literal ${name}`, new RegExp(char, "g")],
+      [`the percent-encoding of the ${name}`, new RegExp(PCT, "gi")],
+      [`the named HTML entity for the ${name}`, new RegExp(`${NAMED}(?:;|(?![A-Za-z0-9]))`, "gi")],
+      [
+        `the decimal character reference for the ${name}`,
+        new RegExp(`${NUM}0*${DEC}(?:;|(?![0-9]))`, "gi"),
+      ],
+      [
+        `the hex character reference for the ${name}`,
+        new RegExp(`${NUM}[xX]0*${HEX}(?:;|(?![0-9A-Fa-f]))`, "g"),
+      ],
+      [`the JavaScript escape of the ${name}`, new RegExp(`${BS}${BS}u${HEX}`, "g")],
+      [
+        `the braced JavaScript escape of the ${name}`,
+        new RegExp(`${BS}${BS}u${BS}{0*${HEX}${BS}}`, "g"),
+      ],
+    ],
+    specimens: [
+      `a${char}b`,
+      `a${PCT}b`,
+      `a${NAMED};b`,
+      `a${NUM}${DEC};b`,
+      `a${NUM}x${HEX};b`,
+      `a${BS}u${HEX}b`,
+      `a${BS}u{${HEX}}b`,
+    ],
+  };
+}
 
-const SPECIMENS = [
-  `a${EM}b`,
-  `a${PCT}b`,
-  `a${NAMED};b`,
-  `a${NUM}${DEC};b`,
-  `a${NUM}x${HEX};b`,
-  `a${BS}u${HEX}b`,
-  `a${BS}u{${HEX}}b`,
-];
+// One set of arms per banned character, from the same function, so the en dash
+// cannot be refused in fewer spellings than the em dash.
+const EM_ARMS = armsFor("em dash", 0x2014, "mdash");
+const EN_ARMS = armsFor("en dash", 0x2013, "ndash");
+const PATTERNS = [...EM_ARMS.patterns, ...EN_ARMS.patterns];
+const SPECIMENS = [...EM_ARMS.specimens, ...EN_ARMS.specimens];
 
 const CHANGELOG = "CHANGELOG.md";
 const CHANGELOG_BOUNDARY = "## Released before this file was generated";
+
+/** The two verbatim captures excluded from the content scan. See the header. */
+const VERBATIM_CAPTURES = [
+  "documentation/hl7-refresh/surface-pre-refresh.json",
+  "documentation/hl7-refresh/surface-post-refresh.json",
+];
 
 /** Every occurrence of every banned spelling in `text`, with a locus. */
 function findEmDashes(text) {
@@ -278,10 +334,13 @@ function fail(what, hits) {
     `\n[no-emdash] ${hits.length} occurrence(s) in ${what}, across ` +
       `${new Set(hits.map((h) => h.where)).size} location(s).`,
   );
-  console.error("[no-emdash] cosyte never uses em dashes (founder directive, 2026-07-24).");
   console.error(
-    "[no-emdash] Rewrite with a period, a colon, a comma, or parentheses. " +
-      "Never re-encode the character.",
+    "[no-emdash] cosyte never uses em or en dashes (founder directive, 2026-07-24; " +
+      "the en dash since 2026-11-07).",
+  );
+  console.error(
+    "[no-emdash] Rewrite with a period, a colon, a comma, or parentheses, and write a " +
+      'range with "to". Never re-encode the character.',
   );
   process.exit(1);
 }
@@ -293,15 +352,30 @@ function fail(what, hits) {
  * examined nothing. A probe that only proved the patterns compile would miss
  * every one of them after the second.
  */
-function probe({ files, scanned, binary, binarySet, bytesRead, archiveHits, hasArchive }) {
-  // 1. GROUND TRUTH. Everything above is derived from one codepoint constant, so
-  //    the patterns and the specimens would agree with each other even if that
-  //    constant were wrong. Anchor it on the bytes: U+2014 is E2 80 94 in UTF-8,
-  //    and that is not a fact this repository gets to define.
+function probe({
+  files,
+  scanned,
+  binary,
+  binarySet,
+  captured,
+  bytesRead,
+  archiveHits,
+  hasArchive,
+}) {
+  // 1. GROUND TRUTH. Everything above is derived from two codepoint constants, so
+  //    the patterns and the specimens would agree with each other even if one
+  //    were wrong. Anchor them on the bytes: U+2014 is E2 80 94 and U+2013 is
+  //    E2 80 93 in UTF-8, and that is not a fact this repository gets to define.
   if (!EM_BYTES.equals(Buffer.from([0xe2, 0x80, 0x94]))) {
     refuse(
       "the character being scanned for is not U+2014",
       `built bytes ${[...EM_BYTES].map((b) => b.toString(16)).join(" ")}, expected e2 80 94.`,
+    );
+  }
+  if (!EN_BYTES.equals(Buffer.from([0xe2, 0x80, 0x93]))) {
+    refuse(
+      "the en dash being scanned for is not U+2013",
+      `built bytes ${[...EN_BYTES].map((b) => b.toString(16)).join(" ")}, expected e2 80 93.`,
     );
   }
 
@@ -371,9 +445,9 @@ function probe({ files, scanned, binary, binarySet, bytesRead, archiveHits, hasA
     );
   }
   if (scanned.length === 0) refuse("every tracked file was excluded", "nothing was scanned.");
-  if (scanned.length + binary.length !== files.length) {
+  if (scanned.length + binary.length + captured.length !== files.length) {
     refuse(
-      `the partition lost files: ${scanned.length} scanned + ${binary.length} declared binary is not ${files.length} tracked`,
+      `the partition lost files: ${scanned.length} scanned + ${binary.length} declared binary + ${captured.length} verbatim capture(s) is not ${files.length} tracked`,
       "every tracked path must be classified exactly once, or the scan has a silent gap.",
     );
   }
@@ -393,6 +467,18 @@ function probe({ files, scanned, binary, binarySet, bytesRead, archiveHits, hasA
     refuse(
       `${String(undeclared.length || binary.length)} path(s) were skipped without a 'binary' declaration`,
       `the only thing that may skip a file's CONTENT is .gitattributes: ${shown.join(", ")}`,
+    );
+  }
+  //     THE ONE OTHER SKIP IS THE TWO VERBATIM CAPTURES, ADMITTED BY LITERAL PATH
+  //     AND BY NOTHING ELSE. A skip list that holds any other path refuses, and so
+  //     does one that is missing either capture: a listed path that is no longer
+  //     tracked is a stale exclusion waiting to cover a file nobody argued for.
+  const unlisted = captured.filter((p) => !VERBATIM_CAPTURES.includes(p));
+  const missing = VERBATIM_CAPTURES.filter((p) => !captured.includes(p));
+  if (unlisted.length > 0 || missing.length > 0 || captured.length !== VERBATIM_CAPTURES.length) {
+    refuse(
+      `the verbatim-capture skip list is not exactly its two literal paths`,
+      `skipped but not listed: ${unlisted.slice(0, 5).join(", ") || "none"}; listed but not tracked: ${missing.join(", ") || "none"}`,
     );
   }
   if (bytesRead === 0) refuse("the scan read zero bytes", "no file was opened.");
@@ -425,7 +511,7 @@ function scanStdin(label) {
     }
   }
   if (hits.length) fail(label, hits);
-  console.log(`[no-emdash] OK: no em dashes in ${label} (${text.length} bytes read).`);
+  console.log(`[no-emdash] OK: no em or en dashes in ${label} (${text.length} bytes read).`);
 }
 
 function scanTree() {
@@ -456,6 +542,7 @@ function scanTree() {
 
   const scanned = [];
   const binary = [];
+  const captured = [];
   const hits = [];
   let bytesRead = 0;
   let archiveHits = 0;
@@ -469,6 +556,10 @@ function scanTree() {
   for (const rel of files) {
     if (binarySet.has(rel)) {
       binary.push(rel);
+      continue;
+    }
+    if (VERBATIM_CAPTURES.includes(rel)) {
+      captured.push(rel);
       continue;
     }
     scanned.push(rel);
@@ -503,13 +594,14 @@ function scanTree() {
     for (const h of findEmDashes(text)) hits.push({ ...h, where: rel });
   }
 
-  probe({ files, scanned, binary, binarySet, bytesRead, archiveHits, hasArchive });
+  probe({ files, scanned, binary, binarySet, captured, bytesRead, archiveHits, hasArchive });
 
   if (hits.length) fail("the tracked files listed above", hits);
 
   console.log(
     `[no-emdash] OK: ${scanned.length} tracked file(s) scanned (${bytesRead} bytes), ` +
       `${binary.length} declared binary and exempt from the content scan, ` +
+      `${captured.length} verbatim capture(s) exempt by literal path, ` +
       `${files.length} filename(s) checked.`,
   );
   console.log(

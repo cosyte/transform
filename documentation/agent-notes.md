@@ -33,9 +33,9 @@ reading the code. **Re-measure, or leave it alone.**
 
 ---
 
-## Shipped-phase history (Phases 1–6)
+## Shipped-phase history (Phases 1 to 6)
 
-**Phases 1–6 shipped** (roadmap `operations/roadmaps/transform.md` §Phase 1–6). Pre-alpha `0.0.x`,
+**Phases 1 to 6 shipped** (roadmap `operations/roadmaps/transform.md` §Phase 1 to 6). Pre-alpha `0.0.x`,
 **published on npm**: this line read "not yet published to npm" for several releases after first
 publish, which is part of why a `VERSION` constant stuck at `"0.0.0"` went unnoticed on a shipped
 package. **Never quote a version here**; `npm view @cosyte/transform version` is the only source of
@@ -56,7 +56,7 @@ OBX-8→`interpretation` (HL70078, `HL70078_INTERPRETATION_CODES`), OBX-11→`st
 `OBSERVATION_STATUS_MAP`), with the "never a confident wrong result" fail-safes (a corrected/cancelled
 result never emits as `final`; an unmapped status withholds the resource; a precision-exact magnitude
 read from the raw OBX-5). Every segment→resource and field→element map is grounded firsthand on the
-IG's ConceptMaps and cited. Phases 4–5 added the message-level graphs for **ORM_O01/OML_O21 →
+IG's ConceptMaps and cited. Phases 4 to 5 added the message-level graphs for **ORM_O01/OML_O21 →
 ServiceRequest** and **RXO → MedicationRequest** (Phase 4) and the thin IG singles **VXU_V04 →
 Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference** (Phase 5). Phase 6 added the
 **terminology value-translation** layer: a `$translate`-shaped, additive, fail-safe engine
@@ -934,8 +934,9 @@ reader lands on prose and does not notice it is the wrong prose.
   link, inside backticks, or bare in a sentence (all three shapes are live in `CLAUDE.md`, so
   keying on markdown links alone would see one of eight). Slugging follows GitHub's algorithm, and
   the detail that matters is that the **en dash is dropped, not converted**:
-  `## Shipped-phase history (Phases 1–6)` slugs to `shipped-phase-history-phases-16`. Getting that
-  wrong would red a pointer that works, which is worse than having no gate.
+  `## Shipped-phase history (Phases 1`, an en dash, then `6)` slugs to
+  `shipped-phase-history-phases-16`. Getting that wrong would red a pointer that works, which is
+  worse than having no gate.
 - **R5 no orphan sections**: every `##` here is the target of at least one pointer from
   `CLAUDE.md`. This file's own preamble makes that claim; R5 is what keeps it true.
 - **R6 file pointers resolve**: every in-repo path token in `CLAUDE.md` resolves against the
@@ -990,8 +991,9 @@ of thing that reads correct and is not:
 
 - **The slug was not GitHub's, and the gate was one heading away from both harms.** It collapsed
   runs of spaces to a single hyphen; GitHub gives **each space its own hyphen**, so
-  `## Branch protection – and the limits` anchors as `branch-protection--and-the-limits`, with a
-  DOUBLE hyphen. Verified against GitHub's own renderer (`POST /markdown`) and `github-slugger`.
+  `## Branch protection`, a spaced en dash, then `and the limits` anchors as
+  `branch-protection--and-the-limits`, with a DOUBLE hyphen. Verified against GitHub's own renderer
+  (`POST /markdown`) and `github-slugger`.
   Measured consequence: a **dead** pointer passed green, and a pointer that **works** was reddened.
   The mark shown above was a spaced **em** dash when this was written, and that was the house
   punctuation at the time; the brand sweep of 2026-08-07 removed the character from every tracked
@@ -1160,8 +1162,8 @@ using a heading whose dropped mark has a space on either side. That fixture was 
 `slug()` keeps only letters, numbers, spaces, `_` and `-`, so an **en** dash is dropped in exactly
 the same way and the two surrounding spaces still survive as two hyphens: the behaviour under test
 is unchanged, and so is the bite of the two cases that pin it. **Do not read the sweep as having
-retired the trap.** Every dropped mark with a space either side reproduces it, and the en dash is
-punctuation this repo does still write (`Phases 1–6`).
+retired the trap.** Every dropped mark with a space either side reproduces it, the en dash among
+them.
 
 ### The exemptions, both of them, with their reasons
 

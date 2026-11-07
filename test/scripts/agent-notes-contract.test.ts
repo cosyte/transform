@@ -29,6 +29,12 @@ const REPO_ROOT = process.cwd();
 const GATE_PATH = join(REPO_ROOT, "scripts", "check-agent-notes.ts");
 const TSX_BIN = join(REPO_ROOT, "node_modules", ".bin", "tsx");
 
+/**
+ * U+2013, built from its codepoint: the slug fixtures below need a heading that carries one, and
+ * `pnpm check:no-emdash` refuses the character in every tracked file, this one included.
+ */
+const EN_DASH = String.fromCodePoint(0x2013);
+
 interface RunResult {
   readonly status: number;
   readonly stdout: string;
@@ -335,7 +341,7 @@ describe("R4: a pointer names an anchor that does not resolve", () => {
         "",
         "The long-form narrative.",
         "",
-        "## Shipped-phase history (Phases 1–6)",
+        `## Shipped-phase history (Phases 1${EN_DASH}6)`,
         "",
         "Phases 1 to 6 shipped.",
         "",
@@ -463,7 +469,7 @@ describe("R4: GitHub's slug, measured against the punctuation this repo actually
         "",
         "Narrative.",
         "",
-        "## Branch protection – and the limits of this claim",
+        `## Branch protection ${EN_DASH} and the limits of this claim`,
         "",
         "It was measured.",
         "",
