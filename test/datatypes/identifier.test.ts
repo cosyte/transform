@@ -21,12 +21,12 @@ describe("toFhirIdentifier: CX.1 → value, CX.4 → system via registry", () =>
     const { value, issues } = toFhirIdentifier(
       {
         idNumber: "12345",
-        assigningAuthority: { universalId: "1.2.840.114350", universalIdType: "ISO" },
+        assigningAuthority: { universalId: "2.16.840.1.113883.19", universalIdType: "ISO" },
       },
       { namingSystem: createNamingSystem() },
     );
     expect(value).toBeDefined();
-    expect(propString(value as FhirComplex, "system")).toBe("urn:oid:1.2.840.114350");
+    expect(propString(value as FhirComplex, "system")).toBe("urn:oid:2.16.840.1.113883.19");
     expect(propString(value as FhirComplex, "value")).toBe("12345");
     expect(issues).toEqual([]);
   });

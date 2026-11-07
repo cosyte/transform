@@ -25,7 +25,7 @@ const raw = [
 // The naming system says which system URI an assigning authority stands for. Nothing is guessed:
 // an authority missing from it leaves the identifier without a system and raises an issue.
 const { bundle, issues } = toFhir(parseHL7(raw), {
-  namingSystem: createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } }),
+  namingSystem: createNamingSystem({ authorities: { HOSP: "urn:oid:2.16.840.1.113883.19" } }),
 });
 
 interface Entry {

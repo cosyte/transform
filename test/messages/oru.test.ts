@@ -58,7 +58,7 @@ function has(result: TransformResult, code: string, fhirPath?: string): boolean 
   );
 }
 
-const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } });
+const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:2.16.840.1.113883.19" } });
 
 const ORU_R01 = [
   "MSH|^~\\&|LAB|LABFAC|EHR|HOSP|20260721150000-0500||ORU^R01^ORU_R01|MSG0002|P|2.5.1",

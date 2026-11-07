@@ -21,10 +21,10 @@ entries you seed. A bare namespace mnemonic (HD.1) is **never** turned into a UR
 import { createNamingSystem } from "@cosyte/transform";
 
 const registry = createNamingSystem({
-  authorities: { HOSPMRN: "urn:oid:1.2.840.114350.1.13.1" },
+  authorities: { HOSPMRN: "urn:oid:2.16.840.1.113883.19.5" },
 });
 
-registry.resolveAssigningAuthority({ namespaceId: "HOSPMRN" }); // => "urn:oid:1.2.840.114350.1.13.1"
+registry.resolveAssigningAuthority({ namespaceId: "HOSPMRN" }); // => "urn:oid:2.16.840.1.113883.19.5"
 ```
 
 ## Supply a sender's timezone for naked timestamps

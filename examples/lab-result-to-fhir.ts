@@ -26,7 +26,7 @@ const raw = [
 ].join("\r");
 
 const { bundle } = toFhir(parseHL7(raw), {
-  namingSystem: createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } }),
+  namingSystem: createNamingSystem({ authorities: { HOSP: "urn:oid:2.16.840.1.113883.19" } }),
 });
 
 const text = serializeResource(bundle);

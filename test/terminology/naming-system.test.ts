@@ -36,8 +36,11 @@ describe("createNamingSystem: assigning-authority (HD) resolution", () => {
 
   it("auto-derives urn:oid: only for a valid OID with universalIdType ISO", () => {
     expect(
-      registry.resolveAssigningAuthority({ universalId: "1.2.840.114350", universalIdType: "ISO" }),
-    ).toBe("urn:oid:1.2.840.114350");
+      registry.resolveAssigningAuthority({
+        universalId: "2.16.840.1.113883.19",
+        universalIdType: "ISO",
+      }),
+    ).toBe("urn:oid:2.16.840.1.113883.19");
   });
 
   it("rejects an OID without the ISO type, and a malformed OID", () => {

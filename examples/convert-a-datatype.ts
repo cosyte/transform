@@ -38,7 +38,7 @@ console.log("dateTime:", naked.value, naked.issues.map((i) => i.code).join(", ")
 const cx = { idNumber: "MRN12345", assigningAuthority: { namespaceId: "HOSP" } };
 const unresolved = toFhirIdentifier(cx, { namingSystem: createNamingSystem() });
 const resolved = toFhirIdentifier(cx, {
-  namingSystem: createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } }),
+  namingSystem: createNamingSystem({ authorities: { HOSP: "urn:oid:2.16.840.1.113883.19" } }),
 });
 console.log("Identifier, unregistered authority:", unresolved.issues.map((i) => i.code).join(", "));
 console.log(

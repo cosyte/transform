@@ -26,6 +26,13 @@ A missing FHIR element can come with a diagnostic explaining the refusal:
 - **`HumanName.use` / `Address.use` is absent** → the v2 code has no equivalent in the IG's table map
   (`TRANSFORM_NAME_USE_UNMAPPED` / `TRANSFORM_ADDRESS_USE_UNMAPPED`). It is surfaced, never guessed.
 
+Some missing elements come with no diagnostic at all. A `Patient` is built from PID-3, PID-5, PID-7,
+PID-8 and PID-11 only, and from the first repetition of PID-5 and PID-11. PID-13 and PID-14
+(telecom) raise one `TRANSFORM_ELEMENT_DROPPED`; every other PID field is dropped with no issue,
+among them PID-10 race, PID-15 primary language, PID-19 SSN, PID-22 ethnic group, PID-29 death date
+and time and PID-30 death indicator. A `Patient` from a PID that records a death therefore has no
+`deceased[x]`. Read those fields from the parsed message if you need them.
+
 ## My timestamp lost its time-of-day
 
 `TRANSFORM_TIMESTAMP_NO_TIMEZONE`: the v2 timestamp had a time but no offset, and FHIR forbids a time

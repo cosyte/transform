@@ -28,7 +28,7 @@ function seq(): () => string {
   return () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`;
 }
 
-const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } });
+const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:2.16.840.1.113883.19" } });
 
 /** Build a segment string placing values at their 1-indexed HL7 field positions. */
 function seg(type: string, fields: Readonly<Record<number, string>>): string {
