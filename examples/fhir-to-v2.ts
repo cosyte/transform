@@ -21,7 +21,7 @@ const { resource } = parseResource(
     resourceType: "Patient",
     identifier: [
       {
-        system: "urn:oid:1.2.840.114350",
+        system: "urn:oid:2.16.840.1.113883.19",
         value: "MRN12345",
         type: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/v2-0203", code: "MR" }] },
       },
@@ -33,7 +33,7 @@ const { resource } = parseResource(
 );
 
 const { value, issues } = toV2Patient(resource, "A28", {
-  assigningAuthorities: { "urn:oid:1.2.840.114350": "HOSP" },
+  assigningAuthorities: { "urn:oid:2.16.840.1.113883.19": "HOSP" },
   envelope: { sendingApp: "EHR", sendingFacility: "MAIN" },
 });
 const wire = value?.toString() ?? "";

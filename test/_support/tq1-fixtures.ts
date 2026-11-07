@@ -33,7 +33,7 @@ export const NO_TQ1_ORDER: readonly string[] = [
 export function runOrderFixture(lines: readonly string[]): TransformResult {
   let n = 0;
   return toFhir(parseHL7(lines.join("\r")), {
-    namingSystem: createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } }),
+    namingSystem: createNamingSystem({ authorities: { HOSP: "urn:oid:2.16.840.1.113883.19" } }),
     generateId: () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`,
   });
 }

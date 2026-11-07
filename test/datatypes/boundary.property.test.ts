@@ -56,7 +56,7 @@ const mnemonic = fc.option(fc.constantFrom("LN", "SCT", "UCUM", "99LOCAL", "", "
 const hdArb: fc.Arbitrary<HD> = fc
   .record({
     namespaceId: optStr,
-    universalId: fc.option(fc.oneof(fc.constantFrom("1.2.840.114350", "1.2.3"), optStr), {
+    universalId: fc.option(fc.oneof(fc.constantFrom("2.16.840.1.113883.19", "1.2.3"), optStr), {
       nil: undefined,
     }),
     universalIdType: fc.option(fc.constantFrom("ISO", "UUID", "DNS", ""), { nil: undefined }),

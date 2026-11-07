@@ -33,7 +33,7 @@ function seq(): () => string {
   return () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`;
 }
 
-const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } });
+const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:2.16.840.1.113883.19" } });
 
 /**
  * One ORU carrying one OBX of the given value type and value, everything else fixed and valid so a

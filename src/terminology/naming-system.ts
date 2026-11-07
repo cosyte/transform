@@ -88,7 +88,7 @@ function isUuid(value: string): boolean {
  * ```ts
  * import { createNamingSystem } from "@cosyte/transform";
  * const registry = createNamingSystem({
- *   authorities: { HOSPMRN: "urn:oid:1.2.840.114350.1.13.1" },
+ *   authorities: { HOSPMRN: "urn:oid:2.16.840.1.113883.19.5" },
  * });
  * registry.resolveCodeSystem("LN"); // => "http://loinc.org"
  * ```

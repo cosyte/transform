@@ -84,7 +84,7 @@ const ADT_A01_HEAD = [
 const ADT_A01 = [...ADT_A01_HEAD, pv1(ADT_A01_VISIT)];
 
 describe("toFhir: ADT^A01 message assembly", () => {
-  const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } });
+  const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:2.16.840.1.113883.19" } });
   const result = toFhir(msg(ADT_A01), { namingSystem: registry, generateId: seq() });
 
   it("produces a FHIR message Bundle with MessageHeader first, then Patient, Encounter, RelatedPerson", () => {
@@ -113,7 +113,7 @@ describe("toFhir: ADT^A01 message assembly", () => {
 
   it("resolves the registered assigning authority and flags the unresolved one (never synthesized)", () => {
     const json = serializeResource(result.bundle);
-    expect(json).toContain('"system":"urn:oid:1.2.840.114350"'); // HOSP resolved
+    expect(json).toContain('"system":"urn:oid:2.16.840.1.113883.19"'); // HOSP resolved
     const unresolved = result.issues.filter(
       (i) => i.code === ISSUE_CODES.TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED,
     );
@@ -442,7 +442,7 @@ describe("exported Phase-2 table maps mirror the IG ConceptMaps", () => {
  * in the change rather than absorbed by a regenerated literal.
  */
 const ADT_A01_BASELINE_BUNDLE =
-  '{"resourceType":"Bundle","identifier":{"value":"MSG00001"},"type":"message","timestamp":"2026-07-21T14:30:00-05:00","entry":[{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000004","resource":{"resourceType":"MessageHeader","eventCoding":{"system":"http://terminology.hl7.org/CodeSystem/v2-0003","code":"A01"},"source":{"name":"SENDAPP","_endpoint":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]}},"focus":[{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},{"reference":"urn:uuid:00000000-0000-4000-8000-000000000002"}]}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000001","resource":{"resourceType":"Patient","identifier":[{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"MR"}]},"system":"urn:oid:1.2.840.114350","value":"MRN12345"},{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"SS"}]},"value":"999887777"}],"name":[{"use":"official","family":"Public","given":["Jane","Q"],"prefix":["Mrs."]}],"gender":"female","birthDate":"1980-01-15","address":[{"use":"home","line":["123 Main St","Apt 4"],"city":"Boston","state":"MA","postalCode":"02101","country":"USA"}]}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000002","resource":{"resourceType":"Encounter","identifier":[{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"VN"}]},"value":"VISIT001"}],"status":"finished","class":{"system":"http://terminology.hl7.org/CodeSystem/v3-ActCode","code":"IMP","display":"inpatient encounter"},"subject":{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},"period":{"start":"2026-07-21T14:30:00-05:00","end":"2026-07-21T15:00:00-05:00"}}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000003","resource":{"resourceType":"RelatedPerson","patient":{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},"relationship":[{"coding":[{"code":"SPO"}]}],"name":[{"use":"official","family":"Public","given":["John"]}],"address":[{"line":["456 Oak Ave"],"city":"Boston","state":"MA","postalCode":"02101"}]}}]}';
+  '{"resourceType":"Bundle","identifier":{"value":"MSG00001"},"type":"message","timestamp":"2026-07-21T14:30:00-05:00","entry":[{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000004","resource":{"resourceType":"MessageHeader","eventCoding":{"system":"http://terminology.hl7.org/CodeSystem/v2-0003","code":"A01"},"source":{"name":"SENDAPP","_endpoint":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]}},"focus":[{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},{"reference":"urn:uuid:00000000-0000-4000-8000-000000000002"}]}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000001","resource":{"resourceType":"Patient","identifier":[{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"MR"}]},"system":"urn:oid:2.16.840.1.113883.19","value":"MRN12345"},{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"SS"}]},"value":"999887777"}],"name":[{"use":"official","family":"Public","given":["Jane","Q"],"prefix":["Mrs."]}],"gender":"female","birthDate":"1980-01-15","address":[{"use":"home","line":["123 Main St","Apt 4"],"city":"Boston","state":"MA","postalCode":"02101","country":"USA"}]}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000002","resource":{"resourceType":"Encounter","identifier":[{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"VN"}]},"value":"VISIT001"}],"status":"finished","class":{"system":"http://terminology.hl7.org/CodeSystem/v3-ActCode","code":"IMP","display":"inpatient encounter"},"subject":{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},"period":{"start":"2026-07-21T14:30:00-05:00","end":"2026-07-21T15:00:00-05:00"}}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000003","resource":{"resourceType":"RelatedPerson","patient":{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},"relationship":[{"coding":[{"code":"SPO"}]}],"name":[{"use":"official","family":"Public","given":["John"]}],"address":[{"line":["456 Oak Ave"],"city":"Boston","state":"MA","postalCode":"02101"}]}}]}';
 
 const ADT_A01_BASELINE_ISSUES: readonly string[] = [
   "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED@CX.4#Identifier.system",
@@ -456,7 +456,7 @@ const ADT_A01_BASELINE_ISSUES: readonly string[] = [
 ];
 
 describe("a message carrying no DG1, PR1 or IN1 is byte-identical to the recorded baseline", () => {
-  const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } });
+  const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:2.16.840.1.113883.19" } });
 
   it("carries none of the three segments, so the baseline is the right thing to compare against", () => {
     for (const name of ["DG1", "PR1", "IN1"]) {
@@ -501,7 +501,7 @@ describe("a message carrying no DG1, PR1 or IN1 is byte-identical to the recorde
  * blocks differ in is PV1-20 itself.
  */
 describe("a valued PV1-20 on a message carrying none of the three changes nothing", () => {
-  const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } });
+  const registry = createNamingSystem({ authorities: { HOSP: "urn:oid:2.16.840.1.113883.19" } });
   const ADT_A01_FINANCIAL_CLASS = [...ADT_A01_HEAD, pv1({ ...ADT_A01_VISIT, 20: "SELF" })];
 
   it("values PV1-20 and still carries none of DG1, PR1 or IN1", () => {

@@ -62,7 +62,7 @@ import { toFhir, createNamingSystem } from "@cosyte/transform";
 
 const msg = parseHL7(raw); // an ADT^A01
 const { bundle, issues } = toFhir(msg, {
-  namingSystem: createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } }),
+  namingSystem: createNamingSystem({ authorities: { HOSP: "urn:oid:2.16.840.1.113883.19" } }),
 });
 
 // bundle.type === "message"; entry[0] is a MessageHeader, then Patient + Encounter.

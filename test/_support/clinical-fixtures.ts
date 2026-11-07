@@ -45,7 +45,7 @@ export function sequentialIds(): () => string {
 export function run(lines: readonly string[]): TransformResult {
   return toFhir(parseHL7(lines.join("\r")), {
     namingSystem: createNamingSystem({
-      authorities: { HOSP: "urn:oid:1.2.840.114350" },
+      authorities: { HOSP: "urn:oid:2.16.840.1.113883.19" },
       codeSystems: { I9: "http://hl7.org/fhir/sid/icd-9-cm" },
     }),
     generateId: sequentialIds(),

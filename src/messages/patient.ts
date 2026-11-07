@@ -14,9 +14,17 @@
  * Fail-safe throughout: each datatype conversion carries its own value-free issues, an unmapped
  * administrative-sex code leaves `gender` absent (never guessed), and a birth *time* (PID-7 with a
  * time-of-day) is dropped to `date` precision with a flag, because the US Core `patient-birthTime`
- * extension is a profile concern this library does not cover. Deferred and flagged, not silently mapped:
- * PID-13/14 telecom (no XTN→ContactPoint converter), and PID-10/15/22/29/30 (US Core race/ethnicity
- * extensions, communication language, deceased).
+ * extension is a profile concern this library does not cover.
+ *
+ * Not mapped, and flagged: PID-13 and PID-14 telecom (no XTN→ContactPoint converter). A value in
+ * either field raises one {@link ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED} at `information` severity,
+ * located at `PID.13` even when only PID-14 carried a value.
+ *
+ * Not mapped, and NOT flagged: every other PID field is dropped with no issue at all. That includes
+ * PID-10 race, PID-15 primary language, PID-19 SSN, PID-22 ethnic group, PID-29 death date and time
+ * and PID-30 death indicator, so a `Patient` built from a PID that records a death carries no
+ * `deceased[x]` element and nothing in the issues says so. Repetitions of PID-5 and PID-11 after the
+ * first are dropped the same way. Read these fields from the parsed message if you need them.
  *
  * @packageDocumentation
  */

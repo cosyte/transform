@@ -110,7 +110,7 @@ import { parseHL7 } from "@cosyte/hl7";
 import { toFhir, createNamingSystem } from "@cosyte/transform";
 
 const { bundle, issues } = toFhir(parseHL7(raw), {
-  namingSystem: createNamingSystem({ authorities: { HOSP: "urn:oid:1.2.840.114350" } }),
+  namingSystem: createNamingSystem({ authorities: { HOSP: "urn:oid:2.16.840.1.113883.19" } }),
 });
 // bundle.type === "message"; every reference resolves to a urn:uuid: fullUrl inside the bundle.
 ```
@@ -125,6 +125,13 @@ const { bundle, issues } = toFhir(parseHL7(raw), {
 | DG1     | `Condition`          | DG1-3/4 → `code`/`code.text`; DG1-5/19 → `onsetDateTime`/`recordedDate`; DG1-21 `D` → `verificationStatus`                 |
 | PR1     | `Procedure`          | PR1-3/4 → `code`/`code.text`; PR1-5 + PR1-7 → `performedDateTime` or `performedPeriod`; PR1-6/15 → `category`/`reasonCode` |
 | IN1     | `Coverage`           | IN1-2/15 → `identifier`/`type`; IN1-12/13 → `period`; IN1-4.1 → `payor.display`; IN1-10/49 → the subscriber-id extension   |
+
+The PID row is everything that reaches `Patient`, and PID-5 and PID-11 contribute their first
+repetition only. PID-13 and PID-14 (telecom) are not mapped and raise one `TRANSFORM_ELEMENT_DROPPED`.
+Every other PID field is dropped with no issue, among them PID-10 race, PID-15 primary language,
+PID-19 SSN, PID-22 ethnic group, PID-29 death date and time and PID-30 death indicator. So a
+`Patient` from a PID that records a death has no `deceased[x]`, and nothing in `issues` says so: read
+those fields from the parsed message if you need them.
 
 An allergy is a field a downstream system may act on before prescribing, so the AL1 rows are read
 strictly. `clinicalStatus` is the `active` the IG assigns (its constraint ait-1 needs one, and no AL1
@@ -276,7 +283,7 @@ import { toV2Patient } from "@cosyte/transform";
 
 const { resource } = parseResource(patientJson);
 const { value, issues } = toV2Patient(resource, "A28", {
-  assigningAuthorities: { "urn:oid:1.2.840.114350": "HOSP" },
+  assigningAuthorities: { "urn:oid:2.16.840.1.113883.19": "HOSP" },
   envelope: { sendingApp: "EHR", sendingFacility: "MAIN" },
 });
 // value.toString() -> "MSH|^~\\&|EHR|MAIN|...|ADT^A28|...\rPID|||MRN1||Public^Jane\r"

@@ -33,7 +33,7 @@ import { invertCodeMap, type V2Components } from "./v2.js";
  * ```ts
  * import { toV2Patient } from "@cosyte/transform";
  * const options = {
- *   assigningAuthorities: { "urn:oid:1.2.840.114350": "HOSP" },
+ *   assigningAuthorities: { "urn:oid:2.16.840.1.113883.19": "HOSP" },
  *   envelope: { sendingApp: "EHR", sendingFacility: "MAIN" },
  * };
  * void options;
