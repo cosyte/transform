@@ -67,8 +67,8 @@
   },
   "prettier": "@cosyte/prettier-config",
   "peerDependencies": {
-    "@cosyte/fhir": ">=0.0.0",
-    "@cosyte/hl7": ">=0.0.0"
+    "@cosyte/fhir": "^0.1.0",
+    "@cosyte/hl7": "^0.1.0"
   },
   "scripts": {
     "build": "tsup",
