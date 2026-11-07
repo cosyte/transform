@@ -409,6 +409,10 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
  * `examples` holds the runnable example programs, which carry inline v2
  * segments like the test fixtures do, so the walk reads them on every run.
  *
+ * `.claude` holds the agent settings file that enables the Cosyte crew bundles. It
+ * carries no message content, and the walk reads it like every other tracked
+ * file rather than excusing it.
+ *
  * ▶ WIDEN BY UNION, NEVER BY REPLACEMENT. Each entry here is "in addition to";
  * the previous list (`test/fixtures` + `src`) is a strict SUBSET of this one, so
  * nothing the walk opened before can stop being opened.
@@ -434,6 +438,7 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
  */
 const WALK_ROOT_NAMES = [
   ".changeset",
+  ".claude",
   ".github",
   "docs-content",
   "documentation",

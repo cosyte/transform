@@ -3,8 +3,7 @@
 **What this is.** The long-form narrative that used to live in `CLAUDE.md`: the per-incident
 sections, the shipped-phase history, and the long rationales behind the guardrails. It was relocated
 here on **2026-08-04** under `CLAUDE-MD-AUDIT`, because `CLAUDE.md` is always-read by every worker
-that `cd`s into this repo and the per-worker token cost is paid on every session (umbrella ADR 0023,
-amendment 2026-08-04).
+that `cd`s into this repo and the per-worker token cost is paid on every session.
 
 **Relocated, not deleted.** The narrative below is the CLAUDE.md text **verbatim**: nothing was
 softened, summarised, or dropped. Be precise about what that claim covers, because this file's whole
@@ -461,8 +460,8 @@ never resolves that peer. A green `attw` has never meant a consumer can install 
 **This is a per-repo script.** It was ported here from `terminology`'s graded fix (terminology#28,
 `bf153cb`); siblings that still invoke the CLI directly still carry the defect, and the prose does
 **not** port with the code: every number above was re-measured on this package. Derive who is
-left rather than writing a count down:
-`rg -l --glob '**/package.json' '"attw":' /workspace`.
+left rather than writing a count down, from the umbrella checkout's root:
+`rg -l --glob '**/package.json' '"attw":' .`.
 
 ## The PHI scanner guardrail, in full
 

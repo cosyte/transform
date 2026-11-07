@@ -13,5 +13,8 @@ Add a changeset for every meaningful change:
 pnpm changeset
 ```
 
-During pre-alpha, pick **patch**: that keeps the package on the `0.0.x` ladder until its first
-alpha. See the Cosyte version ladder in the meta-repo's `documentation/conventions.md`.
+The package is on the 0.1 line. Below 1.0, pick **minor** for a breaking change (renaming or
+removing an export, an option, a result shape or an issue code), which the changeset calls out,
+and **patch** for a fix that changes no emitted value, as the 0.1.0 entry in `CHANGELOG.md`
+promises. The release rules every Cosyte package follows are in the umbrella's
+`plans/standards.md` (ST16 and ST35).
