@@ -211,13 +211,13 @@ function trackedPaths(): Set<string> {
  *
  * Lowercase; drop everything that is not a letter, a number, a space, `_` or `-`; then
  * spaces to `-`. Note what that does and does not keep: backticks, commas and parentheses
- * are DROPPED, and so is the EN DASH, so `## Shipped-phase history (Phases 1–6)` slugs to
- * `shipped-phase-history-phases-16`, not `...phases-1-6`. Getting that wrong would make
+ * are DROPPED, and so is the EN DASH, so `## Shipped-phase history (Phases 1`, an en dash,
+ * then `6)` slugs to `shipped-phase-history-phases-16`, not `...phases-1-6`. Getting that wrong would make
  * this gate red on a pointer that works, which is worse than not having the gate.
  *
  * ▶ EACH SPACE BECOMES ITS OWN HYPHEN. RUNS ARE NOT COLLAPSED, AND THAT IS THE WHOLE
- * DIFFERENCE BETWEEN THIS AND A PLAUSIBLE-LOOKING SLUGGER. `## Branch protection – and the
- * limits` has a space either side of a dropped mark; the mark goes and TWO spaces remain,
+ * DIFFERENCE BETWEEN THIS AND A PLAUSIBLE-LOOKING SLUGGER. `## Branch protection`, a spaced
+ * en dash, then `and the limits` has a space either side of a dropped mark; the mark goes and TWO spaces remain,
  * so GitHub emits `branch-protection--and-the-limits` with a DOUBLE hyphen. A first version
  * of this function collapsed the run, and a refuter measured both harms against GitHub's own
  * renderer (`POST /markdown`) and against `github-slugger`: it passed a pointer that is DEAD

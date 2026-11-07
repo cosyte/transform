@@ -46,7 +46,7 @@ never a guessed value; an absent, flagged element is usually a cited decision, n
 
 ## Rules, each from a recorded failure linked on its line
 
-- Adding a segment must not change what a message without it produces, bundle or issues: an ungated PV1-20 declaration did during #46, and `test/messages/to-fhir.test.ts` now pins it (documentation/agent-notes.md#shipped-phase-history-phases-16).
+- Adding a segment must not change what a message without it produces, bundle or issues: an ungated PV1-20 declaration did during #46, and `test/messages/to-fhir.test.ts` now pins it (documentation/agent-notes.md#shipped-phase-history-phases-1-to-6).
 - On the FHIR to v2 path, a v2-required field with no source stays absent and raises `TRANSFORM_V2_REQUIRED_FIELD_ABSENT`, never a default: the first cut in #38 returned no issue at all (documentation/agent-notes.md#the-reverse-direction-and-what-it-does-not-claim).
 - Never write a version or publish state by hand, in prose or code; derive it with `npm view @cosyte/transform version`: `VERSION` shipped as `"0.0.0"` on every release until #22, and the README called a published package unpublished until #17 (documentation/agent-notes.md#publish-state-and-the-stale-claim-inside-it).
 - Never hand-edit `CHANGELOG.md`: the release writes it from each `.changeset/` summary, and a hand-kept `[Unreleased]` heading shipped published code labelled unreleased until #28.
@@ -55,4 +55,4 @@ never a guessed value; an absent, flagged element is usually a cited decision, n
 - `README.md`, `docs-content/`, JSDoc and diagnostic message strings carry no item IDs, phase names, ADR numbers or private repo paths: #11 swept them off every consumer surface and `pnpm check:no-internal-refs` keeps them off (documentation/agent-notes.md#no-internal-project-bookkeeping-on-a-public-surface-in-full).
 - `pnpm check:agent-notes` checks this file against `documentation/agent-notes.md`: keep `@cosyte/transform` in the title above and a pointer here to every `##` section there, since a copy of this file was once rewritten to name another package (#29; documentation/agent-notes.md#the-agent-instruction-contract-gate-in-full).
 - Take `@cosyte/hl7` and `@cosyte/fhir` from the registry as devDependencies, never as a tarball under `vendor/`: the vendored parser sat nine releases behind with nothing watching it until #39 (documentation/agent-notes.md#dependency-watching).
-- Count dashes with `pnpm check:no-emdash` (em dash only) or Python over raw bytes, never `grep`: `grep` printed nothing for the pattern and the count read 0, which is how the first census came up short (#33; documentation/agent-notes.md#no-em-dash-anywhere).
+- Count dashes with `pnpm check:no-emdash` (em and en dash) or Python over raw bytes, never `grep`: `grep` printed nothing for the pattern and the count read 0, which is how the first census came up short (#33; documentation/agent-notes.md#no-em-dash-anywhere).

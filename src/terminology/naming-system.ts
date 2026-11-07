@@ -67,7 +67,7 @@ export interface NamingSystemRegistry {
   readonly resolveCodeSystem: (mnemonic: string) => string | undefined;
 }
 
-/** A syntactically-valid ISO OID: dot-separated arcs, first arc 0–2, no leading zeros on multi-digit arcs. */
+/** A syntactically-valid ISO OID: dot-separated arcs, first arc 0 to 2, no leading zeros on multi-digit arcs. */
 function isOid(value: string): boolean {
   return /^[0-2](\.(0|[1-9]\d*))+$/.test(value);
 }
