@@ -6,6 +6,8 @@ Implementation Guide (the IG), plus a narrow FHIR to v2 path back. It sits above
 libraries and never parses bytes; we publish it to npm (MIT) with both siblings as peers and no
 third-party runtime dependencies.
 
+@AGENTS.md
+
 ## Gate
 
 From the repo root, in this order: the steps of `.github/workflows/ci.yml` (the shared

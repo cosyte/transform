@@ -2,6 +2,7 @@
 id: troubleshooting
 title: Troubleshooting
 sidebar_position: 1
+description: "Why a value or element is missing from the output, whether diagnostics are safe to log, and the known limitations."
 ---
 
 # Troubleshooting
@@ -52,7 +53,7 @@ would read as an open regimen the message never authorized.
 ## My TQ1 free-text instruction didn't reach the resource
 
 TQ1-10 and TQ1-11 are `TX`, a v2 primitive with no component structure, so they are read **whole**:
-a raw `^`, `&` or `~` inside one is content, and a taper written `2 tabs^then 1 tab` arrives intact
+a raw `^`, `&`, or `~` inside one is content, and a taper written `2 tabs^then 1 tab` arrives intact
 rather than truncated at the first delimiter. That holds when the delimiters are all the row
 carries: `^&~` is the same characters as `^leading` with the letters removed, and it arrives as the
 text it is rather than vanishing. Three cases still write nothing. An **absent** field
@@ -75,10 +76,11 @@ resource values; those carry PHI.
   ORU^R01 → DiagnosticReport + Observation, ORM_O01 / OML_O21 → ServiceRequest and
   RXO → MedicationRequest, and the thin IG singles VXU_V04 → Immunization, SIU_S12 →
   Appointment, and MDM_T02 → DocumentReference. An AL1 in any of them becomes an
-  AllergyIntolerance, a DG1 a Condition, a PR1 a Procedure and an IN1 a Coverage, and a TQ1
+  AllergyIntolerance, a DG1 a Condition, a PR1 a Procedure, and an IN1 a Coverage; a TQ1
   accompanying an order becomes that order's schedule. The v2→FHIR
-  direction is feature-complete for the IG-covered message set; terminology depth and profiles are
-  not implemented.
+  direction covers these families but not every field their segment maps ground (see
+  [A field I expected is missing from the output](#a-field-i-expected-is-missing-from-the-output));
+  terminology depth and profiles are not implemented.
 - **Schedule scope: TQ1 only, and four of its repeat-pattern components.** A TQ1 on an order group
   builds `dosageInstruction.timing` on a MedicationRequest and `occurrenceTiming` on a
   ServiceRequest, from TQ1-3's repeat-pattern code (HL70335), period quantity, period units and
@@ -95,10 +97,10 @@ resource values; those carry PHI.
   published table, or was sent under a coding system that is not that table (a site's local `AC` is
   not asserted to be the published "before meal" concept); a period arrives without its units, or
   written with a minus sign (R4's `tim-2` and `tim-5` reject both); a field narrows the schedule
-  (TQ1-4, TQ1-5, TQ1-6, TQ1-12, TQ1-13, TQ1-14, each needing a rescale, an invented date or an
+  (TQ1-4, TQ1-5, TQ1-6, TQ1-12, TQ1-13, TQ1-14, each needing a rescale, an invented date, or an
   unbuilt element); a bound is unusable or inverted; or more than one TQ1 accompanies one order, or
   one TQ1-3 carries more than one repeat pattern. A repetition of TQ1-3 that carries no value is not
-  a second pattern: `Q4H~`, `~Q4H` and a second repetition the sender explicitly nulled each send
+  a second pattern: `Q4H~`, `~Q4H`, and a second repetition the sender explicitly nulled each send
   one schedule, and it is read from whichever repetition carries it.
   TQ1-2 and TQ1-9 are the exception: they are flagged and the schedule still ships, because the dose
   and the priority already come from the RXO/OBR path and are left exactly as they were.
@@ -116,8 +118,8 @@ resource values; those carry PHI.
   that grounds no allergen code and no allergen text. AL1-6 is read as `onsetDateTime` only for a
   message whose version identifier is readable and earlier than 2.7, the version that withdrew the
   field; on 2.7 or later, or when the version cannot be read, it is dropped and flagged.
-- **Diagnosis, procedure and coverage scope: what the three segment maps ground, and no more.** A
-  DG1 becomes a Condition, a PR1 a Procedure and an IN1 a Coverage, each wired to the bundle
+- **Diagnosis, procedure, and coverage scope: what the three segment maps ground, and no more.** A
+  DG1 becomes a Condition, a PR1 a Procedure, and an IN1 a Coverage, each wired to the bundle
   Patient; with no Patient in the bundle every one of them is withheld and declared
   `TRANSFORM_ELEMENT_DROPPED`, naming the occurrence and the reference it could not anchor.
   **`Coverage.status` is never asserted.** No published row of the IN1 map grounds one, and R4's
@@ -144,7 +146,7 @@ resource values; those carry PHI.
   one more, for the `EpisodeOfCare` its diagnoses are not tied to. **The visit's financial class
   (PV1-20) is declared only on an insured message**: the guide routes that field into the same
   `Coverage` an IN1 creates, so a message carrying both gets a `TRANSFORM_ELEMENT_DROPPED` naming
-  it, while a message carrying no DG1, PR1 or IN1 gains nothing at all and produces exactly the
+  it, while a message carrying no DG1, PR1, or IN1 gains nothing at all and produces exactly the
   bundle and issue list it produced before.
 - **Reverse (FHIR → v2) scope: two shapes, deliberately.** `toV2Patient` emits an `ADT`-shaped
   message carrying a `PID`, `toV2Observation` an `ORU`-shaped message carrying an `OBX`. Both
@@ -176,11 +178,11 @@ resource values; those carry PHI.
   never interpreted.
 - **ORU scope**: `DiagnosticReport.category` is not defaulted (the IG segment map sets none; it is
   realm-dependent), the results graph uses the first PID/PV1 (multiple patient result groups are not
-  handled), and OBR performers, the OBR-sourced specimen row and `basedOn` ServiceRequest are
+  handled), and OBR performers, the OBR-sourced specimen row, and `basedOn` ServiceRequest are
   deferred. An OBX value type with no settled FHIR `value[x]` (`RP`, whose extension target the guide
   itself marks unresolved, and any type the guide does not map) preserves the raw value as
-  `valueString` and flags it, never a fabricated typed value. `DR`, `NR`, `TM` and `NA` reach
-  `valuePeriod`, `valueRange`, `valueTime` and `valueSampledData`, and an `ED` whose OBX-5.4 is
+  `valueString` and flags it, never a fabricated typed value. `DR`, `NR`, `TM`, and `NA` reach
+  `valuePeriod`, `valueRange`, `valueTime`, and `valueSampledData`, and an `ED` whose OBX-5.4 is
   `Base64` reaches the guide's named `valueAttachment` extension with its payload carried
   byte-for-byte, undecoded; each of them still falls back to the raw text plus a flagged drop when the
   value cannot be carried faithfully (a `TM` with a UTC offset, a magnitude FHIR `decimal` cannot hold
