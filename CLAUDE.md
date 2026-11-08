@@ -11,15 +11,15 @@ siblings as peers and no third-party runtime dependencies.
 
 Required: `ci / verify (22, ubuntu-latest)`, `ci / verify (24, ubuntu-latest)`, `ci / actionlint`,
 `codeql / analyze (javascript-typescript)`, `no-internal-refs / public-surface` and
-`no-emdash / tracked-files`; CI also runs Node 26, `examples` and `pr-title`. From the repo root, in
-CI order, with the pnpm that `packageManager` pins first on PATH (scripts call a bare `pnpm`):
+`no-emdash / tracked-files`; CI also runs Node 26, `examples`, `standards` and `pr-title`. In order:
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm typecheck && pnpm lint && pnpm format:check && pnpm phi-scan
 pnpm test && pnpm test:coverage && pnpm build && pnpm attw
 pnpm typecheck:examples && pnpm lint:examples && pnpm examples && pnpm phi-scan:examples
-pnpm check:no-emdash && pnpm ci:no-internal-refs
+pnpm check:readme && pnpm check:claude-card && pnpm check:agent-notes && pnpm check:catalog
+pnpm check:no-emdash && pnpm check:no-internal-refs
 ```
 
 What they prove: documentation/agent-notes.md#branch-protection-and-the-limits-of-this-claim
@@ -43,8 +43,8 @@ never a guessed value; an absent, flagged element is usually a cited decision, n
   documentation/agent-notes.md#publish-state-and-the-stale-claim-inside-it
 - Never hand-edit `CHANGELOG.md`; the release writes it from `.changeset/`. A hand-kept
   `[Unreleased]` heading shipped published code labelled unreleased until #28.
-- `pnpm attw` runs `scripts/attw.mjs`, never the bare `attw` CLI, which exits 0 on a tarball with
-  no types (#19). documentation/agent-notes.md#the-attw-guardrail-in-full
+- `pnpm attw` runs `cosyte-attw`, never the bare `attw` CLI, which exits 0 on a tarball with no
+  types (#19). documentation/agent-notes.md#the-attw-guardrail-in-full
 - `scripts/phi-scan.ts` refuses, never passes, over a file it did not read: a missing root, a
   symlink and an honored `--allow-fixture` each printed clean (#35, #21, #44).
   documentation/agent-notes.md#the-phi-scanner-guardrail-in-full

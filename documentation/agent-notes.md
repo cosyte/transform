@@ -315,8 +315,9 @@ the rest of this section is the record as it stood before. The rules are `deleti
 shared gate workflows, which is why the context reads `no-internal-refs / public-surface` rather
 than `no-internal-refs`, and every shared workflow is called at one published `workflows-*`
 reference rather than `@main`, so a changed upstream default reaches this repository only when that
-reference moves. `ci / verify (26, ubuntu-latest)` and `pr-title / conventional-commits` run on
-every pull request and are not required.
+reference moves. `ci / verify (26, ubuntu-latest)`, `standards` (the house checks from
+`@cosyte/script-utils`) and `pr-title / conventional-commits` run on every pull request and are not
+required.
 
 `main` is protected by the repository ruleset **`ci-required-checks`** (id `19914044`,
 `source_type: Repository`, `enforcement: active`, conditions `~DEFAULT_BRANCH`, `bypass_actors: []`).
@@ -449,34 +450,23 @@ holds `.mjs`/`.cjs` and no `.d.ts`; measured at **1,600 / 1,646 / 2,018 ms** ove
 consecutive quiet-box builds, polling every 5 ms. A concurrent build or `clean` in the same
 working tree lands `attw` in it. So the answer is **not** a lock, a lease or a build queue: the
 gate must be able to say its own inputs were missing, whatever removed them.
-`scripts/attw.mjs` carries **two nets, and they catch different things**: a preflight that every
-relative path `package.json` promises (`main`, `module`, `types`, `typings`, every string leaf of
-`exports`) exists and is non-empty, which catches the build window and _names the missing file_;
-and a post-check on `attw`'s untyped sentence, which catches what the preflight structurally
-cannot, namely declarations present on disk but excluded from the tarball by `files`/`.npmignore`.
-**No instance of that second case is on record in this repo.** `test/scripts/attw-gate.test.ts`
-pins both nets against the real binary, including the upstream exit-0 itself, so an `attw` upgrade
-that reworks the wording or fixes the exit code reds the suite instead of letting the net go
-quietly slack. It also pins a **negative control** on a well-formed package, and that a real
-`attw` failure still fails with `attw`'s own status: a gate that only ever fails is not a gate,
-and one that swallows the status is not one either. Reducing the wrapper to the bare CLI reds 10
-of its 13 tests; that is how the suite was checked for bite rather than assumed to have it.
-**The post-check reads a string, so what would hide that string is refused**, not tolerated.
-**Three routes were measured here** to hand back exit 0 over an untyped pack: `--quiet`,
-`--format json`, and a `.attw.json` setting either (`readConfig()` applies it after argv).
-`--config-path` is refused too, but **by inference, not measurement**. The refusal is **by option
-name, wholesale, not by value**: a harmless `--format` value blinds nothing and is refused
-anyway, which is the deliberate trade against value-parsing them.
-**Two limits of a green here.** A **complete but stale `dist/`** passes both nets (not live today
-only because the ladder runs `build` before `attw`); and this package's unpublished
-`@cosyte/fhir` peer is **not** something `attw` speaks to: measured, a good pack reports "No
-problems found" and exits 0, identically with `node_modules/@cosyte/fhir` moved aside, so `attw`
-never resolves that peer. A green `attw` has never meant a consumer can install the peer.
-**This is a per-repo script.** It was ported here from `terminology`'s graded fix (terminology#28,
-`bf153cb`); siblings that still invoke the CLI directly still carry the defect, and the prose does
-**not** port with the code: every number above was re-measured on this package. Derive who is
-left rather than writing a count down, from the umbrella checkout's root:
-`rg -l --glob '**/package.json' '"attw":' .`.
+**The gate is the shared one now.** `pnpm attw` runs `cosyte-attw`, the attw gate in
+`@cosyte/script-utils`, for the package in the working directory and on attw's default profile
+(this package declares no `scripts/attw.exclude`). It replaced the local `scripts/attw.mjs` and its
+13-test suite, which git history keeps; the shared gate's four nets (a preflight over every path
+`package.json` promises, attw's own JSON document rather than its prose, npm's pack listing, and
+the manifest pnpm would publish) and the measurements behind each are in that module's docblock,
+`attw.js`, and are not restated here. **Measured on this package when it moved:** a full build
+passes, and with `dist/index.d.ts` and `dist/index.d.cts` removed, or with no `dist/` at all, it
+exits 1 and names the missing files instead of running attw. The local script had two nets, the
+preflight and a post-check on the untyped sentence, and refused `--quiet`, `--format json` and a
+`.attw.json` setting by option name; the shared gate goes further and forwards an allow-list of
+two arguments only, so nothing a caller passes can blind it.
+**Two limits of a green here.** A **complete but stale `dist/`** passes (not live today only
+because the ladder runs `build` before `attw`); and the `@cosyte/fhir` peer is **not** something
+`attw` speaks to: measured, a good pack reports "No problems found" and exits 0, identically with
+`node_modules/@cosyte/fhir` moved aside, so `attw` never resolves that peer. A green `attw` has
+never meant a consumer can install the peer.
 
 ## The PHI scanner guardrail, in full
 
@@ -917,13 +907,13 @@ the published text, not on the published text.
 
 ## The agent-instruction contract gate, in full
 
-**What checks the contract now.** `pnpm check:agent-notes` runs the shared checker from
-`@cosyte/script-utils` (`node node_modules/@cosyte/script-utils/agent-notes.js`), and
-`pnpm ci:no-internal-refs` runs it after the public-surface gate inside the required
-`no-internal-refs / public-surface` job, which installs from the lockfile before it runs the
-command. It replaced this repository's own checker, `scripts/check-agent-notes.ts` with its suite
-`test/scripts/agent-notes-contract.test.ts`, when this card was brought to the house card spec; git
-history keeps both, and the measurements behind them.
+**What checks the contract now.** `pnpm check:agent-notes` runs `cosyte-agent-notes`, the shared
+checker from `@cosyte/script-utils`, and `pnpm check:claude-card` runs `cosyte-claude-card`; both
+run in ci.yml's `standards` job, beside the README and catalog checks. That job is not a required
+context until ruleset `19914044` names it, so until then a red there is visible and does not block
+a merge. The shared checker replaced this repository's own, `scripts/check-agent-notes.ts` with its
+suite `test/scripts/agent-notes-contract.test.ts`, when this card was brought to the house card
+spec; git history keeps both, and the measurements behind them.
 
 **What the shared checker refuses.** A notes directory instead of this one file; a blank notes file
 or an empty section; a pointer in any tracked file (the card, this file, a test, a script) whose
@@ -932,7 +922,7 @@ card pointer written in any form but `documentation/agent-notes.md#<anchor>`; a 
 never points into; and a citation of the deleted umbrella decision that once set the card's budget,
 or of its hook. The card itself is held to the house card spec (a title and a paragraph, then
 `## Gate`, `## Hazard` and `## Rules`, at most 60 lines of at most 100 characters and 5,120 bytes)
-by `@cosyte/script-utils/claude-card`, which CI does not run yet.
+by `cosyte-claude-card`.
 
 ### What the old checker enforced that the shared one does not
 
@@ -994,8 +984,8 @@ fatal code, no type and no documented behaviour changed.**
 taken with a broken scanner and was low in every repository it touched. In the agent containers
 `grep` is a shell **function** that forces `-I` and `--ignore-files`, and under `xargs` it is
 bypassed for `/usr/bin/grep`, which in the container's empty locale **fails at exit 2 and prints
-nothing** for `-P '\x{2014}'`. Piped to `wc -l` that reads `0`. Re-derive every figure here before
-acting on it.
+nothing** for a `-P` pattern naming the em dash by its codepoint. Piped to `wc -l` that reads `0`.
+Re-derive every figure here before acting on it.
 
 ### The one runtime string, and why it moved by hand first
 
