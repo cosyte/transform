@@ -15,12 +15,15 @@ measured it, and it is scoped rather than deleted.) Of those seven: **two headin
 (`Branch protection…`, `Dependency watching`) are the originals carried across whole; **four** are new
 headings over relocated bodies that were bullets in `CLAUDE.md`'s `Status`, `Engineering Guardrails`
 and `Standing disciplines` sections; and **one** (`Publish state, and the stale claim inside it`) is
-mostly **newly written on 2026-08-04**, with the relocated original quoted inside it as a blockquote. Every `##` section heading is a pointer
-target from `CLAUDE.md`, and the contract gate keeps that true. **`###` subsections inside them are
-deliberately NOT pointer targets**: requiring one would force the always-read file to grow a line per
-subsection, which is what its byte ratchet exists to prevent. This sentence read "Every heading" until
-2026-08-06, when adding the first `###` headings here made that literally false; it is narrowed to
-what is checked rather than left as a claim nothing holds up.
+mostly **newly written on 2026-08-04**, with the relocated original quoted inside it as a blockquote.
+Every `##` section heading is a pointer target from `CLAUDE.md`. **No gate keeps that true any
+more**: the shared checker that replaced this repository's own resolves every pointer but does not
+require one per section, so add the card line in the same change as the section (see
+[the contract gate](#the-agent-instruction-contract-gate-in-full)). **`###` subsections inside them
+are deliberately NOT pointer targets**: requiring one would force the always-read card to grow a
+line per subsection, against its limits of 60 lines and 5,120 bytes. This sentence read "Every
+heading" until 2026-08-06, when adding the first `###` headings here made that literally false; it
+is narrowed to what holds rather than left as a claim nothing holds up.
 
 `CLAUDE.md` keeps the cursor, the rules, and **every** trap as a one-line imperative that points back
 here. If a one-liner there and a paragraph here ever disagree, **this file is the measurement** and
@@ -302,6 +305,18 @@ not recorded here. This reading carries a date like every other one above, and g
 way: derive it with the commands above rather than trusting it.
 
 ## Branch protection (and the limits of this claim)
+
+**Current state, read 2026-11-08 (UTC)** with `gh api repos/cosyte/transform/rulesets/19914044`;
+the rest of this section is the record as it stood before. The rules are `deletion`,
+`non_fast_forward`, `pull_request` (zero approving reviews), `required_linear_history` and
+`required_status_checks`, and six contexts are required: `ci / verify (22, ubuntu-latest)`,
+`ci / verify (24, ubuntu-latest)`, `ci / actionlint`, `codeql / analyze (javascript-typescript)`,
+`no-internal-refs / public-surface` and `no-emdash / tracked-files`. The gate callers now run the
+shared gate workflows, which is why the context reads `no-internal-refs / public-surface` rather
+than `no-internal-refs`, and every shared workflow is called at one published `workflows-*`
+reference rather than `@main`, so a changed upstream default reaches this repository only when that
+reference moves. `ci / verify (26, ubuntu-latest)` and `pr-title / conventional-commits` run on
+every pull request and are not required.
 
 `main` is protected by the repository ruleset **`ci-required-checks`** (id `19914044`,
 `source_type: Repository`, `enforcement: active`, conditions `~DEFAULT_BRANCH`, `bypass_actors: []`).
@@ -902,209 +917,54 @@ the published text, not on the published text.
 
 ## The agent-instruction contract gate, in full
 
-**What it is.** `scripts/check-agent-notes.ts`, run as `pnpm check:agent-notes`, plus
-`test/scripts/agent-notes-contract.test.ts`. It checks the two-file agent-instruction split that
-landed across the fleet on **2026-08-04**: an always-read `CLAUDE.md` carrying the cursor, the
-rules and every trap as a one-line imperative with a pointer, and this on-demand file carrying the
-narrative those imperatives point at. The relocation took the tree from **1,327,773 to 527,428
-bytes**, roughly **200K tokens off every worker**. Nothing checked that the contract held. This
-does, for this repo, in this repo's own CI, so it costs the umbrella's automation plane nothing.
+**What checks the contract now.** `pnpm check:agent-notes` runs the shared checker from
+`@cosyte/script-utils` (`node node_modules/@cosyte/script-utils/agent-notes.js`), and
+`pnpm ci:no-internal-refs` runs it after the public-surface gate inside the required
+`no-internal-refs / public-surface` job, which installs from the lockfile before it runs the
+command. It replaced this repository's own checker, `scripts/check-agent-notes.ts` with its suite
+`test/scripts/agent-notes-contract.test.ts`, when this card was brought to the house card spec; git
+history keeps both, and the measurements behind them.
 
-**Why prose needed a gate here of all places.** This repo's own text says that prose no test can
-check is exactly the shape that was wrong before. Three ways the split rots with every existing
-gate still green, none of which lint, coverage, `attw`, the PHI scan or the public-surface gate can
-see: the archive is deleted or renamed and `CLAUDE.md` keeps eight pointers into nothing; a section
-is emptied while its heading stays, so every pointer resolves and the measurement is gone; a
-heading is reworded, and because GitHub renders a dead `#fragment` as the **top of the file**, the
-reader lands on prose and does not notice it is the wrong prose.
+**What the shared checker refuses.** A notes directory instead of this one file; a blank notes file
+or an empty section; a pointer in any tracked file (the card, this file, a test, a script) whose
+anchor names no heading here, slugged the way GitHub slugs it, and no explicit `<a id>` target; a
+card pointer written in any form but `documentation/agent-notes.md#<anchor>`; a notes file the card
+never points into; and a citation of the deleted umbrella decision that once set the card's budget,
+or of its hook. The card itself is held to the house card spec (a title and a paragraph, then
+`## Gate`, `## Hazard` and `## Rules`, at most 60 lines of at most 100 characters and 5,120 bytes)
+by `@cosyte/script-utils/claude-card`, which CI does not run yet.
 
-### The seven rules
+### What the old checker enforced that the shared one does not
 
-- **R1 existence**: both contract files are tracked in `git ls-files` and non-empty.
-- **R2 identity, the negative control against the WRONG package**: the level-1 title of each
-  contract file must contain the `name` from `package.json`. Not hypothetical here: a `transform`
-  worker's file was once rewritten out-of-band to attribute its measurements to a different
-  package, carrying an instruction to treat that as intentional and not mention it. The worker
-  refused, corrected the file and reported it. A gate should not need a worker to be vigilant.
-- **R3 declared sections are non-empty**: every heading below level 1, in **both** files, has a
-  body. Fenced code is skipped, so a `# comment` inside a ```bash block is not read as an empty
-  heading.
-- **R4 anchor pointers resolve**: every `<file>.md#<anchor>` in either file, written as a markdown
-  link, inside backticks, or bare in a sentence (all three shapes are live in `CLAUDE.md`, so
-  keying on markdown links alone would see one of eight). Slugging follows GitHub's algorithm, and
-  the detail that matters is that the **en dash is dropped, not converted**:
-  `## Shipped-phase history (Phases 1`, an en dash, then `6)` slugs to
-  `shipped-phase-history-phases-16`. Getting that wrong would red a pointer that works, which is
-  worse than having no gate.
-- **R5 no orphan sections**: every `##` here is the target of at least one pointer from
-  `CLAUDE.md`. This file's own preamble makes that claim; R5 is what keeps it true.
-- **R6 file pointers resolve**: every in-repo path token in `CLAUDE.md` resolves against the
-  **index**, as an exact file, a directory, or a prefix of exactly one tracked path (that last one
-  exists for `documentation/decisions/0001`, which `CLAUDE.md` names by ADR number).
-- **R7 the external allowlist cannot rot**: `documentation/conventions.md` and
-  `documentation/repos/transform.md` are declared external because they live in the meta-repo. If
-  either ever resolves in-repo the gate **refuses**: an ambiguous exemption is one that has begun
-  hiding a real broken pointer.
+Four of its rules have no counterpart in the shared checker. Until they gain one, keep them by hand:
 
-### Existence is not observation
+- **Both titles name this package** (its R2, keyed on `package.json`'s `name`). Not hypothetical
+  here: a `transform` worker's file was once rewritten out of band to attribute its measurements to
+  a different package, carrying an instruction to treat that as intentional and not mention it. The
+  worker refused, corrected the file and reported it (#29).
+- **Every `##` section here has a pointer from the card** (its R5). The preamble makes that claim.
+- **Every path the card names resolves to a tracked file** (its R6), read against the index, so a
+  card that names a deleted script is caught.
+- **An anchor into any other tracked markdown resolves** (its R4 covered `<file>.md#<anchor>` from
+  either file; the shared checker resolves anchors into this file only).
 
-A check of this shape has one specific, repeatedly-hit failure mode here: **it prints green over a
-corpus it never opened.** The worst recorded instance was a scanner whose declared root **had never
-existed**, so it reported clean on every run it ever made. **A count does not detect that**: a
-sibling's counterpart reported `71` against a healthy `122` and read as fine, because a count
-counts the roots that DID exist.
+### What still holds from building the old checker
 
-So every read goes through `readObserved()`, which records the path, and `reconcile()` compares
-what was opened against `git ls-files`: the index, not the directory entries, so the two cannot
-fail the same way. It refuses on: nothing opened at all; a contract file tracked but never opened;
-a file opened that git does not carry; and `git ls-files` answering **emptily**, which counts as no
-answer rather than as an empty repository. **Exit `2` means the gate could not decide; exit `1`
-means violations were found**: the PHI scanner's split, load-bearing for the same reason it is
-there, because an uncaught throw lands on node's `1` and a caller would read a gate that never ran
-as one that ran and fired.
-
-### What was measured, not asserted
-
-- **42 of the suite's 43 tests are red on the parent** (`7f4d59b`), measured by running the suite
-  with `scripts/check-agent-notes.ts` moved aside, not by reading it. The single green one is the
-  corpus-only identity control, which reads the two titles directly and never invokes the gate,
-  and it holding on the parent is the correct result, not a gap.
-- **Red before, green after, one edit apart.** The R4 test rewords a heading (the corpus is RED),
-  then repairs the pointer in `CLAUDE.md` (GREEN). R5 does the same with an orphan section.
-  Nothing else changes between the two runs, so the colour is attributable.
-- **The control that reds when the gate is pointed at nothing**: an initialised git repo with
-  nothing tracked exits **2**, and a directory that is not a git repo at all exits **2**. Neither
-  prints a `✓`.
-- **The R6 recogniser had a hole and a fixture found it, not a reading.** Deriving "is this a path"
-  purely from `git ls-files` means a pointer at `scripts/attw.mjs` in a repo where `scripts/` has
-  been **deleted entirely** is invisible, because the recogniser learns its directories from the
-  index the deletion emptied. That is the same shape as grading a corpus you never opened, one
-  level up. Two index-independent arms close it: a source/doc extension, and a marked token with a
-  trailing slash.
-
-### What the grade found, and what was changed rather than argued
-
-The `conformance-refuter` **REFUTED pass 1** with nine `INTRODUCED` findings, four of them major,
-every one measured rather than reasoned. All nine were fixed. Recorded because several are the kind
-of thing that reads correct and is not:
-
-- **The slug was not GitHub's, and the gate was one heading away from both harms.** It collapsed
-  runs of spaces to a single hyphen; GitHub gives **each space its own hyphen**, so
-  `## Branch protection`, a spaced en dash, then `and the limits` anchors as
-  `branch-protection--and-the-limits`, with a DOUBLE hyphen. Verified against GitHub's own renderer
-  (`POST /markdown`) and `github-slugger`.
-  Measured consequence: a **dead** pointer passed green, and a pointer that **works** was reddened.
-  The mark shown above was a spaced **em** dash when this was written, and that was the house
-  punctuation at the time; the brand sweep of 2026-08-07 removed the character from every tracked
-  file, so the example and the two pinning tests now use a spaced **en** dash instead. `slug()`
-  drops both alike and keeps both surrounding spaces, so the behaviour is unchanged and so is the
-  bite of the tests. **Any dropped mark with a space either side reproduces it**, so do not read the
-  sweep as having retired the trap. Fixed and pinned by two tests.
-- **A check that cannot fail is documentation.** `reconcile()` had every read guarded by a
-  `tracked.has()` pre-check, which made all three of its refusal branches unreachable BY
-  CONSTRUCTION, instrumented and measured at **zero firings across the whole suite**, while
-  `CLAUDE.md` and the changeset both sold the reconciliation as the protection. The pre-checks were
-  removed, not the function: a contract file present on disk but untracked now reads fine and is
-  refused by the reconciliation, which is a branch that genuinely fires and has three fixtures.
-  Two branches remain honest **tripwires for a future edit** and are labelled as that, not counted.
-- **R6 saw two of the three ways an author writes a pointer.** Bare prose was invisible:
-  `The wrapper lives at scripts/attw.mjs.` passed green while the identical token in backticks
-  reddened. Widening it naively then reddened a **correct** corpus in five places (`@cosyte/*`,
-  `(segment/field/component index)`, a line-broken `segment/`, an inline markdown link, and
-  ``absolute/`../` ``), so the bare arm is held to a strict path charset and the directory arm is
-  restricted to marked tokens.
-- **A truncated pointer resolved.** `documentation/agent-notes.m` and `src/index.t` are each a
-  prefix of exactly one tracked path and each 404s on GitHub. The prefix arm now requires the
-  remainder to break at a `-`, `/` or `.`.
-- **A section gutted to a bare `---` counted as having a body.**
-- **The `verify.sh` claim in `CLAUDE.md` was false in the safe direction**: it said the ladder ran
-  neither route. It runs `test:coverage`, which runs the suite, which runs the gate. Corrected.
-- **This diff falsified this file's own preamble.** Adding the first `###` headings here made
-  "Every heading is a pointer target" literally false, in a shape R5 cannot see (it covers `##`).
-  The sentence was narrowed to what is checked, with the date and the reason, rather than left
-  standing.
-- **The changeset put a repo-internal CI gate on the public release page.** Reworded until the real
-  `release-notes.mjs` classifies it **internal-only** and drops it from the body, which is the
-  founder's stated position on gates of this class. Verified by running `prepare`, not by reading
-  the classifier.
-
-**Pass 2 was NOT REFUTED**, with all nine re-derived by running, including the slug, checked against
-GitHub's own renderer over all 26 headings and all 8 pointers, and `reconcile()` re-instrumented
-(branch (c) fires 5 times across the suite, (d) once, (a) and (b) zero, which is exactly what the code
-claims). It raised **four minor prose-accuracy findings, and every one was answered by CORRECTING THE
-CLAIM rather than growing the guard**, the standing rule in this repo, applied a third time:
-
-- The relocation's "2 + 4 + 1 = seven sections, verbatim" accounting was falsified by this diff's own
-  new eighth section. Scoped to the relocation rather than re-counted.
-- R6 sees backticks, link targets and bare prose, **not** a bare path wrapped in emphasis. The
-  charset that rejects the emphasis markers is the same one that keeps `@cosyte/*` out, so the
-  narrowing is deliberate. Disclosed, not widened.
-- Two of three `UNTRACKED_BY_DESIGN` entries were measured **dead**: emptying the map reds on `dist`
-  alone. Deleted. An exemption nothing exercises is a claim nobody checks.
-- R3's thematic-break rule covers `---`, `***`, `___` and not CommonMark's spaced `- - -`. Widening
-  it towards "dashes and spaces" starts competing with list syntax, and a gate that eats a real
-  bullet is worse than one that misses a gutted section.
-
-**A fifth correction came from CI, after both passes, and is recorded because it is the same
-shape.** CodeQL flagged the `slug()` chain HIGH for an **incomplete multi-character sanitisation**:
-a single-pass `<[^>]*>` strip, which is genuinely incomplete. It was **removed rather than
-hardened**: it guarded no HTML sink, and `github-slugger`, the algorithm this function is checked
-against, strips no tags at all, so the line was a deviation from the thing it was imitating.
-Measured before removing it: **no heading in either contract file contains `<` or `>`**, so every
-anchor is byte-identical without it. The resulting behaviour (angle brackets dropped as characters,
-the tag NAME surviving into the anchor) is now disclosed and pinned by a test.
-
-**These four are a SAMPLE OF A CLASS, not a list of four.** The gate reads shapes, so an author's
-punctuation can always hide a pointer and a mutation can always dress up as a body. The honest move
-is to keep the disclosed-limits list accurate, not to chase the class.
-
-### What this gate does NOT cover
-
-- **It proves a heading is POINTED AT. It can never prove the one-liner in `CLAUDE.md` says what
-  the section here says.** The meta-repo's conventions name this exactly: an anchor resolving
-  proves the target exists, never that it says what the sentence promises. The exposed class is the
-  trap phrased as a **deliberate omission** ("is deliberately left alone", "is never the default"),
-  which carries no identifier to grep for. **Enumerate those by hand.**
-- **R6 is `CLAUDE.md`-only, deliberately.** This file is narrative and quotes **illustrative** paths
-  that must never resolve: `src/leak.ts`, `src/linkdir/payload.txt`, `test/fixtures/` are written
-  into throwaway repos under `os.tmpdir()` by the PHI-scanner suite. Requiring them to resolve
-  would push a worker to create them, which is the opposite of what the narrative says. Anchor
-  pointers (R4) are scanned in both files, because `<file>.md#<anchor>` is unambiguous.
-- **It reads the source of the instructions and says nothing about whether an agent followed them.**
-- **It does not gate `CLAUDE.md`'s byte budget.** That ratchet lives in the umbrella's
-  `.claude/hooks/doc-budget.mjs`, and nothing inside this repository can observe it: the same
-  limit already recorded here for the branch ruleset. **Never quote the number in a repo file.**
-- **It does not verify the 2026-08-04 relocation was verbatim.** That was a one-time property of
-  the move; there is no pre-move text here to diff against.
-- **Setext (`===`/`---` underline) headings are not parsed.** Neither contract file uses them and
-  inventing support for a shape the repo does not have is how a gate acquires rules nobody asked
-  for. Add one and this gate will not see it.
-
-### Where it runs, and the one place it does not
-
-Two invocation paths, **pinned to agree by a test** rather than by a comment: `pnpm
-check:agent-notes` runs it through `tsx` (the engine floor is Node 22), and the `no-internal-refs`
-job runs the same file through bare `node` on 24, where type stripping is native and no install is
-needed. That test skips below Node 24 and says so; the CI matrix runs 22 **and** 24, so the 24 leg
-always takes it.
-
-It is enforced **two independent ways on purpose**. The suite runs inside `ci / verify`, which is
-required, but that route inherits this repo's documented **"the gate can leave the job"** hole
-verbatim: the `include` glob in `vitest.config.ts` and the `test`/`test:coverage` script bodies in
-`package.json` can each drop the suite with the job still green and the ruleset still satisfied.
-The `no-internal-refs` step depends on neither, so **the two routes cannot be removed by the same
-edit.** It rides in that already-required job rather than a new workflow because a required job
-gates all of its steps, so it binds the moment it lands, with no ruleset edit and therefore no
-window in which open PRs strand pending on a context nothing has emitted yet.
-
-**What the umbrella's `scripts/verify.sh` ladder does and does not reach, measured rather than
-assumed.** The ladder is a fixed script-name list. It runs `test:coverage`, whose vitest `include`
-glob picks up `test/scripts/agent-notes-contract.test.ts`, which spawns this gate against the real
-repository root and asserts exit 0, **so route 1 does run locally.** What it does not run is the
-standalone `check:agent-notes` script, which the ladder has never heard of, and its own
-unladdered-script detector fires and says so. **A worker in a submodule cannot fix that**: the fix
-is one name in an umbrella file. An earlier version of this section said `verify.sh` ran neither;
-a refuter measured that false, and the correction stands rather than the claim.
+- **GitHub's slug gives each space its own hyphen.** A heading with a dropped mark between two
+  spaces anchors with a DOUBLE hyphen: `## Branch protection`, a spaced en dash, then
+  `and the limits` anchors as `branch-protection--and-the-limits`, verified against GitHub's own
+  renderer (`POST /markdown`) and `github-slugger`. The shared checker's `slugify` agrees. Any
+  dropped mark with a space either side reproduces it, so a reworded heading is re-slugged by
+  running the checker, never by hand.
+- **Existence is not observation.** A check of this shape fails worst by printing green over a
+  corpus it never opened; the old checker reconciled what it read against `git ls-files` for that
+  reason, and the shared one reads every tracked file and counts what it skips.
+- **A check that cannot fail is documentation.** The old checker's reconciliation once had every
+  refusal branch unreachable by construction while the card sold it as the protection. Instrument a
+  guard before relying on it.
+- **A resolving anchor proves the target exists, never that it says what the card line promises.**
+  The exposed class is the trap phrased as a deliberate omission ("is deliberately left alone", "is
+  never the default"), which carries no identifier to grep for. Enumerate those by hand.
 
 ## No em dash, anywhere
 
@@ -1143,8 +1003,9 @@ acting on it.
 docblocks and asserted by regex in three tests**, so all five sites moved together, by hand,
 **before** any bulk pass ran. A bulk pass that touches a string literal and not its assertion
 desyncs a suite silently, which is how a sibling repository lost 13 assertions in one commit. The
-line now reads `[phi-scan] OK: no hits`. The `check-agent-notes.ts` R5 orphan message changed the
-same way; its test asserts on the token `ORPHAN`, so it did not move.
+line now reads `[phi-scan] OK: no hits`. The old agent-notes checker's R5 orphan message changed
+the same way; its test asserted on the token `ORPHAN`, so it did not move. Both have since been
+replaced by the shared checker.
 
 ### The semantic value, converted before the bulk pass
 
@@ -1156,13 +1017,14 @@ converted by hand first, and to the **true** value rather than to a word: OBR-8 
 
 ### The slug fixtures moved to an en dash, and the trap did not go away
 
-`test/scripts/agent-notes-contract.test.ts` proves that GitHub gives **each space its own hyphen**,
-using a heading whose dropped mark has a space on either side. That fixture was a spaced em dash.
-`slug()` keeps only letters, numbers, spaces, `_` and `-`, so an **en** dash is dropped in exactly
-the same way and the two surrounding spaces still survive as two hyphens: the behaviour under test
-is unchanged, and so is the bite of the two cases that pin it. **Do not read the sweep as having
-retired the trap.** Every dropped mark with a space either side reproduces it, the en dash among
-them.
+The old `test/scripts/agent-notes-contract.test.ts` proved that GitHub gives **each space its own
+hyphen**, using a heading whose dropped mark has a space on either side. That fixture was a spaced
+em dash. `slug()` kept only letters, numbers, spaces, `_` and `-`, so an **en** dash is dropped in
+exactly the same way and the two surrounding spaces still survive as two hyphens: the behaviour
+under test was unchanged by the sweep, and so was the bite of the two cases that pinned it. The
+suite went with the old checker; the shared checker's `slugify` gives the same double hyphen.
+**Do not read the sweep as having retired the trap.** Every dropped mark with a space either side
+reproduces it, the en dash among them.
 
 ### The exemptions, both of them, with their reasons
 
