@@ -16,6 +16,16 @@ function manifestVersion(manifest: unknown): string {
   return version;
 }
 
+/** The manifest's `name`, narrowed the same way. */
+function manifestName(manifest: unknown): string {
+  if (typeof manifest !== "object" || manifest === null || !("name" in manifest)) {
+    throw new Error("package.json did not parse to an object with a `name` field");
+  }
+  const { name } = manifest;
+  if (typeof name !== "string") throw new Error("package.json `name` is not a string");
+  return name;
+}
+
 describe("toolchain sanity", () => {
   it("resolves the public entry point and exports VERSION as a string", () => {
     expect(typeof VERSION).toBe("string");
@@ -34,5 +44,12 @@ describe("toolchain sanity", () => {
   it("exposes VERSION as a semver-looking string", () => {
     // Shape only, so a bump needs no edit here: the value itself is pinned to package.json above.
     expect(VERSION).toMatch(/^\d+\.\d+\.\d+(?:[.-].+)?$/);
+  });
+
+  it("titles CLAUDE.md with this package's name", () => {
+    // An agent-instruction file here was once rewritten out of band to name another package
+    // (#29). The card is the one left, and its title is checked against package.json.
+    const card = readFileSync(new URL("../CLAUDE.md", import.meta.url), "utf8");
+    expect(card.split("\n", 1)[0]).toBe(`# ${manifestName(pkg)}`);
   });
 });
