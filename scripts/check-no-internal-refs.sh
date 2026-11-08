@@ -7,9 +7,9 @@
 # describes what the software does and what changed. It must never carry our internal
 # bookkeeping: item identifiers (`TRANSFORM-6`, `CCDA-P7`), "Phase 5" / "roadmap Phase K" /
 # "roadmap §4.3", sweep and programme names, ADR numbers, internal repo paths, or process
-# commentary about how the artifact came to exist. Source of truth: the meta-repo's
-# `documentation/conventions.md`, "No internal project bookkeeping on a public surface". The
-# founder's words: "The releases should also not speak on anything regarding phases, etc.
+# commentary about how the artifact came to exist. The rule in full is this repository's
+# `documentation/agent-notes.md`, "No internal project bookkeeping on a public surface, in
+# full". The founder's words: "The releases should also not speak on anything regarding phases, etc.
 # That has no relevance to the user consuming it. This goes for readmes and documentation as
 # well."
 #
@@ -774,8 +774,7 @@ fail_with_hits() {
   echo "       When you strip an identifier off the FRONT of a line, repair the head too:" >&2
   echo "       drop a leading orphan parenthetical, strip leading punctuation, recapitalise." >&2
   echo "       Leaving the fragment behind is worse than the text it replaced." >&2
-  echo "       Rule: documentation/conventions.md, 'No internal project bookkeeping on a" >&2
-  echo "       public surface'." >&2
+  echo "       Rule: documentation/agent-notes.md#no-internal-project-bookkeeping-on-a-public-surface-in-full" >&2
   exit 1
 }
 

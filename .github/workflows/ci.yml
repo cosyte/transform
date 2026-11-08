@@ -51,7 +51,7 @@ jobs:
   # that anything not named is not checked; read it as the whole of the coverage, because two
   # refuter passes measured the opposite shape (a list of what is NOT covered) incomplete.
   ci:
-    uses: cosyte/.github/.github/workflows/ci.yml@main
+    uses: cosyte/.github/.github/workflows/ci.yml@workflows-2026-11-07-498c7c13c886
     with:
       run-phi-scan: true
 
