@@ -36,6 +36,8 @@ never a guessed value; an absent, flagged element is usually a cited decision, n
   `TRANSFORM_V2_REQUIRED_FIELD_ABSENT`, never a default; the first cut raised nothing (#38).
 - Never write a version or publish state by hand; derive it with `npm view`: `VERSION` shipped as
   `"0.0.0"` until #22, and the README called a published package unpublished until #17.
+- Never move a published version backwards: npm refuses a version once used, even after an
+  unpublish, consumers pin ranges a lower one falls outside, and no release step checks the order.
 - Never hand-edit `CHANGELOG.md`; the release writes it from `.changeset/`. A hand-kept
   `[Unreleased]` heading shipped published code labelled unreleased until #28.
 - `pnpm attw` runs `cosyte-attw`, never the bare `attw` CLI, which exits 0 on a tarball with no
@@ -48,3 +50,5 @@ never a guessed value; an absent, flagged element is usually a cited decision, n
   vendored parser sat nine releases behind (#39).
 - Count dashes with `pnpm check:no-emdash` or Python over raw bytes, never `grep`, which printed 0
   and cut the first census short (#33).
+- Fork PR CI is unproven: none has run here, and a first-time contributor's workflows wait for a
+  maintainer's approval. Tell no contributor a fork PR is fine until someone has watched one pass.
