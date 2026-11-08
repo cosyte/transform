@@ -33,8 +33,12 @@ pnpm typecheck:examples
 pnpm lint:examples
 pnpm examples
 pnpm phi-scan:examples
+pnpm check:readme
+pnpm check:claude-card
+pnpm check:agent-notes
+pnpm check:catalog
 pnpm check:no-emdash
-pnpm ci:no-internal-refs
+pnpm check:no-internal-refs
 ```
 
 ## Data

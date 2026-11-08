@@ -64,8 +64,8 @@ updates:
   # published reference name (`workflows-*`); moving it is a deliberate edit, made across the org
   # together, not a Dependabot bump. The action SHAs inside those workflows
   # live upstream in `cosyte/.github`, which has its own config. What this entry watches is the
-  # actions this repository runs itself, pinned by SHA in ci.yml's `examples` job: a job running
-  # a deprecated checkout is the job itself going stale.
+  # actions this repository runs itself, pinned by SHA in ci.yml's `examples` and `standards`
+  # jobs: a job running a deprecated checkout is the job itself going stale.
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
