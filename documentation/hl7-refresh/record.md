@@ -303,7 +303,8 @@ content scan, 125 filename(s) checked.
 
 The byte total is elided as `<N>` deliberately: this file is itself inside the scanned corpus, so a
 verbatim total would be stale the moment this paragraph is edited. The load-bearing token is
-`1 declared binary`, and `test/scripts/no-emdash-gate.test.ts` pins exactly that. The banner above is
+`1 declared binary`, and the repository's dash-gate test pinned exactly that (both have since been
+replaced by the shared `cosyte-no-emdash`). The banner above is
 what the assertion reads, so an assertion still claiming two is now simply false.
 
 **BEFORE:**

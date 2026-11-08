@@ -1,0 +1,17 @@
+# What the shared em and en dash gate (@cosyte/script-utils, `cosyte-no-emdash`, ST34) leaves out of
+# this repository. One entry per line, anchored at the repository root; an entry that matches no
+# tracked path is refused, and so is a boundary heading the file no longer carries.
+#
+# THE CHANGELOG ARCHIVE, AND ONLY THE ARCHIVE. Everything above "Released before this file was
+# generated" is written by the release from a changeset and is scanned for both dashes like any
+# other file. Below that heading is the hand-written history from before changelog generation: it
+# is already in published tarballs and holds em dashes, so it is not read.
+CHANGELOG.md unread below ## Released before this file was generated
+
+# TWO VERBATIM CAPTURES of upstream output: what @cosyte/hl7 0.0.1 and 0.0.10 emitted over the
+# regression corpus, kept byte for byte. documentation/hl7-refresh/record.md sends a reader to them
+# for the exact bytes of a diagnostic that carries an en dash, and says regenerating the baseline
+# reproduces them. Rewriting the dash would make both statements false. record.md beside them is
+# scanned like any other file.
+documentation/hl7-refresh/surface-pre-refresh.json
+documentation/hl7-refresh/surface-post-refresh.json

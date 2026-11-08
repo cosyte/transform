@@ -5,17 +5,14 @@
 # matches no tracked file today: both `@cosyte/*` siblings are registry devDependencies resolved
 # through `pnpm-lock.yaml`, so no `pnpm pack` tarball is vendored. The glob stays as the shape
 # `vendor/` has always had rather than being narrowed to one filename, so a rename cannot silently
-# escape it, and the declared-binary count pinned in `test/scripts/no-emdash-gate.test.ts` moves
-# the moment a file matches it.
-# Declaring an archive keeps git from ever treating it as text, and it is the declaration that
-# `scripts/check-no-emdash.mjs` partitions on: a DEFLATE stream can hold the em dash's UTF-8
-# bytes by coincidence, and there is no edit that removes a byte from someone else's compressed
-# stream.
+# escape it.
+# Declaring an archive keeps git from ever treating it as text. A DEFLATE stream can hold the em
+# dash's UTF-8 bytes by coincidence, and there is no edit that removes a byte from someone else's
+# compressed stream.
 #
-# THIS FILE IS NOT A SILENCER. The em-dash gate REFUSES any `binary` declaration outside
-# `vendor/`, so widening the exclusion means editing that script deliberately rather than
-# adding a line here. Tracked FILENAMES are scanned whatever this file says, because a
-# declaration about a file's bytes says nothing about its name.
+# THIS FILE IS NOT A SILENCER. The shared em-dash gate (`cosyte-no-emdash`) reads every tracked
+# file whatever this file says; what it leaves out is listed, by literal path, in
+# `scripts/check-no-emdash.exclude`.
 vendor/*.tgz binary
 
 # The pinned FHIR definition packages under `vendor/fhir-packages/` are the same case and get the
@@ -23,8 +20,8 @@ vendor/*.tgz binary
 # sha256 at run time by the conformance harness. The argument above is what decides it, and it is
 # about the ARCHIVE, not about the trust: a DEFLATE stream can carry the em dash's UTF-8 bytes by
 # coincidence, and if it did there would be no edit that removes a byte from someone else's
-# compressed stream. Measured on the pins committed today, both archives scan clean either way, so
-# this declaration buys nothing NOW; it is here so that a future pin bump cannot land the gate in a
-# state with no remedy. The `binary` declaration covers CONTENT only: the tracked filenames are
-# still scanned, and `scripts/phi-scan.ts` reads these bytes on its own path route regardless.
+# compressed stream. Measured on the pins committed today, both archives scan clean. If a future pin
+# bump carries those bytes, the remedy is that archive's literal path in
+# `scripts/check-no-emdash.exclude`. `scripts/phi-scan.ts` reads these bytes on its own path route
+# regardless.
 vendor/fhir-packages/*.tgz binary
