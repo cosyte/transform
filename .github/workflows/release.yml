@@ -9,7 +9,7 @@ name: Release
 # secrets, not as `release` environment secrets.
 #
 # ▶ KNOWN TRAP, WHEN RELEASE_PR_TOKEN IS MISSING. The `ci-required-checks` ruleset on this repo
-# (id 19914044) requires five contexts with `bypass_actors: []`. Without RELEASE_PR_TOKEN the shared
+# (id 19914044) requires six contexts with `bypass_actors: []`. Without RELEASE_PR_TOKEN the shared
 # workflow opens the "Version Packages" PR with the default `GITHUB_TOKEN`, and GitHub does not
 # start workflow runs for events raised by that token, so that PR arrives with ZERO check runs.
 # Required contexts that never arrive are PENDING, not failing, and with no bypass actors nobody,
@@ -17,7 +17,7 @@ name: Release
 # head `2996df7`, opened 2026-07-22) had 0 check runs and reported `mergeStateStatus: BLOCKED`.
 # The shared workflow warns in its run when the token is missing. The escape, done last and
 # immediately before merging, is one commit onto `changeset-release/main`, which raises a normal
-# `pull_request` event and produces all five:
+# `pull_request` event and produces all six:
 #
 #   gh pr checkout <n> && git commit --allow-empty -m "chore: run CI on the version PR" && git push
 #
@@ -39,7 +39,7 @@ jobs:
       contents: write # create tags / the GitHub release
       id-token: write # npm trusted publishing and provenance
       pull-requests: write # open the "Version Packages" PR
-    uses: cosyte/.github/.github/workflows/release.yml@main
+    uses: cosyte/.github/.github/workflows/release.yml@workflows-2026-11-07-498c7c13c886
     with:
       package-name: "@cosyte/transform"
     secrets: inherit

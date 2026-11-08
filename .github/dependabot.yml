@@ -8,7 +8,7 @@ version: 2
 # Two ecosystems, because the repo has exactly two dependency surfaces. Swept, not assumed
 # (`git ls-files` over every manifest shape, 2026-07-28):
 #   npm             package.json + pnpm-lock.yaml at the root -- the ONLY package.json tracked
-#   github-actions  .github/workflows/*.yml (five files)
+#   github-actions  .github/workflows/*.yml (seven files)
 # There is no third. No Dockerfile, no Terraform, no pnpm workspace, no second package.json,
 # no submodules of its own, no Python/Go/Rust manifest. The other tracked non-source trees are
 # `vendor/fhir-packages/` (pinned FHIR definition packages, read as data), `docs-content/`
@@ -17,10 +17,14 @@ version: 2
 #
 # ▶ ONE THING THIS FILE DOES NOT BUY, BECAUSE IT IS EASY TO OVER-READ.
 # It configures VERSION updates only. Automatic SECURITY update PRs are a repo setting, not a
-# config key, and this repo's setting reads `dependabot_security_updates: disabled` (measured
-# 2026-07-28 via `gh api repos/cosyte/transform --jq .security_and_analysis`). So an advisory
-# raises an alert here and opens no fix PR on its own. Re-check that setting rather than
-# assuming this file changed it -- it cannot.
+# config key. This repo's setting reads `dependabot_security_updates: enabled` (measured
+# 2026-11-08 via `gh api repos/cosyte/transform --jq .security_and_analysis`), so an advisory
+# opens a fix PR as well as an alert. Re-check that setting rather than assuming this file
+# changed it: it cannot.
+#
+# Every PR this file opens is titled `chore(deps): ...` or `chore(deps-dev): ...`
+# (`commit-message` below), so it passes the Conventional Commits title check, and with squash
+# merges that title is the commit that lands.
 
 updates:
   # npm. This package ships ZERO third-party runtime dependencies by design: `dependencies` is
@@ -45,6 +49,9 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
     groups:
       dev-dependencies:
         dependency-type: development
@@ -53,14 +60,12 @@ updates:
     cooldown:
       default-days: 1
 
-  # Keep GitHub Actions references current. Four of the five workflows here (`ci`, `codeql`,
-  # `release`, `scorecard`) are THIN CALLERS of `cosyte/.github/.github/workflows/*.yml@main`,
-  # and `@main` is a branch ref, so Dependabot has nothing to bump in those: their pinned action
-  # SHAs live upstream in `cosyte/.github`, which has its own config. `no-internal-refs.yml` is
-  # the exception and the reason this entry is not decorative -- it is this repo's only
-  # repo-LOCAL job, it pins `actions/checkout` by SHA itself, and that single pin is what this
-  # ecosystem actually watches today. A public-surface gate running on a deprecated checkout is
-  # the gate itself going stale.
+  # Keep GitHub Actions references current. Every shared workflow here is called by one
+  # published reference name (`workflows-*`); moving it is a deliberate edit, made across the org
+  # together, not a Dependabot bump. The action SHAs inside those workflows
+  # live upstream in `cosyte/.github`, which has its own config. What this entry watches is the
+  # actions this repository runs itself, pinned by SHA in ci.yml's `examples` job: a job running
+  # a deprecated checkout is the job itself going stale.
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
@@ -68,3 +73,10 @@ updates:
     open-pull-requests-limit: 5
     cooldown:
       default-days: 1
+    commit-message:
+      prefix: chore
+      include: scope
+    ignore:
+      # From v1.75.0 this action installs actionlint by piping a script from a fork to bash. The
+      # shared CI runs the official rhysd/actionlint release, checked by its SHA-256, instead.
+      - dependency-name: "reviewdog/action-actionlint"

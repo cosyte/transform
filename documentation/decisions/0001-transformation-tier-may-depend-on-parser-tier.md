@@ -2,7 +2,8 @@
 
 - **Status:** Accepted (2026-07-21)
 - **Scope:** `@cosyte/transform`
-- **Relates to:** umbrella `documentation/conventions.md` (the zero-dep rule), umbrella ADR 0008
+- **Relates to:** the rule of zero third-party runtime dependencies (this repository's `CLAUDE.md`
+  states it for this package), umbrella ADR 0008
   (vendored-tarball cross-repo consumption until PUB-FLIP), `@cosyte/mllp`'s `@cosyte/hl7` precedent.
   Proposed in the transform roadmap (`operations/roadmaps/transform.md` §1) as umbrella ADR "0019".
 

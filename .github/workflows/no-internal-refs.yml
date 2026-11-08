@@ -59,14 +59,15 @@ name: Public-surface gate
 # context nothing emits blocks every pull request.
 #
 # WHY A SEPARATE WORKFLOW, and not a job in ci.yml. The shared ci pipeline is not an option:
-# this repo's `ci` job calls cosyte/.github/.github/workflows/ci.yml@main, which runs a fixed
-# ladder and no arbitrary repo script. Adding this there would also flip every other caller
+# this repo's `ci` job calls cosyte/.github/.github/workflows/ci.yml at the published
+# reference, which runs a fixed ladder and no arbitrary repo script. Adding this there would also flip every other caller
 # red on its next run, and remediating each is its own deliberate piece of work. A shared
 # pipeline is the wrong place to land a rule most of its callers cannot yet satisfy.
 #
 # Keeping it out of ci.yml also keeps it cheap: this job is a checkout, a handful of greps
-# over 9 markdown/JSON files and 31 source files, and one node run over the three contract
-# files, while ci.yml drives the full Node 22 + 24 matrix plus the release-dry-run job.
+# over the public-surface files and the source doc comments, and one node run over the three
+# contract files, while ci.yml drives the full Node 22, 24, and 26 matrix plus the prepublish
+# job.
 #
 # WHAT THIS DOES NOT CHECK, deliberately: the PR title, the PR body, and commit messages.
 # THIS rule says identifiers BELONG in the commit, the PR and the changeset, so a PR-text
@@ -94,12 +95,12 @@ concurrency:
 jobs:
   # The check-run context prefix. See the note above before touching this id.
   no-internal-refs:
-    # Pinned to the 40 character commit, not to the tag beside it: a tag can be moved
-    # or deleted by anyone who gains write access to the workflow's repository, so a
-    # tag is not an immutable reference and is not a pin. The trailing comment is the
-    # published reference that commit was released as, so the release note stays
-    # findable from here.
-    uses: cosyte/.github/.github/workflows/gate-no-internal-refs.yml@84ecccd771cbc9c1ece003a3f8ff61415360395b # workflows-2026-09-18-84ecccd771cb
+    # Named by the published reference, as its release notes show, and the same one
+    # every shared caller in this repository names, so they move together. cosyte/.github
+    # publishes a reference once and never moves or deletes it, and its releases are
+    # immutable, so the name resolves to one commit; its release note is findable by the
+    # same name.
+    uses: cosyte/.github/.github/workflows/gate-no-internal-refs.yml@workflows-2026-11-07-498c7c13c886
     with:
       # NOT the shared default, which is `pnpm check:no-internal-refs` and is the first
       # gate alone. This job has always run two, and the command is where the second one
