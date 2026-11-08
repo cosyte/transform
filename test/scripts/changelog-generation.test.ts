@@ -67,10 +67,10 @@
  *     THAN COPIED FROM A SIBLING. Changesets runs the document it writes through
  *     Prettier unless `"prettier": false` turns the pass off, and the right answer
  *     differs per repo. THIS REPO HAS NO `.prettierignore` AT ALL AND ITS
- *     `format:check` GLOBS `"*.{json,md,yml}"`, so `CHANGELOG.md` is inside this
- *     repo's own formatting gate and its archived history is already
- *     Prettier-canonical. Both arms were measured here, and the measurement does NOT
- *     land where a sibling's did:
+ *     `format` GLOBS (cosyte-process.config.json) INCLUDE `"*.{json,md,yml}"`, so
+ *     `CHANGELOG.md` is inside this repo's own formatting gate and its archived
+ *     history is already Prettier-canonical. Both arms were measured here, and the
+ *     measurement does NOT land where a sibling's did:
  *
  *       - WITH THE PASS ON, the archived history comes through a release BYTE
  *         IDENTICAL. That is the arm that matters, because a sibling whose
@@ -86,13 +86,14 @@
  *
  *     AND THE HONEST QUALIFIER, MEASURED RATHER THAN INHERITED. Unlike the sibling
  *     this shape came from, THIS repo's `version` script runs its own
- *     `prettier --write` over `CHANGELOG.md` as a later link in the chain, so with
- *     the pass off that second pass would repair the raw output and the Version PR
- *     would NOT open red. Measured: the repaired document is byte-for-byte the
+ *     `cosyte-process format` (a `prettier --write` over the `format` globs in
+ *     cosyte-process.config.json, root markdown included) as a later link in the
+ *     chain, so with the pass off that second pass would repair the raw output and
+ *     the Version PR would NOT open red. Measured: the repaired document is byte-for-byte the
  *     document the pass-on arm produces, modulo the changeset commit's sha. So the
  *     reason to leave the pass ON here is NOT "otherwise CI reds". It is that with
  *     the pass off, a canonical published changelog rests entirely on `CHANGELOG.md`
- *     staying inside that one `prettier --write` argument list, which nothing pins
+ *     staying inside that one glob list, which only the assertions below pin
  *     and which the nearest sibling repo does not even have; and that with the pass
  *     on it costs nothing, because the archive is byte identical either way. DO NOT
  *     RESYNC THIS VALUE BETWEEN REPOS. Derive it from the repo in front of you, and
@@ -153,6 +154,8 @@ const REPO_ROOT = process.cwd();
 const CHANGELOG_PATH = join(REPO_ROOT, "CHANGELOG.md");
 const CONFIG_PATH = join(REPO_ROOT, ".changeset", "config.json");
 const PACKAGE_PATH = join(REPO_ROOT, "package.json");
+/** Where `cosyte-process format` reads this repository's format globs from. */
+const PROCESS_CONFIG_PATH = join(REPO_ROOT, "cosyte-process.config.json");
 const CHANGESET_BIN = join(REPO_ROOT, "node_modules", "@changesets", "cli", "bin.js");
 
 /** The package these entries belong to. The wrong-package control below turns on this being exact. */
@@ -189,6 +192,11 @@ const pkg = JSON.parse(readFileSync(PACKAGE_PATH, "utf8")) as {
   files?: string[];
   scripts?: Record<string, string>;
 };
+const processConfig = JSON.parse(readFileSync(PROCESS_CONFIG_PATH, "utf8")) as {
+  format?: { globs?: string[] };
+};
+/** The globs `pnpm format`, `pnpm format:check` and the `version` script's format pass all read. */
+const formatGlobs = processConfig.format?.globs ?? [];
 
 /** The two functions Changesets calls on whatever `changelog` names. */
 interface ChangelogFunctions {
@@ -410,7 +418,7 @@ describe("changelog generation is on", () => {
 
   it("leaves the release's Prettier pass on, because this repo's markdown IS Prettier-managed", () => {
     // The discriminator, derived from this repo rather than inherited from a sibling: there is
-    // no `.prettierignore` at all, and `format:check` globs root markdown, so `CHANGELOG.md` is
+    // no `.prettierignore` at all, and the `format` globs take root markdown, so `CHANGELOG.md` is
     // inside this repo's own formatting gate. A repo whose `.prettierignore` lists `*.md` needs
     // `"prettier": false` instead, because there the pass rewrites published text that was never
     // Prettier-canonical. The two behavioural cases below are what make this a measurement
@@ -421,7 +429,8 @@ describe("changelog generation is on", () => {
     // spelling instead of the behaviour.
     expect(config.prettier).not.toBe(false);
     expect(existsSync(join(REPO_ROOT, ".prettierignore"))).toBe(false);
-    expect(pkg.scripts?.["format:check"] ?? "").toContain('"*.{json,md,yml}"');
+    expect(pkg.scripts?.["format:check"]).toBe("cosyte-process format --check");
+    expect(formatGlobs).toContain("*.{json,md,yml}");
   });
 
   it("keeps the committed changelog Prettier-canonical, which is what makes leaving it on safe", async () => {
@@ -638,11 +647,12 @@ describe("the shape that makes generated output land correctly", () => {
       //
       // STATED HONESTLY, BECAUSE THIS IS WHERE THIS REPO DIVERGES FROM THE SIBLING THIS SHAPE
       // CAME FROM: that raw document is not what a Version PR here would carry. This repo's
-      // `version` script runs its own `prettier --write` over `CHANGELOG.md` as a later link,
-      // and the last assertion below measures that it repairs exactly this. So the argument for
-      // leaving the pass ON is not "otherwise CI reds" but that with it off, a canonical
-      // published changelog rests entirely on `CHANGELOG.md` staying inside that one argument
-      // list, and the archive is byte identical either way so nothing is bought in exchange.
+      // `version` script runs its own `cosyte-process format` over the `format` globs, root
+      // markdown included, as a later link, and the last assertion below measures that it
+      // repairs exactly this. So the argument for leaving the pass ON is not "otherwise CI reds"
+      // but that with it off, a canonical published changelog rests entirely on `CHANGELOG.md`
+      // staying inside that one glob list, and the archive is byte identical either way so
+      // nothing is bought in exchange.
       const off = runVersion({ changelogBody: changelog, configOverrides: { prettier: false } });
 
       expect(headings(off.changelog).slice(0, 2)).toEqual(["# Changelog", `## ${off.version}`]);
@@ -653,7 +663,7 @@ describe("the shape that makes generated output land correctly", () => {
       // trade one-sided: leaving the pass on costs nothing.
       expect(archivedHistory(off.changelog)).toBe(archivedHistory(changelog));
 
-      // The repair the `version` script's later `prettier --write` would perform, applied here
+      // The repair the `version` script's later format pass would perform, applied here
       // so the claim above is measured and not asserted: it lands on a canonical document, and
       // it still leaves the archive untouched.
       const options = await prettier.resolveConfig(CHANGELOG_PATH);
@@ -664,7 +674,8 @@ describe("the shape that makes generated output land correctly", () => {
       });
       await expect(formatCheckAccepts(repaired)).resolves.toBe(true);
       expect(archivedHistory(repaired)).toBe(archivedHistory(changelog));
-      expect(pkg.scripts?.["version"] ?? "").toContain("CHANGELOG.md");
+      expect(pkg.scripts?.["version"] ?? "").toMatch(/&& cosyte-process format$/);
+      expect(formatGlobs).toContain("*.{json,md,yml}");
     },
   );
 

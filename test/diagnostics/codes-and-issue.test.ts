@@ -1,3 +1,4 @@
+import { sortedCodeSet } from "@cosyte/test-utils";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -16,7 +17,7 @@ describe("stable code registries", () => {
   });
 
   it("pins the issue-code set through Phase 2 (a rename/removal is a breaking change)", () => {
-    expect(Object.values(ISSUE_CODES).sort()).toEqual(
+    expect(sortedCodeSet(ISSUE_CODES)).toEqual(
       [
         // Phase 1: datatype + diagnostic foundation.
         "TRANSFORM_ADDRESS_USE_UNMAPPED",

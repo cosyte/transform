@@ -6,7 +6,8 @@ to v2 path back. We publish it to npm under MIT from this repository.
 
 ## Build and test
 
-Use the pnpm that `packageManager` in `package.json` pins, and Node.js 22 or later.
+Use the pnpm that `packageManager` in `package.json` pins, and Node.js 22.22.2 or later (the shared
+tooling in `@cosyte/process` needs it; the published package itself runs on any Node.js 22).
 
 ```sh
 pnpm install --frozen-lockfile
@@ -36,6 +37,7 @@ pnpm phi-scan:examples
 pnpm check:readme
 pnpm check:claude-card
 pnpm check:catalog
+pnpm check:process
 pnpm check:no-emdash
 pnpm check:no-internal-refs
 ```

@@ -32,7 +32,7 @@
 /**
  * Package version marker exported from the `@cosyte/transform` root.
  *
- * Kept in lockstep with `package.json` by `scripts/sync-version.mjs`, which the `version` script
+ * Kept in lockstep with `package.json` by `cosyte-process sync-version`, which the `version` script
  * runs immediately after `changeset version`. The `: string` annotation is deliberate: without it
  * TypeScript infers the *literal* type (`declare const VERSION = "0.0.0"`), which leaks the current
  * release into consumers' types and makes an equality check against any other version a compile

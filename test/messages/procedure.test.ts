@@ -192,8 +192,7 @@ describe("PR1-5 and PR1-7 decide performedDateTime or performedPeriod", () => {
         segment("PR1", { 1: "1", 3: "4491^Repair^I9", 5: stamp, 7: minutes }),
       ]);
       const period = resourcesOfType(result, "Procedure")[0]?.["performedPeriod"] as
-        | Record<string, string>
-        | undefined;
+        Record<string, string> | undefined;
       expect([stamp, minutes, period?.["end"]]).toEqual([stamp, minutes, expected]);
     }
   });

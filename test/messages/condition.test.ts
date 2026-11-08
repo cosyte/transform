@@ -129,8 +129,7 @@ describe("a DG1 becomes a Condition wired to the bundle Patient", () => {
   it("carries an EI identifier's value and never a system synthesized from its authority", () => {
     const result = run([MSH_ADT_A01, PID_JANE, DG1_FULL]);
     const identifiers = resourcesOfType(result, "Condition")[0]?.["identifier"] as
-      | Record<string, unknown>[]
-      | undefined;
+      Record<string, unknown>[] | undefined;
     expect(identifiers).toEqual([{ value: "DIAG1" }]);
     expect(labels(result)).toContain(`${DROPPED}@DG1.20#Condition.identifier.system`);
   });

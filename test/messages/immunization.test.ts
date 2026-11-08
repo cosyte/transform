@@ -209,8 +209,7 @@ describe("VXU_V04 → Immunization (Phase 5)", () => {
       seg("RXA", { 3: "20260715", 5: "08^Hep B^CVX", 20: "CP" }),
     ]);
     const recorded = getProperty(immunization(result) as never, "recorded") as
-      | { value: unknown }
-      | undefined;
+      { value: unknown } | undefined;
     expect(recorded?.value).toBe("2026-07-16");
   });
 

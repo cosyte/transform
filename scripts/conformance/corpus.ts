@@ -354,14 +354,12 @@ export function readCorpus(repoRoot: string, corpusDir: string = CORPUS_DIR): Co
       throw new CorpusError(`refusing the run: the corpus entry for ${name} yields no segments.`);
     }
     const mangled = Array.isArray(entry["publishedMangled"])
-      ? entry["publishedMangled"].filter(isRecord).map(
-          (m): PublishedMangling => ({
-            segmentIndex: typeof m["segmentIndex"] === "number" ? m["segmentIndex"] : -1,
-            segment: asText(m["segment"]),
-            fragment: asText(m["fragment"]),
-            note: asText(m["note"]),
-          }),
-        )
+      ? entry["publishedMangled"].filter(isRecord).map((m): PublishedMangling => ({
+          segmentIndex: typeof m["segmentIndex"] === "number" ? m["segmentIndex"] : -1,
+          segment: asText(m["segment"]),
+          fragment: asText(m["fragment"]),
+          note: asText(m["note"]),
+        }))
       : [];
     return {
       name: name as PublishedMessageName,
@@ -391,15 +389,13 @@ export function readCorpus(repoRoot: string, corpusDir: string = CORPUS_DIR): Co
     },
     additionalEscaping: {
       reason: isRecord(escaping) ? asText(escaping["reason"]) : "",
-      entries: entries.filter(isRecord).map(
-        (e): AdditionalEscaping => ({
-          message: asText(e["message"]),
-          line: typeof e["line"] === "number" ? e["line"] : -1,
-          field: asText(e["field"]),
-          escaped: asText(e["escaped"]),
-          reason: asText(e["reason"]),
-        }),
-      ),
+      entries: entries.filter(isRecord).map((e): AdditionalEscaping => ({
+        message: asText(e["message"]),
+        line: typeof e["line"] === "number" ? e["line"] : -1,
+        field: asText(e["field"]),
+        escaped: asText(e["escaped"]),
+        reason: asText(e["reason"]),
+      })),
     },
     messages,
   };
