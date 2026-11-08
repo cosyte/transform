@@ -5,10 +5,9 @@ name: Public-surface gate
 # ADR numbers, meta-repo paths and process commentary belong in the changeset, CHANGELOG.md,
 # the commit, the PR and the roadmap, never in README.md, docs-content/, the npm description,
 # a JSDoc block a consumer's editor renders, or a message a consumer reads in their logs. The
-# rule is written out in this repo's CLAUDE.md, with its long form in
-# documentation/agent-notes.md#no-internal-project-bookkeeping-on-a-public-surface-in-full, and the
-# umbrella's plans/standards.md (ST34) makes this one of the gates every Cosyte repo runs;
-# `scripts/check-no-internal-refs.sh` is what enforces it.
+# rule is a line in this repo's CLAUDE.md, the umbrella's plans/standards.md (ST34) makes this
+# one of the gates every Cosyte repo runs, and `scripts/check-no-internal-refs.sh` enforces it
+# and writes out the rule in full.
 #
 # WHY A GATE AND NOT A NOTE. The founder, on the sweep that removed 149 of these across the
 # ecosystem: "it needs to not just be a memory note, but something that is addressed in the
@@ -31,9 +30,8 @@ name: Public-surface gate
 # runs at all, with the job still green. Measured in a shell, not reasoned about. A second check
 # belongs in a `package.json` script or a job of its own, never in this input.
 #
-# THE AGENT-INSTRUCTION CONTRACT MOVED OUT OF THIS JOB. The CLAUDE.md card and
-# documentation/agent-notes.md are checked by `pnpm check:claude-card` and
-# `pnpm check:agent-notes` in ci.yml's `standards` job, beside the README and catalog checks.
+# THE AGENT-INSTRUCTION CONTRACT MOVED OUT OF THIS JOB. The CLAUDE.md card is checked by
+# `pnpm check:claude-card` in ci.yml's `standards` job, beside the README and catalog checks.
 # That context binds only once ruleset `19914044` names it, which is the window this job used to
 # avoid by carrying the contract itself.
 #
