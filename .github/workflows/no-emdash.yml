@@ -21,8 +21,11 @@ name: Em-dash gate
 #
 #   The shared GATE workflow this file now calls is a different thing from that pipeline:
 #   it carries no pattern, no allow-list and no file selection of its own. It prepares the
-#   tree, runs `pnpm check:no-emdash`, and lets that command's exit status decide the job,
-#   so the rule and every measurement above stay in this repository.
+#   tree, installs from the lockfile, runs `pnpm check:no-emdash`, and lets that command's
+#   exit status decide the job. That command is `cosyte-no-emdash`, the one dash gate every
+#   Cosyte repository shares, from the `@cosyte/script-utils` devDependency (ST34). What this
+#   repository leaves out of it is `scripts/check-no-emdash.exclude`: the CHANGELOG archive
+#   below its boundary heading and two verbatim captures of upstream output.
 #
 #   AND THE RULESET IS THE SECOND HALF OF THAT. `ci / verify` is a REQUIRED context here
 #   (ruleset `ci-required-checks`, id `19914044`), and a required job gates all of its
@@ -101,7 +104,7 @@ jobs:
     # publishes a reference once and never moves or deletes it, and its releases are
     # immutable, so the name resolves to one commit; its release note is findable by the
     # same name.
-    uses: cosyte/.github/.github/workflows/gate-no-emdash.yml@498c7c13c8869bf11b67fa8324684ec2dc691ec6 # workflows-2026-11-07-498c7c13c886
+    uses: cosyte/.github/.github/workflows/gate-no-emdash-install.yml@498c7c13c8869bf11b67fa8324684ec2dc691ec6 # workflows-2026-11-07-498c7c13c886
     # No more than the scan needs. A called workflow's GITHUB_TOKEN can only be
     # downgraded by its caller, and this gate reads the tree and nothing else.
     permissions:
