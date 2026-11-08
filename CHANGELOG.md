@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.2
+
+### Patch Changes
+
+- bb8f0c5: The `@cosyte/hl7` and `@cosyte/fhir` peer dependencies are now bounded to the 0.1 line (`^0.1.0`), the releases this package is tested against, instead of accepting any version.
+
+  A package manager now warns, or refuses under strict peer dependencies, when either sibling is outside the 0.1 line, rather than installing a combination nobody has tested. Nothing this package emits changes.
+
+- 402e2d4: Corrected the docs on which PID fields reach a FHIR `Patient`: PID-10, PID-15, PID-19, PID-22, PID-29 and PID-30 are dropped with no issue, not flagged as the type declarations said.
+
+  So a `Patient` from a PID that records a death has no `deceased[x]`, and no issue says so. The README and the type declarations now say this. Their examples also now use HL7's example OID root, `2.16.840.1.113883.19`, in place of a real organization's OID. The code, API and behavior are unchanged.
+
+- b2f648d: Documentation only: the README and docs pages state the package's scope more precisely, and the package now ships a TRADEMARKS.md.
+
+  The docs no longer call the output valid FHIR R4 or the v2 to FHIR direction feature-complete, since neither holds today; the README states Node.js support as "Node.js 22 or later, tested on 22 and 24", links its license absolutely, and gives the logo its shared alt text. Each docs page gains a description, the LICENSE and README copyright lines name Cosyte LLC, and the code is unchanged.
+
 ## 0.1.1
 
 ### Patch Changes
