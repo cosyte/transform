@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4
+
+### Patch Changes
+
+- b8c3f19: An internal tidy in the HL7 v2 to FHIR medication order mapping, with no change to any output: the dosage builder takes the RXO segment its caller always passes, instead of checking for a missing one.
+
 ## 0.1.3
 
 ### Patch Changes
