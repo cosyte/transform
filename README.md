@@ -7,8 +7,12 @@
 
 # @cosyte/transform
 
-> HL7 v2 → FHIR R4 transformation for Node.js and TypeScript: **IG-grounded, with value-free
-> diagnostics**.
+> HL7 v2 → FHIR R4 transformation for Node.js and TypeScript: IG-grounded, with value-free diagnostics.
+
+[![npm version](https://img.shields.io/npm/v/@cosyte/transform.svg)](https://www.npmjs.com/package/@cosyte/transform)
+[![CI](https://img.shields.io/github/actions/workflow/status/cosyte/transform/ci.yml?branch=main&label=CI)](https://github.com/cosyte/transform/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/cosyte/transform/blob/main/LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen.svg)](https://nodejs.org)
 
 `@cosyte/transform` is the healthcare **transformation** layer of the Cosyte suite. Unlike the
 parsers, it is a **consumer**: it takes already-parsed [`@cosyte/hl7`](https://github.com/cosyte/hl7)
@@ -20,24 +24,41 @@ floor this library wrote for itself and not a statement about FHIR conformance. 
 actually conforms is measured separately, against pinned FHIR R4 4.0.1 definitions and the pinned
 `hl7.fhir.us.core` version 9.0.0 profiles, over the guide's own published test messages, and the
 outcome is published in
-[`documentation/conformance/report.md`](documentation/conformance/report.md). Read it before relying
-on the word "validated": today it says none of the seven published test messages produces a Bundle
-that is clean against R4 plus those profiles, and it lists every finding. The summary is under
-[Conformance: measured, not asserted](#conformance-measured-not-asserted).
+[`documentation/conformance/report.md`](https://github.com/cosyte/transform/blob/main/documentation/conformance/report.md).
+Read it before relying on the word "validated": today it says none of the seven published test
+messages produces a Bundle that is clean against R4 plus those profiles, and it lists every finding.
+The summary is under [Conformance: measured, not asserted](#conformance-measured-not-asserted).
 
-> **Status:** the 0.1 line, published to npm. While the package is below 1.0, a breaking change ships in a
-> minor version and is called out in the changelog. This release ships the
-> six safety-critical datatype converters and the value-free diagnostic channel, the
-> message-level assembly, HL7 v2 **ADT → FHIR Patient + Encounter**, the **ORU^R01 → FHIR
-> DiagnosticReport + Observation** results graph, the order-entry graph (**ORM_O01 /
-> OML_O21 → ServiceRequest** and **RXO → MedicationRequest**), the thin IG singles
-> (**VXU_V04 → Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference**), all
-> via `toFhir(msg)`, and **terminology value translation** of coded fields: route/site,
-> appointment type, order priority, and substitution are value-translated through their IG
-> `mappedVia` ConceptMaps via `toFhirCodeableConceptVia`, fail-safe on any code the IG leaves unmapped.
-> It also ships a **narrow reverse path**, FHIR → v2: `toV2Patient(patient, trigger)` and
-> `toV2Observation(observation, trigger)` emit a complete v2 message carrying a `PID` or an `OBX`.
-> Deeper terminology, profiles, and any wider FHIR → v2 conversion are not implemented.
+## Why this exists
+
+A mapping defect does not crash. It produces a FHIR resource that looks valid and says something
+the v2 message did not, and the system that receives it cannot tell. So every conversion is
+grounded on the IG and **refuses to guess**. On any of these ambiguities:
+
+- a v2 timestamp with a time-of-day but **no timezone** (FHIR forbids time without a zone),
+- an assigning authority that can't be **resolved to a system URI** (never synthesized from a bare
+  namespace, which would merge two patients),
+- a code with an **unrecognized or absent coding system**,
+- a unit that isn't valid **UCUM** (magnitudes are never converted),
+
+the converter produces what it _can_ (often reduced in precision) and raises a **typed, value-free
+`TransformIssue`**: a stable code, the v2 location, and the FHIR path, never a value. Render a list
+of issues as a FHIR `OperationOutcome` with `toOperationOutcome(issues)`.
+
+## Status
+
+The 0.1 line, published to npm. While the package is below 1.0, a breaking change ships in a minor
+version and is called out in the changelog. It ships the six safety-critical datatype converters
+and the value-free diagnostic channel, the message-level assembly, HL7 v2 **ADT → FHIR Patient +
+Encounter**, the **ORU^R01 → FHIR DiagnosticReport + Observation** results graph, the order-entry
+graph (**ORM_O01 / OML_O21 → ServiceRequest** and **RXO → MedicationRequest**), the thin IG singles
+(**VXU_V04 → Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference**), all via
+`toFhir(msg)`, and **terminology value translation** of coded fields: route/site, appointment type,
+order priority, and substitution are value-translated through their IG `mappedVia` ConceptMaps via
+`toFhirCodeableConceptVia`, fail-safe on any code the IG leaves unmapped. It also ships a **narrow
+reverse path**, FHIR → v2: `toV2Patient(patient, trigger)` and `toV2Observation(observation,
+trigger)` emit a complete v2 message carrying a `PID` or an `OBX`. Deeper terminology, profiles,
+and any wider FHIR → v2 conversion are not implemented.
 
 ## Install
 
@@ -49,10 +70,14 @@ npm install @cosyte/transform @cosyte/hl7 @cosyte/fhir
 they own, so you install them beside it and parse with `@cosyte/hl7` before you transform. Its own
 third-party runtime dependencies are **zero**.
 
-Requires Node.js 22 or later, tested on 22 and 24. The package ships dual ESM and CommonJS builds with type declarations for
-both, so `import` and `require` both work.
+Node.js 22 or later, tested on 22, 24, and 26. The package ships dual ESM and CommonJS builds with
+type declarations for both, so `import` and `require` both work.
 
-## Convert a datatype
+## Usage
+
+The full reference is on [docs.cosyte.com/transform](https://docs.cosyte.com/transform).
+
+### Convert a datatype
 
 ```ts
 import { serializeResource } from "@cosyte/fhir";
@@ -72,21 +97,7 @@ console.log(issues); // [] (clean, fully mapped)
 Each converter returns `{ value, issues }`: the FHIR datatype node it could faithfully produce, plus
 the value-free diagnostics it raised.
 
-## The fail-safe rule
-
-Every conversion is grounded on the IG and **refuses to guess**. On any of these ambiguities:
-
-- a v2 timestamp with a time-of-day but **no timezone** (FHIR forbids time without a zone),
-- an assigning authority that can't be **resolved to a system URI** (never synthesized from a bare
-  namespace, which would merge two patients),
-- a code with an **unrecognized or absent coding system**,
-- a unit that isn't valid **UCUM** (magnitudes are never converted),
-
-the converter produces what it _can_ (often reduced in precision) and raises a **typed, value-free
-`TransformIssue`**: a stable code, the v2 location, and the FHIR path, never a value. Render a list
-of issues as a FHIR `OperationOutcome` with `toOperationOutcome(issues)`.
-
-## The six datatype converters
+### The six datatype converters
 
 | Converter               | v2 → FHIR                  |
 | ----------------------- | -------------------------- |
@@ -97,7 +108,7 @@ of issues as a FHIR `OperationOutcome` with `toOperationOutcome(issues)`.
 | `toFhirAddress`         | XAD → `Address`            |
 | `toFhirQuantity`        | NM + units → `Quantity`    |
 
-## Assemble a message
+### Assemble a message
 
 `toFhir(msg)` takes a parsed `@cosyte/hl7` **ADT** message and returns a FHIR R4 **message `Bundle`**:
 a `MessageHeader`, then the `Patient` and `Encounter` (and `RelatedPerson`, one
@@ -171,13 +182,14 @@ resource is checked against a small internal required-element schema before it s
 floor this library wrote for itself and not a statement about FHIR conformance. What conformance the
 output actually reaches is measured separately, and published.
 
-### Conformance: measured, not asserted
+#### Conformance: measured, not asserted
 
 The guide publishes seven v2 test messages. This repository carries them, transforms every one of
 them, validates every resource of the resulting Bundle against the pinned **FHIR R4 4.0.1**
 definitions and the pinned **`hl7.fhir.us.core` version 9.0.0** profiles, and publishes the outcome
-in [`documentation/conformance/report.md`](documentation/conformance/report.md), with the
-machine-readable form beside it in `documentation/conformance/result.json`.
+in
+[`documentation/conformance/report.md`](https://github.com/cosyte/transform/blob/main/documentation/conformance/report.md),
+with the machine-readable form beside it in `documentation/conformance/result.json`.
 
 **Today that result is: none of the seven messages produces a Bundle with zero error-severity
 results** against R4 plus those profiles. Against the base R4 4.0.1 definitions alone, without any
@@ -205,6 +217,8 @@ occurrences, and `[#4]` for one that does not, with no part of the name reproduc
 refused is not reaching: a counted `RXE`, an orphan `OBX`, and a resource the emit gate withheld are
 all reported. A flagged segment is still not transformed: you learn what is missing, not what it
 said.
+
+#### The other message families
 
 The same `toFhir(msg)` handles the other message families: **ORU^R01** → `DiagnosticReport` (OBR) +
 `Observation` (OBX) + `Specimen` (SPM, referenced from the report that scopes it, and withheld with
@@ -266,7 +280,7 @@ its `(unmapped)` group is flagged, never coerced to a neighbor. Fields whose IG 
 (RXR-4 method, SCH-7 reason) stay structural, because SNOMED is not bundled (BYO ConceptMap), and fields the
 IG ships no value map for (TXA-2 document type, RXA-5 vaccine code) are carried as-is, never invented.
 
-## Emit v2 back out, narrowly
+### Emit v2 back out, narrowly
 
 Two entry points go the other way, FHIR → v2. Each takes the FHIR resource **plus the v2 trigger you
 want the message to carry**, and returns the same `{ value, issues }` envelope, where `value` is a
@@ -313,6 +327,27 @@ it would have come from. A resource that grounds no field of the target segment 
 message and one `TRANSFORM_NO_V2_MESSAGE_EMITTED`, so an empty-handed conversion is never mistaken
 for a successful one. Both are `error` severity: an emitted message missing a field v2 requires is
 not conformant, and this is where you find that out rather than at the receiver.
+
+## Support
+
+Questions, bug reports, and mappings that look wrong go in
+[GitHub issues](https://github.com/cosyte/transform/issues). Use synthetic data only, never a real
+patient's message. For help with an HL7 v2 to FHIR integration, see our
+[integration services](https://cosyte.com/integration-services).
+
+## Security
+
+Report a vulnerability privately, never in a public issue, and with no real patient data in it. Our
+[security policy](https://github.com/cosyte/transform/security/policy) says how.
+
+## Contributing
+
+Issues and pull requests are welcome, and
+[CONTRIBUTING](https://github.com/cosyte/.github/blob/main/CONTRIBUTING.md) says how we work. Open
+an issue before a change to what a message maps to, or to a diagnostic code, so the behavior is
+agreed before you write it: a diagnostic code is public surface. A change a consumer would notice
+needs a changeset (`pnpm changeset`), whose summary becomes the changelog entry. Reduce any message
+you attach to a synthetic one first.
 
 ## License
 

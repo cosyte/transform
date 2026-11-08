@@ -16,8 +16,9 @@ name: Public-surface gate
 # someone writes `(TRANSFORM-7)` into a README; a job that reds does not.
 #
 # WHAT ACTUALLY SCANS, AND WHERE THE RULES LIVE. `pnpm ci:no-internal-refs`, named below as
-# the command the shared gate runs, and it is TWO of this repository's own checkers rather
-# than one. The job delegates the plumbing (checkout, pnpm, Node) to the shared gate
+# the command the shared gate runs, and it is TWO checkers rather than one: this repository's
+# own public-surface gate, then the shared agent-notes checker from `@cosyte/script-utils`.
+# The job delegates the plumbing (checkout, pnpm, Node) to the shared gate
 # workflow, which carries no pattern, no allow-list and no file selection of its own: it
 # prepares the tree, runs the command, and lets the command's exit status decide the job.
 # The detection rules, the self-tests and the known project prefixes all stay here, because
@@ -38,19 +39,15 @@ name: Public-surface gate
 # therefore no window in which open pull requests strand pending on a context nothing has
 # emitted yet.
 #
-# IT IS ALSO ENFORCED A SECOND, INDEPENDENT WAY, and that is deliberate rather than
-# belt-and-braces habit. test/scripts/agent-notes-contract.test.ts runs the same gate from
-# inside `ci / verify`. But that route inherits this repo's documented "THE GATE CAN LEAVE
-# THE JOB" hole verbatim -- the `include` glob in vitest.config.ts and the `test` and
-# `test:coverage` script bodies can each drop the suite with the job still green. This
-# command depends on none of those three levers, so no one of them removes both routes.
+# THIS JOB IS NOW THE CONTRACT'S ONLY ROUTE IN CI. This repository's own checker also ran as a
+# suite inside `ci / verify`; that route went with it when the shared checker replaced it, and
+# this command depends on none of the levers (the vitest `include` glob, the `test` and
+# `test:coverage` script bodies) that can drop a suite from that job with the job still green.
 #
-# BARE `node`, NOT `tsx`, inside `ci:no-internal-refs`, so this job stays a checkout plus a
-# node -- no lockfile install, which is what keeps it cheap next to the full ci.yml matrix.
-# The local `pnpm check:agent-notes` runs the same file through tsx because this package's
-# engine floor is Node 22; the shared gate's `setup-node` takes the newest 22.x, where type
-# stripping is native (it has been from 22.18). The two paths are pinned to agree by a test
-# in the suite above, which takes the Node 24 leg of the ci matrix.
+# THIS JOB INSTALLS. The agent-notes checker lives in `node_modules`, so the caller below names
+# the INSTALLING form of the shared gate, `gate-no-internal-refs-install.yml`, which runs
+# `pnpm install --frozen-lockfile` after the checkout and before the command. Same job id, same
+# check-run context, same input; a failed install reds the job without running the scan.
 #
 # THE JOB ID IS LOAD-BEARING. A called job's check run is named
 # `<caller job id> / <inner job id>`, so the job id `no-internal-refs` below publishes
@@ -60,14 +57,15 @@ name: Public-surface gate
 #
 # WHY A SEPARATE WORKFLOW, and not a job in ci.yml. The shared ci pipeline is not an option:
 # this repo's `ci` job calls cosyte/.github/.github/workflows/ci.yml at the published
-# reference, which runs a fixed ladder and no arbitrary repo script. Adding this there would also flip every other caller
-# red on its next run, and remediating each is its own deliberate piece of work. A shared
-# pipeline is the wrong place to land a rule most of its callers cannot yet satisfy.
+# reference, which runs a fixed ladder and no arbitrary repo script. Adding this there would
+# also flip every other caller red on its next run, and remediating each is its own deliberate
+# piece of work. A shared pipeline is the wrong place to land a rule most of its callers cannot
+# yet satisfy.
 #
-# Keeping it out of ci.yml also keeps it cheap: this job is a checkout, a handful of greps
-# over the public-surface files and the source doc comments, and one node run over the three
-# contract files, while ci.yml drives the full Node 22, 24, and 26 matrix plus the prepublish
-# job.
+# Keeping it out of ci.yml also keeps it cheap: this job is a checkout, an install from the
+# lockfile, a handful of greps over the public-surface files and the source doc comments, and
+# one node run of the agent-notes checker, while ci.yml drives the full Node 22, 24, and 26
+# matrix plus the prepublish job.
 #
 # WHAT THIS DOES NOT CHECK, deliberately: the PR title, the PR body, and commit messages.
 # THIS rule says identifiers BELONG in the commit, the PR and the changeset, so a PR-text
@@ -80,7 +78,7 @@ name: Public-surface gate
 # the repo's own files; that one covers what gets published to the releases page.
 #
 # Run the two halves locally with `pnpm check:no-internal-refs` and `pnpm check:agent-notes`.
-# `pnpm ci:no-internal-refs` is the pair in the shape CI runs them, and it needs no install.
+# `pnpm ci:no-internal-refs` is the pair in the shape CI runs them, after an install.
 
 on:
   push:
@@ -100,7 +98,7 @@ jobs:
     # publishes a reference once and never moves or deletes it, and its releases are
     # immutable, so the name resolves to one commit; its release note is findable by the
     # same name.
-    uses: cosyte/.github/.github/workflows/gate-no-internal-refs.yml@workflows-2026-11-07-498c7c13c886
+    uses: cosyte/.github/.github/workflows/gate-no-internal-refs-install.yml@workflows-2026-11-07-498c7c13c886
     with:
       # NOT the shared default, which is `pnpm check:no-internal-refs` and is the first
       # gate alone. This job has always run two, and the command is where the second one
