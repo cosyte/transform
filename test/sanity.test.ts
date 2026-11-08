@@ -34,7 +34,7 @@ describe("toolchain sanity", () => {
 
   it("package exports VERSION matching package.json", () => {
     // Compared against package.json, never a hardcoded literal. `changeset version` bumps
-    // package.json alone, so a release that skipped `scripts/sync-version.mjs` (wired into the
+    // package.json alone, so a release that skipped `cosyte-process sync-version` (wired into the
     // `version` script) would publish a VERSION export that lies about the release. That is exactly
     // how 0.0.4 shipped exporting "0.0.0" - with docs-content/installation.md telling an installer
     // to print that constant as the smoke test - and a shape-only assertion stayed green throughout.

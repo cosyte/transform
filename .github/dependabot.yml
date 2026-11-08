@@ -59,6 +59,17 @@ updates:
     # minimumReleaseAge holds every install to. Security updates are not delayed.
     cooldown:
       default-days: 1
+    ignore:
+      # The package supports Node 22 (`engines`), so its Node types stay on the 22 line. A newer
+      # major type-checks calls that Node 22 does not have.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # @cosyte/process owns the vitest and prettier versions; this repository declares them
+      # directly only because test files import vitest and Changesets formats CHANGELOG.md with
+      # the prettier it resolves from the repository root, pinned to exactly the versions process
+      # runs. They move when process does, never on their own.
+      - dependency-name: "vitest"
+      - dependency-name: "prettier"
 
   # Keep GitHub Actions references current. Every shared workflow here is called by one
   # published reference name (`workflows-*`); moving it is a deliberate edit, made across the org
