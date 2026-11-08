@@ -163,7 +163,7 @@ function doseEndpoint(
  * remaining elements keep exactly the shape and order the RXO/RXR path has always produced.
  */
 function buildDosageInstruction(
-  rxo: Segment | undefined,
+  rxo: Segment,
   rxr: Segment | undefined,
   tq1: Tq1Reading | undefined,
   ctx: TransformContext,
@@ -193,19 +193,19 @@ function buildDosageInstruction(
     if (method !== undefined) props.push({ name: "method", value: method });
   }
 
-  if (rxo !== undefined) {
-    const units = rxo.field(4).asCwe();
-    const low = doseEndpoint(rxo, 2, units, ctx, issues);
-    const high = doseEndpoint(rxo, 3, units, ctx, issues);
-    const rangeProps: { name: string; value: FhirNode }[] = [];
-    if (low !== undefined) rangeProps.push({ name: "low", value: low });
-    if (high !== undefined) rangeProps.push({ name: "high", value: high });
-    if (rangeProps.length > 0) {
-      props.push({
-        name: "doseAndRate",
-        value: list([complex([{ name: "doseRange", value: complex(rangeProps) }])]),
-      });
-    }
+  // RXO-2/RXO-3 with RXO-4 units → doseAndRate.doseRange. The caller has already refused an order
+  // with no RXO, so the segment is always here.
+  const units = rxo.field(4).asCwe();
+  const low = doseEndpoint(rxo, 2, units, ctx, issues);
+  const high = doseEndpoint(rxo, 3, units, ctx, issues);
+  const rangeProps: { name: string; value: FhirNode }[] = [];
+  if (low !== undefined) rangeProps.push({ name: "low", value: low });
+  if (high !== undefined) rangeProps.push({ name: "high", value: high });
+  if (rangeProps.length > 0) {
+    props.push({
+      name: "doseAndRate",
+      value: list([complex([{ name: "doseRange", value: complex(rangeProps) }])]),
+    });
   }
 
   return props.length === 0 ? undefined : complex(props);
