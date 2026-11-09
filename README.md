@@ -332,7 +332,7 @@ not conformant, and this is where you find that out rather than at the receiver.
 
 Questions, bug reports, and mappings that look wrong go in
 [GitHub issues](https://github.com/cosyte/transform/issues). Use synthetic data only, never a real
-patient's message. For help with an HL7 v2 to FHIR integration, see our
+patient's message. Need an HL7 v2 to FHIR integration built, or hosted and run for you? See our
 [integration services](https://cosyte.com/integration-services).
 
 ## Security
