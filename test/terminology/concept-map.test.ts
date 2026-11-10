@@ -142,6 +142,16 @@ describe("toFhirCodeableConceptVia: the bound-table (CWE.3) guard + additive pre
     ).toBeUndefined();
   });
 
+  it("translateBound gives no target for a CWE with no code, absent or empty, in the bound table", () => {
+    // Held here so this branch never rests on what the property suites happen to generate.
+    expect(translateBound(cwe({}), ROUTE_VALUE_MAP)).toBeUndefined();
+    expect(translateBound(cwe({ identifier: "" }), ROUTE_VALUE_MAP)).toBeUndefined();
+    expect(
+      translateBound(cwe({ identifier: "", nameOfCodingSystem: "HL70162" }), ROUTE_VALUE_MAP),
+    ).toBeUndefined();
+    expect(translateBound(cwe({ identifier: "IM" }), ROUTE_VALUE_MAP)?.code).toBe("IM");
+  });
+
   it("DOES translate when CWE.3 explicitly names the bound table (HL70162), no flag", () => {
     const { value, issues } = toFhirCodeableConceptVia(
       cwe({ identifier: "IM", nameOfCodingSystem: "HL70162" }),

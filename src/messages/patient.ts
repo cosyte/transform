@@ -16,20 +16,21 @@
  * time-of-day) is dropped to `date` precision with a flag, because the US Core `patient-birthTime`
  * extension is a profile concern this library does not cover.
  *
- * Not mapped, and flagged: PID-13 and PID-14 telecom (no XTN→ContactPoint converter). A value in
- * either field raises one {@link ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED} at `information` severity,
- * located at `PID.13` even when only PID-14 carried a value.
+ * Not mapped, and flagged: each of these fields that is valued raises one
+ * {@link ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED} at `information` severity, located at its own
+ * field: PID-10 race, PID-13 home and PID-14 business telecom (no XTN to ContactPoint converter),
+ * PID-15 primary language, PID-19 SSN, PID-22 ethnic group, PID-29 death date and time and PID-30
+ * death indicator. So a `Patient` built from a PID that records a death carries no `deceased[x]`
+ * element, and the issues say that PID-29 or PID-30 was dropped. Read these fields from the parsed
+ * message if you need them.
  *
- * Not mapped, and NOT flagged: every other PID field is dropped with no issue at all. That includes
- * PID-10 race, PID-15 primary language, PID-19 SSN, PID-22 ethnic group, PID-29 death date and time
- * and PID-30 death indicator, so a `Patient` built from a PID that records a death carries no
- * `deceased[x]` element and nothing in the issues says so. Repetitions of PID-5 and PID-11 after the
- * first are dropped the same way. Read these fields from the parsed message if you need them.
+ * Not mapped, and NOT flagged: every other PID field is dropped with no issue at all, and so are
+ * repetitions of PID-5 and PID-11 after the first.
  *
  * @packageDocumentation
  */
 
-import type { Patient, Segment } from "@cosyte/hl7";
+import type { Field, Patient, Segment } from "@cosyte/hl7";
 import { complex, primitive, list, type FhirComplex, type FhirNode } from "@cosyte/fhir";
 
 import { toFhirIdentifier } from "../datatypes/identifier.js";
@@ -58,6 +59,48 @@ export const ADMINISTRATIVE_GENDER_MAP: Readonly<Record<string, string>> = Objec
   N: "other",
 });
 
+/**
+ * The PID fields `Patient` does not carry, each with the FHIR element the IG **Segment PID to
+ * Patient** ConceptMap sends it to. PID-10 race and PID-22 ethnic group have no row in that map (the
+ * US Core race and ethnicity extensions are a profile concern this library does not cover), so they
+ * name no element. PID-13 and PID-14 wait on an XTN to ContactPoint converter, and PID-15, PID-19,
+ * PID-29 and PID-30 on conversions not written yet. A valued field in this list raises one
+ * {@link ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED} at its own location, never at a neighbour's.
+ */
+const PID_DROPPED_FIELDS: readonly {
+  readonly field: number;
+  readonly fhirPath?: string;
+}[] = Object.freeze([
+  { field: 10 },
+  { field: 13, fhirPath: "Patient.telecom" },
+  { field: 14, fhirPath: "Patient.telecom" },
+  { field: 15, fhirPath: "Patient.communication.language" },
+  { field: 19, fhirPath: "Patient.identifier" },
+  { field: 22 },
+  { field: 29, fhirPath: "Patient.deceasedDateTime" },
+  { field: 30, fhirPath: "Patient.deceasedBoolean" },
+]);
+
+/**
+ * Whether a field carries a value anywhere: in any repetition, component or subcomponent. An empty
+ * field and the HL7 null `""` carry none.
+ */
+function isValued(field: Field): boolean {
+  return (
+    !field.isNull &&
+    field.repetitions.some((rep) =>
+      rep.components.some((component) => component.subcomponents.some((sub) => sub !== "")),
+    )
+  );
+}
+
+/** One {@link ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED} per valued field in {@link PID_DROPPED_FIELDS}. */
+function droppedFieldIssues(pid: Segment): TransformIssue[] {
+  return PID_DROPPED_FIELDS.filter(({ field }) => isValued(pid.field(field))).map(
+    ({ field, fhirPath }) => issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, `PID.${field}`, fhirPath),
+  );
+}
+
 /** Wrap present items as a FHIR list property value, or `undefined` when none are present. */
 function listOrUndefined(items: readonly FhirComplex[]): FhirNode | undefined {
   return items.length === 0 ? undefined : list(items);
@@ -69,8 +112,9 @@ function listOrUndefined(items: readonly FhirComplex[]): FhirNode | undefined {
  *
  * @param patient - The `@cosyte/hl7` `Patient` view (PID-derived).
  * @param ctx - The transform context; `ctx.namingSystem` resolves identifier assigning authorities.
- * @param pid - The PID segment the view was read from, so a PID-7 the view could not read is
- *   reported rather than lost; omit it and no such report is made.
+ * @param pid - The PID segment the view was read from, so a PID-7 the view could not read, and each
+ *   valued field this map does not carry, is reported rather than lost; omit it and no such report
+ *   is made.
  * @example
  * ```ts
  * import { parseHL7 } from "@cosyte/hl7";
@@ -138,10 +182,8 @@ export function buildPatient(
     if (address.value !== undefined) props.push({ name: "address", value: list([address.value]) });
   }
 
-  // PID-13/14 → Patient.telecom is deferred (no XTN→ContactPoint converter yet); flag the drop.
-  if (patient.phoneNumbers.length > 0) {
-    issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "PID.13", "Patient.telecom"));
-  }
+  // The PID fields this map does not carry: each valued one is flagged at its own field.
+  if (pid !== undefined) issues.push(...droppedFieldIssues(pid));
 
   // Only `resourceType` present → nothing emittable.
   if (props.length === 1) return { value: undefined, issues };
