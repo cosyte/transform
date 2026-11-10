@@ -178,6 +178,21 @@ describe("a message whose typed views a caller replaced", () => {
     expect(result.issues.map((i) => i.fhirPath)).not.toContain("Bundle.timestamp");
   });
 
+  it("a patient view on a message with no PID segment reports no PID field as dropped", () => {
+    // The view comes from a PID valuing PID-14 and PID-29, but the message it is placed on has no
+    // PID at all, so there is no field to point a report at and none is raised.
+    const source = parseHL7(
+      [MSH_ADT_A01, `${PID_JANE}||||||555-9999|||||||||||||||20260115`].join("\r"),
+    );
+    expect(source.patient?.phoneNumbers).toHaveLength(1);
+    const msg = parseHL7(MSH_ADT_A01);
+    Object.defineProperty(msg, "patient", { value: source.patient });
+    expect(msg.segments("PID")).toEqual([]);
+    const result = transform(msg);
+    expect(only(result, "Patient")["gender"]).toBe("female");
+    expect(result.issues.filter((i) => i.v2Location.startsWith("PID."))).toEqual([]);
+  });
+
   it("an empty slot in nextOfKin() is skipped: no RelatedPerson, no crash", () => {
     const msg = parseHL7([MSH_ADT_A01, PID_JANE].join("\r"));
     Object.defineProperty(msg, "nextOfKin", { value: () => [undefined] });

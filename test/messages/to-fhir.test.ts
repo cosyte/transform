@@ -446,13 +446,17 @@ describe("exported Phase-2 table maps mirror the IG ConceptMaps", () => {
  *
  * Recaptured only when a change legitimately alters what this input produces, which is then argued
  * in the change rather than absorbed by a regenerated literal.
+ *
+ * Recaptured once: the telecom drop moved from `PID.13` to `PID.14`. The phone in `ADT_A01`'s PID
+ * sits in field 14 (count the pipes after the address in field 11), and the drop was reported at
+ * PID-13 whichever field the phone came from. The bundle did not change.
  */
 const ADT_A01_BASELINE_BUNDLE =
   '{"resourceType":"Bundle","identifier":{"value":"MSG00001"},"type":"message","timestamp":"2026-07-21T14:30:00-05:00","entry":[{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000004","resource":{"resourceType":"MessageHeader","eventCoding":{"system":"http://terminology.hl7.org/CodeSystem/v2-0003","code":"A01"},"source":{"name":"SENDAPP","_endpoint":{"extension":[{"url":"http://hl7.org/fhir/StructureDefinition/data-absent-reason","valueCode":"unknown"}]}},"focus":[{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},{"reference":"urn:uuid:00000000-0000-4000-8000-000000000002"}]}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000001","resource":{"resourceType":"Patient","identifier":[{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"MR"}]},"system":"urn:oid:2.16.840.1.113883.19","value":"MRN12345"},{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"SS"}]},"value":"999887777"}],"name":[{"use":"official","family":"Public","given":["Jane","Q"],"prefix":["Mrs."]}],"gender":"female","birthDate":"1980-01-15","address":[{"use":"home","line":["123 Main St","Apt 4"],"city":"Boston","state":"MA","postalCode":"02101","country":"USA"}]}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000002","resource":{"resourceType":"Encounter","identifier":[{"type":{"coding":[{"system":"http://terminology.hl7.org/CodeSystem/v2-0203","code":"VN"}]},"value":"VISIT001"}],"status":"finished","class":{"system":"http://terminology.hl7.org/CodeSystem/v3-ActCode","code":"IMP","display":"inpatient encounter"},"subject":{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},"period":{"start":"2026-07-21T14:30:00-05:00","end":"2026-07-21T15:00:00-05:00"}}},{"fullUrl":"urn:uuid:00000000-0000-4000-8000-000000000003","resource":{"resourceType":"RelatedPerson","patient":{"reference":"urn:uuid:00000000-0000-4000-8000-000000000001"},"relationship":[{"coding":[{"code":"SPO"}]}],"name":[{"use":"official","family":"Public","given":["John"]}],"address":[{"line":["456 Oak Ave"],"city":"Boston","state":"MA","postalCode":"02101"}]}}]}';
 
 const ADT_A01_BASELINE_ISSUES: readonly string[] = [
   "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED@CX.4#Identifier.system",
-  "TRANSFORM_ELEMENT_DROPPED@PID.13#Patient.telecom",
+  "TRANSFORM_ELEMENT_DROPPED@PID.14#Patient.telecom",
   "TRANSFORM_ELEMENT_DROPPED@PV1.3#Encounter.location",
   "TRANSFORM_ELEMENT_DROPPED@PV1.7#Encounter.participant",
   "TRANSFORM_ELEMENT_DROPPED@PV1.8#Encounter.participant",

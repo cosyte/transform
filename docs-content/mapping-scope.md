@@ -49,11 +49,12 @@ and profiles are not implemented.
 ## Patients and visits
 
 A `Patient` is built from PID-3, PID-5, PID-7, PID-8 and PID-11 only, and from the first repetition
-of PID-5 and PID-11. PID-13 and PID-14 (telecom) raise one `TRANSFORM_ELEMENT_DROPPED`; every other
-PID field is dropped with no issue, among them PID-10 race, PID-15 primary language, PID-19 SSN,
-PID-22 ethnic group, PID-29 death date and time and PID-30 death indicator. A `Patient` from a PID
-that records a death therefore has no `deceased[x]`. Read those fields from the parsed message if
-you need them.
+of PID-5 and PID-11. PID-10 race, PID-13 and PID-14 telecom, PID-15 primary language, PID-19 SSN,
+PID-22 ethnic group, PID-29 death date and time and PID-30 death indicator are not mapped: each one
+that is valued raises a `TRANSFORM_ELEMENT_DROPPED` whose `v2Location` is that field, such as
+`PID.14` or `PID.29`. A `Patient` from a PID that records a death therefore has no `deceased[x]`,
+and `issues` says so. Every other PID field is dropped with no issue. Read those fields from the
+parsed message if you need them.
 
 PID-7, PV1-44, PV1-45 and MSH-7 that are valued but could not be read as a date by `@cosyte/hl7`
 raise `TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER`, and the element is left out.
