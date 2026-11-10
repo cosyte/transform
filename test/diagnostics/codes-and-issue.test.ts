@@ -47,6 +47,8 @@ describe("stable code registries", () => {
         // Phase 8: the message-level completeness diagnostic (additions only).
         "TRANSFORM_SEGMENT_NOT_EMITTED",
         "TRANSFORM_SEGMENT_NO_IG_MAP",
+        // A date the parser's typed view could not read (additions only).
+        "TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER",
       ].sort(),
     );
   });

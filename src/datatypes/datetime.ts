@@ -24,6 +24,12 @@
  *   leave out parts it does: a day with no month, a minute with no hour, a time with no day. Each part
  *   is written where FHIR expects it or dropped and flagged; none is padded or written out of place.
  *
+ * - **Part out of range.** A hand-built `TS` can also carry a part no calendar or clock has: hour 25,
+ *   minute 60, month 13, the 31st of February, or fractional seconds that are not digits. Such a
+ *   part is never written as given. It is dropped and flagged with every part after it, and the value
+ *   keeps the parts before it; a year FHIR cannot write leaves no value at all. A bad fraction is
+ *   the one part with nothing after it, so only the fraction goes and the whole second stays.
+ *
  * Date-only precisions (`2026`, `2026-07`, `2026-07-21`) are preserved exactly, never zero-filled,
  * and need no offset (FHIR permits a bare date).
  *
@@ -33,7 +39,7 @@
 import type { TS } from "@cosyte/hl7";
 
 import { ISSUE_CODES } from "../diagnostics/codes.js";
-import { issue } from "../diagnostics/issue.js";
+import { issue, type TransformIssue } from "../diagnostics/issue.js";
 import type { ConvertResult } from "../diagnostics/result.js";
 import type { TransformOptions } from "../terminology/context.js";
 
@@ -59,6 +65,23 @@ function writableOffset(offsetMinutes: number | undefined): number | undefined {
     ? offsetMinutes
     : undefined;
 }
+
+/** `true` when the part is absent, or a whole number from `min` to `max` inclusive. */
+function inRange(part: number | undefined, min: number, max: number): boolean {
+  return part === undefined || (Number.isInteger(part) && part >= min && part <= max);
+}
+
+/** The number of days in a month of the proleptic Gregorian calendar (month 1 to 12). */
+function daysInMonth(year: number, month: number): number {
+  if (month === 2) {
+    const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+    return leap ? 29 : 28;
+  }
+  return [4, 6, 9, 11].includes(month) ? 30 : 31;
+}
+
+/** Fractional seconds FHIR can write: one or more ASCII digits, as the R4 grammar's `[0-9]+`. */
+const FRACTION_DIGITS = /^[0-9]+$/;
 
 /** The `YYYY[-MM[-DD]]` date portion of a parsed TS, at its stated precision. */
 function datePart(year: number, month: number | undefined, day: number | undefined): string {
@@ -91,11 +114,24 @@ function dropped(value: string): ConvertResult<string> {
  * ```
  */
 export function toFhirDateTime(ts: TS, options: TransformOptions = {}): ConvertResult<string> {
-  if (!ts.valid || ts.precision === undefined || ts.year === undefined) {
+  // FHIR writes years 0001 to 9999 only; with no year it can place, there is nothing to write.
+  if (
+    !ts.valid ||
+    ts.precision === undefined ||
+    ts.year === undefined ||
+    !inRange(ts.year, 1, 9999)
+  ) {
     return {
       value: undefined,
       issues: [issue(ISSUE_CODES.TRANSFORM_TIMESTAMP_INVALID, "TS.1", "dateTime")],
     };
+  }
+
+  // A part out of range is never written as given: it goes, with every part after it, and the
+  // value keeps the parts before it. A day is in range only for the month and year it falls in.
+  if (!inRange(ts.month, 1, 12)) return dropped(datePart(ts.year, undefined, undefined));
+  if (ts.month !== undefined && !inRange(ts.day, 1, daysInMonth(ts.year, ts.month))) {
+    return dropped(datePart(ts.year, ts.month, undefined));
   }
 
   const date = datePart(ts.year, ts.month, ts.day);
@@ -105,15 +141,23 @@ export function toFhirDateTime(ts: TS, options: TransformOptions = {}): ConvertR
   // time without the full date it falls on; FHIR has a place for none of these.
   if (ts.month === undefined && ts.day !== undefined) return dropped(date);
 
+  // An empty fraction carries nothing, so it is neither written nor flagged.
+  const fraction = ts.fractionalSeconds === "" ? undefined : ts.fractionalSeconds;
+
   // No time-of-day → a bare date is a valid FHIR dateTime; preserve precision exactly.
   if (ts.hour === undefined) {
-    return ts.minute === undefined && ts.second === undefined
+    return ts.minute === undefined && ts.second === undefined && fraction === undefined
       ? { value: date, issues: [] }
       : dropped(date);
   }
 
   // FHIR writes a time only after a full `YYYY-MM-DD`; supplying an offset would not change that.
   if (ts.day === undefined) return dropped(date);
+
+  // A clock part out of range takes the whole time with it, whatever the offset.
+  if (!inRange(ts.hour, 0, 23) || !inRange(ts.minute, 0, 59) || !inRange(ts.second, 0, 59)) {
+    return dropped(date);
+  }
 
   // Time-of-day present. FHIR requires full hh:mm:ss + an offset; anything less cannot be emitted.
   // Full means the parts are there, not only that the precision says so: a hand-built TS can claim
@@ -129,15 +173,20 @@ export function toFhirDateTime(ts: TS, options: TransformOptions = {}): ConvertR
   );
 
   if (hasFullTime && offset !== undefined) {
-    const frac =
-      ts.precision === "fraction" && ts.fractionalSeconds !== undefined
-        ? `.${ts.fractionalSeconds}`
-        : "";
+    // A fraction is written only at fraction precision and only as digits; any other is dropped
+    // and flagged, and the whole second it belongs to is still written.
+    const writesFraction =
+      ts.precision === "fraction" && fraction !== undefined && FRACTION_DIGITS.test(fraction);
+    const frac = writesFraction ? `.${fraction}` : "";
     const value = `${date}T${pad(ts.hour, 2)}:${pad(minute, 2)}:${pad(second, 2)}${frac}${formatOffset(offset)}`;
+    const issues: TransformIssue[] = [];
     // If the offset was asserted by the caller rather than present on the wire, say so (value-free).
-    const issues = ts.hasTimezone
-      ? []
-      : [issue(ISSUE_CODES.TRANSFORM_TIMESTAMP_NO_TIMEZONE, "TS.1", "dateTime")];
+    if (!ts.hasTimezone) {
+      issues.push(issue(ISSUE_CODES.TRANSFORM_TIMESTAMP_NO_TIMEZONE, "TS.1", "dateTime"));
+    }
+    if (fraction !== undefined && !writesFraction) {
+      issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TS.1", "dateTime"));
+    }
     return { value, issues };
   }
 

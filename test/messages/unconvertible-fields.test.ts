@@ -13,6 +13,7 @@ import { ISSUE_CODES } from "../../src/index.js";
 import {
   MSH_ADT_A01,
   PID_JANE,
+  bundleJson,
   issuesAt,
   labels,
   resourcesOfType,
@@ -20,8 +21,12 @@ import {
   segment,
 } from "../_support/clinical-fixtures.js";
 
-const { TRANSFORM_TIMESTAMP_INVALID, TRANSFORM_ELEMENT_DROPPED, TRANSFORM_QUANTITY_VALUE_INVALID } =
-  ISSUE_CODES;
+const {
+  TRANSFORM_TIMESTAMP_INVALID,
+  TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER,
+  TRANSFORM_ELEMENT_DROPPED,
+  TRANSFORM_QUANTITY_VALUE_INVALID,
+} = ISSUE_CODES;
 
 /** An MSH for the given `code^trigger^structure`, otherwise the shared ADT header. */
 function msh(type: string): string {
@@ -215,5 +220,88 @@ describe("the diagnostic report's time and code rows", () => {
     ]);
     expect(resourcesOfType(result, "DiagnosticReport")).toEqual([]);
     expect(resourcesOfType(result, "Observation")).toHaveLength(1);
+  });
+});
+
+describe("a date the parser's typed view could not read is reported, not lost in silence", () => {
+  // PID-7, PV1-44, PV1-45 and MSH-7 reach this library through `@cosyte/hl7`'s typed views, which
+  // hand back nothing for a value they cannot read. Nothing else changes: the bundle is exactly the
+  // one the same message gives with the field empty, and the issues are that message's plus one.
+  const MSH_TS = "20260721143000-0500";
+  const PV1 = (admit: string, discharge: string): string =>
+    segment("PV1", { 1: "1", 2: "I", 44: admit, 45: discharge });
+
+  /** The message with the date field valued as given, and with it empty. */
+  const cases = [
+    {
+      field: "PID-7",
+      location: "PID.7",
+      fhirPath: "Patient.birthDate",
+      lines: (v: string) => [MSH_ADT_A01, PID_JANE.replace("19800115", v), PV1("", "")],
+    },
+    {
+      field: "PV1-44",
+      location: "PV1.44",
+      fhirPath: "Encounter.period.start",
+      lines: (v: string) => [MSH_ADT_A01, PID_JANE, PV1(v, "20260722100000-0500")],
+    },
+    {
+      field: "PV1-45",
+      location: "PV1.45",
+      fhirPath: "Encounter.period.end",
+      lines: (v: string) => [MSH_ADT_A01, PID_JANE, PV1("20260721100000-0500", v)],
+    },
+    {
+      field: "MSH-7",
+      location: "MSH.7",
+      fhirPath: "Bundle.timestamp",
+      lines: (v: string) => [MSH_ADT_A01.replace(MSH_TS, v), PID_JANE, PV1("", "")],
+    },
+  ] as const;
+
+  it.each(cases)("an unparseable $field raises one issue and changes nothing else", (c) => {
+    const bad = run(c.lines(NOT_A_DATE));
+    const empty = run(c.lines(""));
+    expect(bundleJson(bad)).toEqual(bundleJson(empty));
+    const reported = `${TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER}@${c.location}#${c.fhirPath}`;
+    expect(labels(bad).filter((l) => l === reported)).toHaveLength(1);
+    expect(labels(bad).filter((l) => l !== reported)).toEqual(labels(empty));
+    expect(issuesAt(bad, c.location).map((i) => i.code)).toEqual([
+      TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER,
+    ]);
+  });
+
+  it.each(cases)("an empty or null $field raises nothing for it", (c) => {
+    for (const v of ["", '""']) {
+      expect(issuesAt(run(c.lines(v)), c.location)).toEqual([]);
+    }
+  });
+
+  it.each(cases)("a readable $field raises nothing for it", (c) => {
+    const result = run(c.lines("20260721143000-0500"));
+    expect(result.issues.filter((i) => i.code === TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER)).toEqual(
+      [],
+    );
+  });
+
+  it("an order-ambiguous PID-7 the typed view refuses is reported the same way", () => {
+    const result = run([MSH_ADT_A01, PID_JANE.replace("19800115", "05/07/1980")]);
+    expect(only(result, "Patient")["birthDate"]).toBeUndefined();
+    expect(labels(result)).toContain(
+      `${TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER}@PID.7#Patient.birthDate`,
+    );
+  });
+
+  it("an order-ambiguous MSH-7 the view hands over as invalid keeps its own flag only", () => {
+    const result = run([MSH_ADT_A01.replace(MSH_TS, "05/07/2026"), PID_JANE]);
+    expect(bundleJson(result)["timestamp"]).toBeUndefined();
+    const codes = result.issues.map((i) => i.code);
+    expect(codes).toContain(TRANSFORM_TIMESTAMP_INVALID);
+    expect(codes).not.toContain(TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER);
+  });
+
+  it("an unparseable PV1-45 still leaves the status to the patient class", () => {
+    const result = run([MSH_ADT_A01, PID_JANE, PV1("", NOT_A_DATE)]);
+    expect(only(result, "Encounter")["status"]).toBe("in-progress");
   });
 });
