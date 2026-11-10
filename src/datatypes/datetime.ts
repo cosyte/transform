@@ -15,6 +15,11 @@
  *   seconds, and padding `:00` would fabricate precision, so such a value is likewise reduced to date
  *   precision and flagged, never padded.
  *
+ * - **Offset FHIR cannot write.** The R4 grammar admits offsets from `-14:00` to `+14:00` in whole
+ *   minutes, where a v2 DTM admits any `-2359` to `+2359`. An offset outside FHIR's range, on the wire
+ *   or asserted by the caller, cannot be written without changing the instant, so it is treated as
+ *   no usable offset at all and the value is reduced to date precision and flagged.
+ *
  * Date-only precisions (`2026`, `2026-07`, `2026-07-21`) are preserved exactly, never zero-filled,
  * and need no offset (FHIR permits a bare date).
  *
@@ -39,11 +44,23 @@ function formatOffset(offsetMinutes: number): string {
   return `${sign}${pad(Math.floor(abs / 60), 2)}:${pad(abs % 60, 2)}`;
 }
 
+/** The widest offset the R4 `dateTime` grammar admits, in minutes either side of UTC (`14:00`). */
+const FHIR_MAX_OFFSET_MINUTES = 14 * 60;
+
+/** The offset itself when FHIR can write it (whole minutes, `-14:00` to `+14:00`), else `undefined`. */
+function writableOffset(offsetMinutes: number | undefined): number | undefined {
+  return offsetMinutes !== undefined &&
+    Number.isInteger(offsetMinutes) &&
+    Math.abs(offsetMinutes) <= FHIR_MAX_OFFSET_MINUTES
+    ? offsetMinutes
+    : undefined;
+}
+
 /** The `YYYY[-MM[-DD]]` date portion of a parsed TS, at its stated precision. */
-function datePart(ts: TS): string {
-  let out = pad(ts.year ?? 0, 4);
-  if (ts.month !== undefined) out += `-${pad(ts.month, 2)}`;
-  if (ts.day !== undefined) out += `-${pad(ts.day, 2)}`;
+function datePart(year: number, month: number | undefined, day: number | undefined): string {
+  let out = pad(year, 4);
+  if (month !== undefined) out += `-${pad(month, 2)}`;
+  if (day !== undefined) out += `-${pad(day, 2)}`;
   return out;
 }
 
@@ -70,7 +87,7 @@ export function toFhirDateTime(ts: TS, options: TransformOptions = {}): ConvertR
     };
   }
 
-  const date = datePart(ts);
+  const date = datePart(ts.year, ts.month, ts.day);
 
   // No time-of-day → a bare date is a valid FHIR dateTime; preserve precision exactly.
   if (ts.hour === undefined) {
@@ -78,15 +95,24 @@ export function toFhirDateTime(ts: TS, options: TransformOptions = {}): ConvertR
   }
 
   // Time-of-day present. FHIR requires full hh:mm:ss + an offset; anything less cannot be emitted.
-  const hasFullTime = ts.precision === "second" || ts.precision === "fraction";
-  const offset = ts.hasTimezone ? ts.offsetMinutes : options.assumeTimezoneOffsetMinutes;
+  // Full means the parts are there, not only that the precision says so: a hand-built TS can claim
+  // second precision without a minute, and a part it does not carry is never padded to `00`.
+  const { minute, second } = ts;
+  const hasFullTime =
+    (ts.precision === "second" || ts.precision === "fraction") &&
+    minute !== undefined &&
+    second !== undefined;
+  // An offset FHIR cannot write is no offset at all: the value is reduced, never written out of range.
+  const offset = writableOffset(
+    ts.hasTimezone ? ts.offsetMinutes : options.assumeTimezoneOffsetMinutes,
+  );
 
   if (hasFullTime && offset !== undefined) {
     const frac =
       ts.precision === "fraction" && ts.fractionalSeconds !== undefined
         ? `.${ts.fractionalSeconds}`
         : "";
-    const value = `${date}T${pad(ts.hour, 2)}:${pad(ts.minute ?? 0, 2)}:${pad(ts.second ?? 0, 2)}${frac}${formatOffset(offset)}`;
+    const value = `${date}T${pad(ts.hour, 2)}:${pad(minute, 2)}:${pad(second, 2)}${frac}${formatOffset(offset)}`;
     // If the offset was asserted by the caller rather than present on the wire, say so (value-free).
     const issues = ts.hasTimezone
       ? []

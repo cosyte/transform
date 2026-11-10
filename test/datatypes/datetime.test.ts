@@ -85,3 +85,89 @@ describe("toFhirDateTime: output validates under @cosyte/fhir (emit gate)", () =
     },
   );
 });
+
+describe("toFhirDateTime: an offset FHIR cannot carry is never emitted", () => {
+  // The R4 dateTime grammar admits offsets from -14:00 to +14:00 in whole minutes. A v2 DTM admits
+  // any -2359 to +2359, so a wire offset outside FHIR's range has no faithful FHIR form: the time is
+  // dropped to date precision and flagged, exactly as for a time FHIR cannot carry at all.
+  it.each(["+1401", "+1500", "+2359", "-1401", "-2359"])(
+    "reduces a wire offset of %s to the date and flags the drop",
+    (zone) => {
+      const { value, issues } = toFhirDateTime(parseDtm(`20260721143000${zone}`));
+      expect(value).toBe("2026-07-21");
+      expect(issues.map((i) => i.code)).toEqual([ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED]);
+    },
+  );
+
+  it.each([
+    ["+1400", "2026-07-21T14:30:00+14:00"],
+    ["-1400", "2026-07-21T14:30:00-14:00"],
+    ["+1359", "2026-07-21T14:30:00+13:59"],
+  ])("keeps a wire offset of %s at the edge of FHIR's range", (zone, expected) => {
+    const { value, issues } = toFhirDateTime(parseDtm(`20260721143000${zone}`));
+    expect(value).toBe(expected);
+    expect(issues).toEqual([]);
+    expect(embedAndValidate([["effectiveDateTime", primitive(expected)]])).toEqual([]);
+  });
+
+  it.each([841, -841, 900, 90.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "ignores a caller-asserted offset of %s minutes, reducing a naked time to the date",
+    (assumeTimezoneOffsetMinutes) => {
+      const { value, issues } = toFhirDateTime(parseDtm("20260721143000"), {
+        assumeTimezoneOffsetMinutes,
+      });
+      expect(value).toBe("2026-07-21");
+      expect(issues.map((i) => i.code)).toEqual([ISSUE_CODES.TRANSFORM_TIMESTAMP_NO_TIMEZONE]);
+    },
+  );
+
+  it.each([840, -840, -720])("applies a caller-asserted offset of %s minutes", (minutes) => {
+    const { value } = toFhirDateTime(parseDtm("20260721143000"), {
+      assumeTimezoneOffsetMinutes: minutes,
+    });
+    expect(value).toMatch(/^2026-07-21T14:30:00[+-]1[24]:00$/);
+    expect(embedAndValidate([["effectiveDateTime", primitive(value ?? "")]])).toEqual([]);
+  });
+});
+
+describe("toFhirDateTime: a hand-built timestamp never has its missing time parts filled in", () => {
+  // `TS` is a plain object type, so a JavaScript caller can hand one over that claims a precision its
+  // parts do not carry. A minute or second it does not have is never padded to `00`.
+  it.each([
+    ["no minute", { precision: "second", second: 0 }],
+    ["no second", { precision: "second", minute: 30 }],
+    ["no second, at fraction precision", { precision: "fraction", minute: 30 }],
+  ] as const)("reduces a timestamp with %s to the date", (_label, parts) => {
+    const { value, issues } = toFhirDateTime({
+      raw: "",
+      valid: true,
+      year: 2026,
+      month: 7,
+      day: 21,
+      hour: 14,
+      hasTimezone: true,
+      offsetMinutes: -300,
+      fractionalSeconds: "5",
+      ...parts,
+    });
+    expect(value).toBe("2026-07-21");
+    expect(issues.map((i) => i.code)).toEqual([ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED]);
+  });
+
+  it("emits the full time when the hand-built timestamp carries every part", () => {
+    const { value } = toFhirDateTime({
+      raw: "",
+      valid: true,
+      precision: "second",
+      year: 2026,
+      month: 7,
+      day: 21,
+      hour: 14,
+      minute: 30,
+      second: 5,
+      hasTimezone: true,
+      offsetMinutes: -300,
+    });
+    expect(value).toBe("2026-07-21T14:30:05-05:00");
+  });
+});
