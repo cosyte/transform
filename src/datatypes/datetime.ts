@@ -20,6 +20,10 @@
  *   or asserted by the caller, cannot be written without changing the instant, so it is treated as
  *   no usable offset at all and the value is reduced to date precision and flagged.
  *
+ * - **Part with no place.** A `TS` built by hand can carry parts its precision does not name, or
+ *   leave out parts it does: a day with no month, a minute with no hour, a time with no day. Each part
+ *   is written where FHIR expects it or dropped and flagged; none is padded or written out of place.
+ *
  * Date-only precisions (`2026`, `2026-07`, `2026-07-21`) are preserved exactly, never zero-filled,
  * and need no offset (FHIR permits a bare date).
  *
@@ -59,9 +63,16 @@ function writableOffset(offsetMinutes: number | undefined): number | undefined {
 /** The `YYYY[-MM[-DD]]` date portion of a parsed TS, at its stated precision. */
 function datePart(year: number, month: number | undefined, day: number | undefined): string {
   let out = pad(year, 4);
-  if (month !== undefined) out += `-${pad(month, 2)}`;
-  if (day !== undefined) out += `-${pad(day, 2)}`;
+  if (month !== undefined) {
+    out += `-${pad(month, 2)}`;
+    if (day !== undefined) out += `-${pad(day, 2)}`;
+  }
   return out;
+}
+
+/** The flag for a part the TS carries that has no place in the FHIR value and is left out. */
+function dropped(value: string): ConvertResult<string> {
+  return { value, issues: [issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "TS.1", "dateTime")] };
 }
 
 /**
@@ -89,10 +100,20 @@ export function toFhirDateTime(ts: TS, options: TransformOptions = {}): ConvertR
 
   const date = datePart(ts.year, ts.month, ts.day);
 
+  // Every part a TS carries is written where FHIR expects it or dropped with a flag, never written
+  // out of place. A hand-built TS can carry a day without a month, a minute without an hour, or a
+  // time without the full date it falls on; FHIR has a place for none of these.
+  if (ts.month === undefined && ts.day !== undefined) return dropped(date);
+
   // No time-of-day → a bare date is a valid FHIR dateTime; preserve precision exactly.
   if (ts.hour === undefined) {
-    return { value: date, issues: [] };
+    return ts.minute === undefined && ts.second === undefined
+      ? { value: date, issues: [] }
+      : dropped(date);
   }
+
+  // FHIR writes a time only after a full `YYYY-MM-DD`; supplying an offset would not change that.
+  if (ts.day === undefined) return dropped(date);
 
   // Time-of-day present. FHIR requires full hh:mm:ss + an offset; anything less cannot be emitted.
   // Full means the parts are there, not only that the precision says so: a hand-built TS can claim
@@ -121,9 +142,11 @@ export function toFhirDateTime(ts: TS, options: TransformOptions = {}): ConvertR
   }
 
   // Cannot emit a valid zoned/full-precision time → reduce to date precision, never pad, never assume UTC.
-  const code =
-    !ts.hasTimezone && offset === undefined
-      ? ISSUE_CODES.TRANSFORM_TIMESTAMP_NO_TIMEZONE
-      : ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED;
-  return { value: date, issues: [issue(code, "TS.1", "dateTime")] };
+  if (!ts.hasTimezone && offset === undefined) {
+    return {
+      value: date,
+      issues: [issue(ISSUE_CODES.TRANSFORM_TIMESTAMP_NO_TIMEZONE, "TS.1", "dateTime")],
+    };
+  }
+  return dropped(date);
 }
