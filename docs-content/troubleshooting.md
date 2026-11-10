@@ -105,8 +105,10 @@ resource values; those carry PHI.
 Look for `TRANSFORM_RESOURCE_INVALID`: the resource failed the required-element check and was
 withheld, usually because a required element such as `status` had no grounded value (an order
 control, result status or document status the guide's map has no target for). Look also for a
-`TRANSFORM_ELEMENT_DROPPED` whose FHIR path ends in `.patient` or `.subject`: an allergy,
-diagnosis, procedure or coverage is withheld when the bundle has no `Patient` to point at.
+`TRANSFORM_ELEMENT_DROPPED` whose FHIR path ends in `.patient`, `.subject` or `.beneficiary`: an
+allergy (`AllergyIntolerance.patient`), diagnosis (`Condition.subject`), procedure
+(`Procedure.subject`) or coverage (`Coverage.beneficiary`) is withheld when the bundle has no
+`Patient` to point at.
 
 ## A segment I sent produced nothing
 

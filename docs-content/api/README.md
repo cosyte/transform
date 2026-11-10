@@ -16,8 +16,9 @@ the message-level assembly (HL7 v2 **ADT → FHIR Patient + Encounter**, the
 singles (**VXU_V04 → Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference**),
 all through `toFhir(msg)`), and the **terminology value-translation** layer: a
 `$translate`-shaped [toFhirCodeableConceptVia](#tofhircodeableconceptvia) engine applying the license-clean IG value
-ConceptMaps to the previously structural-only coded fields (route/site, appointment type, order
-priority, substitution).
+ConceptMaps to the previously structural-only coded fields (route/site, appointment type,
+substitution). OBR-5 order priority is not one of them: it is a lookup in
+[SERVICE\_REQUEST\_PRIORITY\_MAP](#service_request_priority_map).
 
 It also ships a **narrow reverse path**, FHIR → v2: [toV2Patient](#tov2patient) and
 [toV2Observation](#tov2observation) emit a complete v2 message carrying a `PID` or an `OBX` built from the

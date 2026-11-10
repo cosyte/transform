@@ -64,8 +64,31 @@ DIAGNOSTIC_REPORT_STATUS_MAP["F"]; // => "final"
 
 OBX-2 says what kind of value OBX-5 holds, and it picks the `value[x]` element. A result is never
 forced into a `Quantity` it is not. When a value cannot be carried faithfully in its element (a
-`TM` with a UTC offset, a magnitude a FHIR `decimal` cannot hold unchanged, an `ED` in any encoding
-but `Base64`), it falls back to the raw text in `valueString` with `TRANSFORM_ELEMENT_DROPPED`.
+`TM` with a UTC offset, an `NA` with a magnitude a FHIR `decimal` cannot hold unchanged, an `NR`
+neither of whose bounds a `decimal` can hold unchanged, an `ED` in any encoding but `Base64`), it
+falls back to the raw text in `valueString` with `TRANSFORM_ELEMENT_DROPPED`; the `NA` and `NR`
+cases also raise `TRANSFORM_QUANTITY_VALUE_INVALID` for each magnitude refused. An `NM` or `SN`
+magnitude a `decimal` cannot hold unchanged, such as `+210`, also falls back to the raw text in
+`valueString`, but it raises `TRANSFORM_QUANTITY_VALUE_INVALID` and no
+`TRANSFORM_ELEMENT_DROPPED`.
+
+```ts runnable
+import { parseHL7 } from "@cosyte/hl7";
+import { serializeResource } from "@cosyte/fhir";
+import { toFhir } from "@cosyte/transform";
+
+const raw = [
+  "MSH|^~\\&|LAB|LABFAC|EHR|HOSP|20260721150000-0500||ORU^R01^ORU_R01|MSG0003|P|2.5.1",
+  "PID|1||MRN12345^^^HOSP^MR||Public^Jane^Q||19800115|F",
+  "OBR|1|PLACER1|FILLER1|24331-1^Lipid Panel^LN|||20260721143000-0500|||||||||||||||20260721150000-0500||LAB|F",
+  "OBX|1|NM|2093-3^Cholesterol^LN||+210|mg/dL^mg/dL^UCUM|||||F",
+].join("\r");
+
+const { bundle, issues } = toFhir(parseHL7(raw));
+serializeResource(bundle).includes('"valueString":"+210"'); // => true
+issues.some((i) => i.code === "TRANSFORM_QUANTITY_VALUE_INVALID"); // => true
+issues.some((i) => i.code === "TRANSFORM_ELEMENT_DROPPED"); // => false
+```
 
 | OBX-2 | FHIR element |
 | --- | --- |

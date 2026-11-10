@@ -20,9 +20,12 @@ Each takes the composite `@cosyte/hl7` parsed (or one you build with the same fi
 | `toFhirAddress` | XAD | `Address` | guess an address use or type the guide does not map |
 | `toFhirQuantity` | NM and units | `Quantity` | make a UCUM code; convert a magnitude |
 
-Three of them look things up in a naming system: identifiers, coding systems, and whether a unit is
-UCUM. Pass one in the last argument, `{ namingSystem: createNamingSystem() }`. Without it they
-resolve nothing.
+Two of them look things up in a naming system: `toFhirIdentifier` for an assigning authority and
+`toFhirCodeableConcept` for a coding system. Pass one in the last argument,
+`{ namingSystem: createNamingSystem() }`. Without it they resolve no identifier system and no coding
+system. `toFhirQuantity` needs one only for a unit whose coding system is not the literal `UCUM`: a
+unit declared `UCUM` is treated as UCUM with or without a naming system, and any other mnemonic is
+asked of the naming system, so without one that unit stays in `Quantity.unit` alone.
 
 ## A timestamp
 
@@ -134,6 +137,11 @@ ucum.value === undefined ? undefined : serializeResource(ucum.value); // => '{"v
 const local = toFhirQuantity({ raw: "7.20", value: 7.2 }, { identifier: "mmol per liter" }, { namingSystem });
 local.value === undefined ? undefined : serializeResource(local.value); // => '{"value":7.20,"unit":"mmol per liter"}'
 local.issues.map((i) => i.code); // => ["TRANSFORM_UNIT_NOT_UCUM"]
+
+// A unit declared with the literal `UCUM` needs no naming system.
+const noContext = toFhirQuantity({ raw: "7.20", value: 7.2 }, { identifier: "mmol/L", nameOfCodingSystem: "UCUM" });
+noContext.value === undefined ? undefined : serializeResource(noContext.value); // => '{"value":7.20,"unit":"mmol/L","system":"http://unitsofmeasure.org","code":"mmol/L"}'
+noContext.issues.length; // => 0
 ```
 
 The magnitude keeps its digits as sent, from the `raw` text. A unit that is not declared UCUM, or
