@@ -365,3 +365,113 @@ describe("toV2Observation: the never-throw guardrail on malformed input", () => 
     expect(parseHL7(value?.toString() ?? "").get("OBX.3.9")).toBe("Hemoglobin");
   });
 });
+
+describe("toV2Observation: what a CWE or a DTM cannot hold", () => {
+  const RXNORM = { system: "http://www.nlm.nih.gov/research/umls/rxnorm", code: "1" };
+  const SNOMED = { system: "http://snomed.info/sct", code: "2" };
+
+  it("writes the first two codings as CWE's primary and alternate and flags a third", () => {
+    const { value, issues } = toV2Observation(
+      observation({ status: "final", code: { coding: [LOINC, RXNORM, SNOMED] } }),
+      "R01",
+    );
+    const round = parseHL7(value?.toString() ?? "");
+    expect(round.get("OBX.3.1")).toBe("789-8");
+    expect(round.get("OBX.3.4")).toBe("1");
+    expect(round.get("OBX.3.3")).toBe("LN");
+    expect(round.get("OBX.3.6")).toBe("RXNORM");
+    expect(issues).toContainEqual(
+      expect.objectContaining({
+        code: ISSUE_CODES.TRANSFORM_VALUE_NOT_REPRESENTABLE,
+        v2Location: "OBX.3",
+        fhirPath: "Observation.code.coding",
+      }),
+    );
+  });
+
+  it("writes a UTC `Z` effectiveDateTime as the explicit +0000 offset v2 uses", () => {
+    const { value } = toV2Observation(
+      observation({ status: "final", effectiveDateTime: "2026-01-02T10:15:00Z" }),
+      "R01",
+    );
+    expect(parseHL7(value?.toString() ?? "").get("OBX.14")).toBe("20260102101500+0000");
+  });
+
+  it("refuses a valueDateTime with no faithful DTM form, emitting no OBX-5", () => {
+    const result = toV2Observation(
+      complex([
+        { name: "resourceType", value: primitive("Observation") },
+        { name: "status", value: primitive("final") },
+        { name: "code", value: complex([{ name: "text", value: primitive("Hemoglobin") }]) },
+        { name: "valueDateTime", value: primitive("2026-01-02T10:15") },
+      ]),
+      "R01",
+    );
+    const round = parseHL7(result.value?.toString() ?? "");
+    expect(round.get("OBX.2") ?? "").toBe("");
+    expect(round.get("OBX.5") ?? "").toBe("");
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        code: ISSUE_CODES.TRANSFORM_VALUE_NOT_REPRESENTABLE,
+        v2Location: "OBX.5",
+        fhirPath: "Observation.valueDateTime",
+      }),
+    );
+  });
+
+  it("refuses a comparator outside FHIR's four rather than write the bare magnitude", () => {
+    const result = toV2Observation(
+      complex([
+        { name: "resourceType", value: primitive("Observation") },
+        { name: "status", value: primitive("final") },
+        { name: "code", value: complex([{ name: "text", value: primitive("Hemoglobin") }]) },
+        {
+          name: "valueQuantity",
+          value: complex([
+            { name: "value", value: primitive("5") },
+            { name: "comparator", value: primitive("ad") },
+          ]),
+        },
+      ]),
+      "R01",
+    );
+    const round = parseHL7(result.value?.toString() ?? "");
+    expect(round.get("OBX.5") ?? "").toBe("");
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        code: ISSUE_CODES.TRANSFORM_VALUE_NOT_REPRESENTABLE,
+        fhirPath: "Observation.valueQuantity.comparator",
+      }),
+    );
+  });
+
+  it("writes no OBX-5 for a valueQuantity that has a unit and no value, and raises nothing for it", () => {
+    const result = toV2Observation(
+      observation({ status: "final", valueQuantity: { unit: "g/L" } }),
+      "R01",
+    );
+    const round = parseHL7(result.value?.toString() ?? "");
+    expect(round.get("OBX.5") ?? "").toBe("");
+    expect(round.get("OBX.6") ?? "").toBe("");
+    expect(result.issues.map((i) => i.v2Location)).not.toContain("OBX.5");
+  });
+
+  it("flags a valueQuantity.value that is a complex node instead of a number", () => {
+    const result = toV2Observation(
+      complex([
+        { name: "resourceType", value: primitive("Observation") },
+        { name: "status", value: primitive("final") },
+        { name: "code", value: complex([{ name: "text", value: primitive("Hemoglobin") }]) },
+        { name: "valueQuantity", value: complex([{ name: "value", value: complex([]) }]) },
+      ]),
+      "R01",
+    );
+    expect(parseHL7(result.value?.toString() ?? "").get("OBX.5") ?? "").toBe("");
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        code: ISSUE_CODES.TRANSFORM_RESOURCE_MALFORMED,
+        fhirPath: "Observation.valueQuantity.value",
+      }),
+    );
+  });
+});

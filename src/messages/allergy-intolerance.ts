@@ -148,9 +148,8 @@ const READABLE_VERSION = /^\d+(?:\.\d+)*$/;
 export function carriesLegacyOnsetDate(version: string | undefined): boolean {
   if (version === undefined || !READABLE_VERSION.test(version)) return false;
   const parts = version.split(".").map(Number);
-  for (let i = 0; i < AL1_ONSET_WITHDRAWN_AT.length; i++) {
+  for (const [i, bound] of AL1_ONSET_WITHDRAWN_AT.entries()) {
     const part = parts[i] ?? 0;
-    const bound = AL1_ONSET_WITHDRAWN_AT[i] ?? 0;
     if (part !== bound) return part < bound;
   }
   // Equal on every component of the bound: 2.7 itself, and 2.7.1 with it.
@@ -195,6 +194,7 @@ function alternateCodesExtension(
 ): FhirComplex | undefined {
   const original = toFhirCodeableConceptVia(seg.field(field).asCwe(), map, ctx);
   issues.push(...original.issues);
+  /* v8 ignore if -- both callers reach here only for a valued AL1-2 or AL1-4, so CWE.1 is non-empty and toFhirCodeableConceptVia always returns a CodeableConcept */
   if (original.value === undefined) return undefined;
   return complex([
     { name: "url", value: primitive(ALTERNATE_CODES_EXTENSION_URL) },

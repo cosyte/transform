@@ -278,6 +278,7 @@ function pidFields(
       );
     } else {
       const pid7 = v2Field([[dtm]]);
+      /* v8 ignore else -- v2Date returns either undefined (handled above) or a DTM of at least a four-digit year */
       if (pid7 !== undefined) fields.set(7, pid7);
     }
   }

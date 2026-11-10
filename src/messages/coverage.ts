@@ -247,6 +247,7 @@ export function buildCoverage(
   }
   if (in1.field(49).value !== "") {
     const insuredId = subscriberIdExtension(in1, 49, ctx, issues);
+    /* v8 ignore else -- IN1-49 is valued (checked above), so CX.1 is non-empty and toFhirIdentifier always returns an Identifier */
     if (insuredId !== undefined) extensions.push(insuredId);
   }
   if (extensions.length > 0) props.push({ name: "extension", value: list(extensions) });

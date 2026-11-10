@@ -38,7 +38,15 @@ and time and PID-30 death indicator. A `Patient` from a PID that records a death
 
 `TRANSFORM_TIMESTAMP_NO_TIMEZONE`: the v2 timestamp had a time but no offset, and FHIR forbids a time
 without a zone, so it was reduced to date precision rather than assuming UTC (which would shift the
-clinical instant by hours). Supply `assumeTimezoneOffsetMinutes` if you know the sender's offset.
+clinical instant by hours). Supply `assumeTimezoneOffsetMinutes` if you know the sender's offset. It
+must be a whole number of minutes from -840 to 840 (-14:00 to +14:00), the range FHIR can write; any
+other value is ignored and the timestamp is still reduced to its date.
+
+A `TRANSFORM_ELEMENT_DROPPED` at `TS.1` on a timestamp that did carry an offset means the time could
+not be written: the offset was outside FHIR's range (a v2 DTM allows up to +2359), or the time had
+only hours or hours and minutes, and FHIR needs seconds. On a `TS` you built by hand it can also mean
+a part had no place in FHIR: a time with no day or month, a day with no month, or a minute or second
+with no hour. The value keeps the date parts it can place.
 
 ## My unit didn't populate `Quantity.code`
 

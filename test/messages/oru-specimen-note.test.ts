@@ -190,6 +190,28 @@ describe("an SPM in an ORU becomes a Specimen the DiagnosticReport that scopes i
     expect(specimen).toContain('"subject":{"reference":"urn:uuid:');
   });
 
+  it("places SPM-31's other specimen id after SPM-2's ids and before SPM-32's shipment id", () => {
+    const spm = seg("SPM", {
+      1: "1",
+      2: "PLACERSPEC1",
+      4: "BLD^Blood^HL70487",
+      31: "OTHERSPEC1^^^HOSP^MR",
+      32: "SHIPMENT1",
+    });
+    const specimen = JSON.parse(
+      resourceJson(run([MSH, PID, OBR_FINAL, OBX_FINAL, spm]), "Specimen"),
+    ) as {
+      identifier: { value: string; system?: string }[];
+    };
+    expect(specimen.identifier.map((i) => i.value)).toEqual([
+      "PLACERSPEC1",
+      "OTHERSPEC1",
+      "SHIPMENT1",
+    ]);
+    // SPM-31 is a CX, so its assigning authority resolves through the registry to a system.
+    expect(specimen.identifier[1]?.system).toBe("urn:oid:2.16.840.1.113883.19");
+  });
+
   it("takes SPM-17 to a collectedDateTime when SPM-17.2 is NOT valued, never a one-ended period", () => {
     const spm = seg("SPM", {
       1: "1",

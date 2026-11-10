@@ -17,7 +17,9 @@ import type { NamingSystemRegistry } from "./naming-system.js";
  * `assumeTimezoneOffsetMinutes` is the **only** way a naked v2 timestamp acquires a time-of-day in
  * FHIR: the caller asserts the sender's offset (in minutes east of UTC, e.g. `-300` for US Eastern
  * standard time). It is a *sender-asserted* value, flagged as such; absent it, a naked timestamp is
- * reduced to date precision, **never** assumed to be UTC.
+ * reduced to date precision, **never** assumed to be UTC. Only an offset FHIR can write is applied:
+ * a whole number of minutes from `-840` to `840` (`-14:00` to `+14:00`). Any other value is treated
+ * as no offset, so a naked timestamp is still reduced to date precision and flagged.
  */
 export interface TransformOptions {
   /** The sender's UTC offset in minutes, asserted by the caller to resolve naked timestamps. */

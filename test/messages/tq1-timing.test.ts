@@ -981,6 +981,9 @@ describe("endPrecedesStart", () => {
     expect(endPrecedesStart("2026-02", "2026")).toBe(false);
     expect(endPrecedesStart("2027", "2026")).toBe(true);
     expect(endPrecedesStart("2026-07-21", "2026")).toBe(false);
+    // A month-precision end could mean any day of its month, so it reaches its last day.
+    expect(endPrecedesStart("2026-07-21", "2026-06")).toBe(true);
+    expect(endPrecedesStart("2026-06-30", "2026-06")).toBe(false);
   });
 
   it("treats an unparseable zoned lexical form as not comparable as an instant", () => {

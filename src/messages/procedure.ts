@@ -119,7 +119,9 @@ export function addMinutes(start: string, minutes: number): string | undefined {
     `${pad(shifted.getUTCFullYear(), 4)}-${pad(shifted.getUTCMonth() + 1, 2)}` +
     `-${pad(shifted.getUTCDate(), 2)}T${pad(shifted.getUTCHours(), 2)}` +
     `:${pad(shifted.getUTCMinutes(), 2)}:${pad(shifted.getUTCSeconds(), 2)}`;
-  return `${rendered}${fraction ?? ""}${zone ?? ""}`;
+  /* v8 ignore next -- ZONED_DATE_TIME requires the zone group, so a match always carries it */
+  const offset = zone ?? "";
+  return `${rendered}${fraction ?? ""}${offset}`;
 }
 
 /**

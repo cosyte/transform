@@ -192,6 +192,7 @@ export function buildAppointment(
       ctx,
     );
     issues.push(...appointmentType.issues);
+    /* v8 ignore else -- SCH-8 is valued (checked above), so CWE.1 is non-empty and toFhirCodeableConceptVia always returns a CodeableConcept */
     if (appointmentType.value !== undefined)
       props.push({ name: "appointmentType", value: appointmentType.value });
   }
@@ -200,6 +201,7 @@ export function buildAppointment(
   if (ais !== undefined && ais.field(3).value !== "") {
     const serviceType = toFhirCodeableConcept(ais.field(3).asCwe(), ctx);
     issues.push(...serviceType.issues);
+    /* v8 ignore else -- AIS-3 is valued (checked above), so CWE.1 is non-empty and toFhirCodeableConcept always returns a CodeableConcept */
     if (serviceType.value !== undefined)
       props.push({ name: "serviceType", value: list([serviceType.value]) });
   }
@@ -208,6 +210,7 @@ export function buildAppointment(
   if (sch.field(7).value !== "") {
     const reason = toFhirCodeableConcept(sch.field(7).asCwe(), ctx);
     issues.push(...reason.issues);
+    /* v8 ignore else -- SCH-7 is valued (checked above), so CWE.1 is non-empty and toFhirCodeableConcept always returns a CodeableConcept */
     if (reason.value !== undefined) props.push({ name: "reasonCode", value: list([reason.value]) });
   }
 

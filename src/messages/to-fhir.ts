@@ -317,9 +317,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   // a dangling reference to a patient the bundle does not carry.
   const allergyFullUrls: string[] = [];
   const allergies = collectAllergies(msg);
-  for (let i = 0; i < allergies.length; i++) {
-    const al1 = allergies[i];
-    if (al1 === undefined) continue;
+  for (const [i, al1] of allergies.entries()) {
     const location = `AL1[${String(i)}]`;
     if (patientFullUrl === undefined) {
       issues.push(
@@ -351,9 +349,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   // occurrence either way, so a deferred row a message valued is never silently absent.
   const conditionFullUrls: string[] = [];
   const diagnoses = collectDiagnoses(msg);
-  for (let i = 0; i < diagnoses.length; i++) {
-    const dg1 = diagnoses[i];
-    if (dg1 === undefined) continue;
+  for (const [i, dg1] of diagnoses.entries()) {
     const location = `DG1[${String(i)}]`;
     issues.push(...deferredDiagnosisIssues(dg1));
     if (patientFullUrl === undefined) {
@@ -362,7 +358,9 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
     }
     const built = buildCondition(dg1, patientFullUrl, ctx, location);
     issues.push(...built.issues);
+    /* v8 ignore if -- buildCondition has no path that returns without a value */
     if (built.value === undefined) continue;
+    /* v8 ignore if -- buildCondition always sets subject, the one element EMIT_SCHEMAS requires of a Condition, and writes none of clinicalStatus, abatement, stage or evidence, the elements a Condition invariant reads */
     if (!passesEmitGate(built.value, location, "Condition", issues)) continue;
     const url = ids.next();
     conditionFullUrls.push(url);
@@ -380,9 +378,11 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   // so the entry is replaced by the same Encounter carrying the back-references, re-gated first.
   if (conditionFullUrls.length > 0 && encounterEntryIndex >= 0) {
     const emitted = focalEntries[encounterEntryIndex];
+    /* v8 ignore else -- encounterEntryIndex is set to the length of focalEntries just before the Encounter is pushed, and no entry is ever removed */
     if (emitted !== undefined) {
       const linked = emitEncounterDiagnosis(emitted.resource, conditionFullUrls, clearsEmitGate);
       issues.push(...linked.issues);
+      /* v8 ignore else -- emitEncounterDiagnosis always returns a value: the linked Encounter, or the one it was given */
       if (linked.value !== undefined) {
         focalEntries[encounterEntryIndex] = { fullUrl: emitted.fullUrl, resource: linked.value };
       }
@@ -393,9 +393,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   // (Procedure.subject.reference = Patient[1].id in the ADT_A01 message map).
   const procedureFullUrls: string[] = [];
   const procedures = collectProcedures(msg);
-  for (let i = 0; i < procedures.length; i++) {
-    const pr1 = procedures[i];
-    if (pr1 === undefined) continue;
+  for (const [i, pr1] of procedures.entries()) {
     const location = `PR1[${String(i)}]`;
     issues.push(...deferredProcedureIssues(pr1));
     if (patientFullUrl === undefined) {
@@ -404,7 +402,9 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
     }
     const built = buildProcedure(pr1, patientFullUrl, ctx);
     issues.push(...built.issues);
+    /* v8 ignore if -- buildProcedure has no path that returns without a value */
     if (built.value === undefined) continue;
+    /* v8 ignore if -- buildProcedure always sets subject and status "unknown", a member of the required binding, the two elements EMIT_SCHEMAS requires of a Procedure, and @cosyte/fhir runs no invariant on a Procedure */
     if (!passesEmitGate(built.value, location, "Procedure", issues)) continue;
     const url = ids.next();
     procedureFullUrls.push(url);
@@ -428,9 +428,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   }
 
   const coverageFullUrls: string[] = [];
-  for (let i = 0; i < coverages.length; i++) {
-    const in1 = coverages[i];
-    if (in1 === undefined) continue;
+  for (const [i, in1] of coverages.entries()) {
     const location = `IN1[${String(i)}]`;
     issues.push(...deferredCoverageIssues(in1));
     if (patientFullUrl === undefined) {
@@ -440,6 +438,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
     const built = buildCoverage(in1, patientFullUrl, ctx, location);
     issues.push(...built.issues);
     if (built.value === undefined) continue;
+    /* v8 ignore if -- buildCoverage returns a value only with payor, beneficiary and a value-absent status, the three elements EMIT_SCHEMAS requires of a Coverage, and @cosyte/fhir runs no invariant on a Coverage */
     if (!passesEmitGate(built.value, location, "Coverage", issues)) continue;
     const url = ids.next();
     coverageFullUrls.push(url);
@@ -461,9 +460,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
     for (const group of groups) {
       const resultFullUrls: string[] = [];
       const observationEntries: Entry[] = [];
-      for (let i = 0; i < group.observations.length; i++) {
-        const observation = group.observations[i];
-        if (observation === undefined) continue;
+      for (const [i, observation] of group.observations.entries()) {
         const built = buildObservation(
           observation.obx,
           patientFullUrl,
@@ -490,12 +487,11 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
       const specimenFullUrls: string[] = [];
       const specimenEntries: Entry[] = [];
       const emittedSpecimens: Segment[] = [];
-      for (let i = 0; i < group.specimens.length; i++) {
-        const spm = group.specimens[i];
-        if (spm === undefined) continue;
+      for (const [i, spm] of group.specimens.entries()) {
         const built = buildSpecimen(spm, patientFullUrl, ctx);
         issues.push(...built.issues);
         if (built.value === undefined) continue;
+        /* v8 ignore if -- EMIT_SCHEMAS has no Specimen schema, so @cosyte/fhir validates a Specimen as an unmodeled type and reports only an informational finding */
         if (!passesEmitGate(built.value, `SPM[${String(i)}]`, "Specimen", issues)) continue;
         const url = ids.next();
         specimenFullUrls.push(url);
