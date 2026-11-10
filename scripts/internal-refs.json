@@ -114,6 +114,23 @@
         "The slice thickness and the number of slices are DICOM attributes, each slice location is too; dob.value.slice(0, tIndex) and raw.slice(0, 4) are TypeScript; and the phase of the clinical study, the phase of illness and each phase of the trial are the reader words this rule must not touch",
         "birthDate is read as dob.value.slice(0, tIndex). The slice thickness and the number of slices are DICOM attributes."
       ]
+    },
+    {
+      "$comment": "The design-note ids the parser's source comments carry (a short upper-case code, a hyphen and a number), which a doc comment here once copied and the generated reference would publish. The shared identifier rule matches only the project prefixes above, so it lets them through. The positives are made up: ids of the same shapes whose numbers appear nowhere in this repository's history. The negatives are the segment-field material the rule must never touch.",
+      "id": "design-note-id",
+      "name": "internal design-note id",
+      "pattern": {
+        "source": "\\b(?:D|HELPERS|BIP|SER|PROF|WR|PARSE|MODEL|TYPES|TOL)-\\d{1,3}[a-z]?\\b",
+        "flags": ""
+      },
+      "positives": [
+        "A made-up note (D-917) that cites HELPERS-88",
+        "As BIP-93, SER-71, PROF-84, WR-77, PARSE-86, MODEL-79, TYPES-91, TOL-83 and D-962k say"
+      ],
+      "negatives": [
+        "MSH-9, PID-3, PID-5, PV1-44, OBX-5, OBX-11, RXA-20, RXA-21, DG1-21, TQ1-7, TQ1-8, SCH-25, TXA-19, IN1-4 and PR1-16; ICD-10-CM; UTF-8",
+        "A D-dimer result, Q6H dosing and the trailing-empty rule"
+      ]
     }
   ],
   "extraSamples": {

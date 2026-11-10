@@ -1,116 +1,120 @@
 ---
 id: guides-overview
-title: Guides
-sidebar_position: 1
-description: "Resolve assigning authorities, supply a sender's timezone, and emit a v2 message from a FHIR resource."
+title: Resolve assigning authorities
+sidebar_label: Resolve assigning authorities
+description: "Give each identifier a FHIR Identifier.system: seed the naming system with your authorities, and know which ones resolve on their own."
 ---
 
-# Guides
+# Resolve assigning authorities
 
-Task-oriented recipes for `@cosyte/transform`. Each is a short, copy-pasteable answer to one real
-transformation question. A guide is written only once the behavior it documents is shipped and its
-runnable example passes the doc/code-agreement check.
+A v2 identifier names who assigned it in its assigning authority (CX-4, an `HD`). FHIR needs a
+system URI in `Identifier.system`. There is no rule that turns one into the other, so the library
+asks a **naming system** you create, and leaves `system` out, with an issue, when the naming system
+has no answer. This guide shows how to give it the answers.
 
-## Resolve an assigning authority
+## Seed the naming system with your authorities
 
-A patient identifier's assigning authority (HD) is resolved through a **NamingSystem registry**. The
-registry auto-derives a system URI only for the two unambiguous cases: a valid OID with
-`universalIdType: "ISO"` (`urn:oid:…`) and a valid UUID (`urn:uuid:…`), and otherwise consults the
-entries you seed. A bare namespace mnemonic (HD.1) is **never** turned into a URI on its own.
+Map each authority code your senders use to the system URI it stands for. A key can be the
+namespace id (HD-1) or the universal id (HD-2).
 
 ```ts runnable
 import { createNamingSystem } from "@cosyte/transform";
 
 const registry = createNamingSystem({
-  authorities: { HOSPMRN: "urn:oid:2.16.840.1.113883.19.5" },
+  authorities: {
+    HOSPMRN: "urn:oid:2.16.840.1.113883.19.5",
+    "2.16.840.1.113883.19.7": "urn:oid:2.16.840.1.113883.19.7",
+  },
 });
 
 registry.resolveAssigningAuthority({ namespaceId: "HOSPMRN" }); // => "urn:oid:2.16.840.1.113883.19.5"
+registry.resolveAssigningAuthority({ universalId: "2.16.840.1.113883.19.7" }); // => "urn:oid:2.16.840.1.113883.19.7"
+registry.resolveAssigningAuthority({ namespaceId: "OTHER" }); // => undefined
 ```
 
-## Supply a sender's timezone for naked timestamps
+When an `HD` carries both, an entry for the universal id wins over an entry for the namespace id.
 
-By default a v2 timestamp with a time-of-day but no offset is reduced to date precision (FHIR forbids
-time without a zone). If you *know* the sending system's offset, assert it, and the value is emitted with
-that offset and flagged as sender-asserted, never inferred:
+## Know what resolves without a seed
 
-```ts
-import { toFhirDateTime } from "@cosyte/transform";
-import { parseDtm } from "@cosyte/hl7";
-
-toFhirDateTime(parseDtm("20260721143000"), { assumeTimezoneOffsetMinutes: -300 });
-// => { value: "2026-07-21T14:30:00-05:00", issues: [ TRANSFORM_TIMESTAMP_NO_TIMEZONE ] }
-```
-
-## Emit a v2 message from a FHIR resource
-
-The reverse path is narrow on purpose: a `Patient` becomes an `ADT`-shaped message carrying a `PID`,
-an `Observation` becomes an `ORU`-shaped message carrying an `OBX`. **You supply the trigger.** No
-FHIR resource carries an HL7 v2 message trigger, so there is nothing to infer one from, and an
-absent one returns no message plus a `TRANSFORM_MISSING_TRIGGER` diagnostic.
+Two kinds of authority resolve with no entry, because each names its system unambiguously: an OID
+in HD-2 with HD-3 `ISO`, and a UUID in HD-2 with HD-3 `UUID`. A namespace id alone never does, and
+neither does an OID without `ISO`.
 
 ```ts runnable
-import { toV2Patient, ISSUE_CODES } from "@cosyte/transform";
-import { parseResource } from "@cosyte/fhir";
+import { createNamingSystem } from "@cosyte/transform";
 
-const { resource } = parseResource('{"resourceType":"Patient","gender":"female"}');
+const registry = createNamingSystem();
 
-const emitted = toV2Patient(resource, "A28");
-emitted.value?.toString().includes("ADT^A28"); // => true
-
-const refused = toV2Patient(resource, "");
-refused.value; // => undefined
-refused.issues[0]?.code === ISSUE_CODES.TRANSFORM_MISSING_TRIGGER; // => true
+registry.resolveAssigningAuthority({ universalId: "2.16.840.1.113883.19.5", universalIdType: "ISO" }); // => "urn:oid:2.16.840.1.113883.19.5"
+registry.resolveAssigningAuthority({ universalId: "6A2F41A3-C54C-4E1B-9C11-6B1A7F5F2E10", universalIdType: "UUID" }); // => "urn:uuid:6a2f41a3-c54c-4e1b-9c11-6b1a7f5f2e10"
+registry.resolveAssigningAuthority({ namespaceId: "HOSPMRN" }); // => undefined
+registry.resolveAssigningAuthority({ universalId: "2.16.840.1.113883.19.5" }); // => undefined
 ```
 
-The direction is **lossy by design and not a round-trip**. The mapping guide runs v2 to FHIR, and
-several of its rows are many-to-one, so their inverse is ambiguous: `gender` `other` could have come
-from three different v2 codes, so it is refused rather than resolved to one of them.
+## Pass the naming system to the transform
+
+`toFhir` takes the naming system in its options and passes it to the datatype conversions it runs.
+Without one it uses `createNamingSystem()`, so only the two cases above resolve.
 
 ```ts runnable
-import { toV2Patient, ISSUE_CODES } from "@cosyte/transform";
-import { parseResource } from "@cosyte/fhir";
+import { parseHL7 } from "@cosyte/hl7";
+import { serializeResource } from "@cosyte/fhir";
+import { createNamingSystem, toFhir } from "@cosyte/transform";
 
-const { resource } = parseResource('{"resourceType":"Patient","gender":"other"}');
-const { issues } = toV2Patient(resource, "A28");
+const raw = [
+  "MSH|^~\\&|SENDAPP|SENDFAC|RCVAPP|RCVFAC|20260721143000-0500||ADT^A28^ADT_A05|MSG00002|P|2.5.1",
+  "PID|1||MRN12345^^^HOSPMRN^MR||Public^Jane||19800115|F",
+].join("\r");
+const namingSystem = createNamingSystem({
+  authorities: { HOSPMRN: "urn:oid:2.16.840.1.113883.19.5" },
+});
 
-issues[0]?.code === ISSUE_CODES.TRANSFORM_CODE_NOT_INVERTIBLE; // => true
-issues[0]?.v2Location; // => "PID.8"
+const { bundle, issues } = toFhir(parseHL7(raw), { namingSystem });
+const json = JSON.parse(serializeResource(bundle)) as {
+  entry: { resource: { identifier?: { system?: string }[] } }[];
+};
+
+json.entry[1]?.resource.identifier?.[0]?.system; // => "urn:oid:2.16.840.1.113883.19.5"
+issues.some((i) => i.code === "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED"); // => false
 ```
 
-The same rule covers what v2 requires and your resource does not carry. A `PID` needs PID-3 (Patient
-Identifier List) and PID-5 (Patient Name); an `OBX` needs OBX-11 (Observation Result Status). None of
-them has a safe default, so the field is left absent rather than padded with an invented value, and
-its absence is reported: check the issues before you send the message.
+The datatype converter takes it the same way, in its second argument:
+`toFhirIdentifier(cx, { namingSystem })`. Called without one, a converter resolves nothing.
+
+## When an authority is not resolved
+
+The identifier keeps its value and type, `Identifier.system` is left out, and the result carries a
+`TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED` at `CX.4` with the FHIR path `Identifier.system`. Add the
+authority to your seed. Do not fill the system in with a guess: two senders can use the same short
+code for different registries, and a shared system would make their patients look like one.
+
+## Seed coding systems too
+
+The same naming system resolves the coding-system mnemonic in a coded field (CWE-3) to a system
+URI. It knows `LN`, `SCT`, `RXNORM`, `CVX` and `UCUM` out of the box (`DEFAULT_V2_CODE_SYSTEMS`).
+Add your own with `codeSystems`:
 
 ```ts runnable
-import { toV2Patient, ISSUE_CODES } from "@cosyte/transform";
-import { parseResource } from "@cosyte/fhir";
+import { createNamingSystem } from "@cosyte/transform";
 
-const { resource } = parseResource('{"resourceType":"Patient","identifier":[{"value":"MRN1"}]}');
-const { value, issues } = toV2Patient(resource, "A28");
+const registry = createNamingSystem({
+  codeSystems: { "99LAB": "https://lab.example.com/fhir/CodeSystem/tests" },
+});
 
-// The message is emitted, with the required name field absent rather than fabricated.
-value?.toString().includes("PID|||MRN1"); // => true
-issues[0]?.code === ISSUE_CODES.TRANSFORM_V2_REQUIRED_FIELD_ABSENT; // => true
-issues[0]?.v2Location; // => "PID.5"
+registry.resolveCodeSystem("LN"); // => "http://loinc.org"
+registry.resolveCodeSystem("99LAB"); // => "https://lab.example.com/fhir/CodeSystem/tests"
+registry.resolveCodeSystem("L"); // => undefined
 ```
 
-If nothing in the resource grounds a single field of the target segment, there is no message at all,
-and that is reported too rather than returned as an empty success.
+An unknown mnemonic leaves `Coding.system` out and raises `TRANSFORM_CODE_SYSTEM_UNRESOLVED`; the
+code itself is kept.
 
-```ts runnable
-import { toV2Patient, ISSUE_CODES } from "@cosyte/transform";
-import { parseResource } from "@cosyte/fhir";
+## Reference
 
-const { resource } = parseResource('{"resourceType":"Patient"}');
-const { value, issues } = toV2Patient(resource, "A28");
-
-value; // => undefined
-issues[0]?.code === ISSUE_CODES.TRANSFORM_NO_V2_MESSAGE_EMITTED; // => true
-```
-
-## Planned guides
-
-Not yet written: assembling a full `Patient`/`Encounter`/`Observation` graph from a message,
-applying a BYO `ConceptMap` for local codes, and targeting US Core profiles.
+- [`createNamingSystem`](./api/README.md#createnamingsystem),
+  [`NamingSystemSeed`](./api/README.md#namingsystemseed) and
+  [`NamingSystemRegistry`](./api/README.md#namingsystemregistry)
+- [`DEFAULT_V2_CODE_SYSTEMS`](./api/README.md#default_v2_code_systems)
+- [`toFhir`](./api/README.md#tofhir) and [`TransformOptions`](./api/README.md#transformoptions)
+- [`toFhirIdentifier`](./api/README.md#tofhiridentifier)
+- [Issue codes](./issue-codes.md)

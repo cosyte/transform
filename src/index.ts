@@ -15,8 +15,9 @@
  * singles (**VXU_V04 → Immunization**, **SIU_S12 → Appointment**, **MDM_T02 → DocumentReference**),
  * all through `toFhir(msg)`), and the **terminology value-translation** layer: a
  * `$translate`-shaped {@link toFhirCodeableConceptVia} engine applying the license-clean IG value
- * ConceptMaps to the previously structural-only coded fields (route/site, appointment type, order
- * priority, substitution).
+ * ConceptMaps to the previously structural-only coded fields (route/site, appointment type,
+ * substitution). OBR-5 order priority is not one of them: it is a lookup in
+ * {@link SERVICE_REQUEST_PRIORITY_MAP}.
  *
  * It also ships a **narrow reverse path**, FHIR → v2: {@link toV2Patient} and
  * {@link toV2Observation} emit a complete v2 message carrying a `PID` or an `OBX` built from the

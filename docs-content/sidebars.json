@@ -13,19 +13,39 @@
     },
     {
       "type": "category",
-      "label": "Core concepts",
-      "collapsed": false,
-      "items": ["concepts-archetype"]
+      "label": "Tutorials",
+      "items": ["transform-an-admission"]
     },
     {
       "type": "category",
-      "label": "Guides",
-      "items": ["guides-overview"]
+      "label": "How-to guides",
+      "items": [
+        "guides-overview",
+        "supply-a-sender-timezone",
+        "convert-datatypes",
+        "transform-lab-results",
+        "transform-orders",
+        "translate-coded-values",
+        "handle-issues",
+        "emit-v2-from-fhir"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "Explanation",
+      "items": ["concepts-archetype", "conformance", "reverse-direction"]
+    },
+    {
+      "type": "category",
+      "label": "Reference",
+      "items": ["issue-codes", "mapping-scope"]
     },
     {
       "type": "category",
       "label": "Troubleshooting",
       "items": ["troubleshooting"]
-    }
+    },
+    "testing-and-quality",
+    "performance"
   ]
 }

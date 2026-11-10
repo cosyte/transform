@@ -231,8 +231,8 @@ function subcomponent(rep: RawRepetition, component: number, sub: number): strin
  * primitive that ends in (or contains) a raw delimiter arrives with every character the sender sent.
  *
  * `Field.text` is byte-verbatim for content but structurally canonical: it strips each component's
- * trailing empty subcomponents and each repetition's trailing empty components (the parser's D-02),
- * so the wire `2 tabs^` projects as `2 tabs` and `a&^b` as `a^b`. On a composite field those empties
+ * trailing empty subcomponents and each repetition's trailing empty components (the parser's
+ * trailing-empty rule), so the wire `2 tabs^` projects as `2 tabs` and `a&^b` as `a^b`. On a composite field those empties
  * are absent positions and dropping them is right; on a `TX` primitive they are the last characters
  * of a clinical instruction. This walks the field's own repetition tree, which still records every
  * empty, and pads each surviving component back to the subcomponent count the wire carried and each

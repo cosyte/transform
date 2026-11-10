@@ -1,110 +1,98 @@
 ---
 id: quickstart
 title: Quickstart
-sidebar_position: 1
-description: "Convert a v2 datatype, assemble a FHIR message Bundle from a parsed v2 message, and read the issues each call returns."
+sidebar_label: Quickstart
+description: "Convert one v2 datatype, then assemble a FHIR message Bundle from a parsed v2 message, and read the issues each call returns."
 ---
 
 # Quickstart
 
-The **datatype converters** each take a parsed `@cosyte/hl7` composite and return a `{ value, issues }`
-pair: the FHIR datatype node it could faithfully produce, plus the value-free diagnostics it raised.
-The **message-level** entry `toFhir(msg)` assembles a whole HL7 v2 message into a FHIR `Bundle` over
-those same converters: an **ADT** admit becomes a **Patient + Encounter** graph, and an
-**ORU^R01** lab result becomes a **DiagnosticReport + Observation** graph.
+This page takes you from an installed package to a FHIR `Bundle` in three steps. Install first
+([Installation](./installation.md)); every message below is synthetic.
 
 ## Convert a name
 
+Each datatype converter takes a composite parsed by `@cosyte/hl7` and returns `{ value, issues }`:
+the FHIR datatype it could faithfully produce, and the value-free issues it raised.
+
 ```ts runnable
+import { serializeResource } from "@cosyte/fhir";
 import { toFhirHumanName } from "@cosyte/transform";
 
 const { value, issues } = toFhirHumanName({
   familyName: "Public",
   givenName: "Jane",
-  nameTypeCode: "L", // HL7 Table 0200 "Legal name" → FHIR name-use "official"
+  nameTypeCode: "L", // HL7 Table 0200 "Legal name", FHIR name use "official"
 });
 
-// A clean, fully-mapped name raises no diagnostics.
+value === undefined ? undefined : serializeResource(value); // => '{"use":"official","family":"Public","given":["Jane"]}'
 issues; // => []
 ```
 
-`value` is a FHIR `HumanName` node you can drop straight into a resource; `issues` is empty here
-because every part mapped cleanly.
+`value` is a FHIR `HumanName` node you can place in a resource. `issues` is empty because every
+part mapped.
 
-## The fail-safe rule in action
+## See the fail-safe rule
 
-When a mapping is ambiguous, the converter **refuses to guess** and tells you why. A patient
-identifier whose assigning authority can't be resolved is emitted with its value and **no system**,
-never a synthesized one that could merge two patients:
+When a mapping is ambiguous, the converter refuses to guess and says why. A patient identifier whose
+assigning authority has no known system URI keeps its value and gets **no** system, never a
+made-up one that could merge two patients:
 
 ```ts runnable
-import { toFhirIdentifier, createNamingSystem, ISSUE_CODES } from "@cosyte/transform";
+import { createNamingSystem, toFhirIdentifier } from "@cosyte/transform";
 
 const { issues } = toFhirIdentifier(
   { idNumber: "12345", assigningAuthority: { namespaceId: "HOSPMRN" } },
-  { namingSystem: createNamingSystem() }, // no registry entry for a bare "HOSPMRN"
+  { namingSystem: createNamingSystem() }, // no entry for a bare "HOSPMRN"
 );
 
-issues[0].code; // => "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED"
+issues[0]?.code; // => "TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED"
+issues[0]?.fhirPath; // => "Identifier.system"
 ```
 
-Register the authority explicitly (`createNamingSystem({ authorities: { HOSPMRN: "urn:oid:…" } })`)
-and the same call resolves `Identifier.system` with no diagnostic.
+Register the authority, `createNamingSystem({ authorities: { HOSPMRN: "urn:oid:..." } })`, and the
+same call sets `Identifier.system` and raises nothing. [Resolve assigning
+authorities](./guides-overview.md) shows how.
 
 ## Assemble a message
 
-Parse an `ADT^A01` with `@cosyte/hl7`, then hand it to `toFhir`: you get back a FHIR R4 **message
-`Bundle`** (a `MessageHeader`, then the `Patient` and `Encounter` it describes) plus the value-free
-issues. Every segment→resource map is grounded on the published HL7 v2-to-FHIR IG.
+Parse a message with `@cosyte/hl7` and hand it to `toFhir`. You get a FHIR R4 message `Bundle`
+(a `MessageHeader`, then the resources the message describes) and the issues raised building it.
 
-```ts
+```ts runnable
 import { parseHL7 } from "@cosyte/hl7";
-import { toFhir, createNamingSystem } from "@cosyte/transform";
+import { serializeResource } from "@cosyte/fhir";
+import { createNamingSystem, toFhir } from "@cosyte/transform";
 
-const msg = parseHL7(raw); // an ADT^A01
-const { bundle, issues } = toFhir(msg, {
+const raw = [
+  "MSH|^~\\&|SENDAPP|SENDFAC|RCVAPP|RCVFAC|20260721143000-0500||ADT^A01^ADT_A01|MSG00001|P|2.5.1",
+  "PID|1||MRN12345^^^HOSP^MR||Public^Jane^Q||19800115|F",
+  "PV1|1|I",
+].join("\r");
+
+const { bundle, issues } = toFhir(parseHL7(raw), {
   namingSystem: createNamingSystem({ authorities: { HOSP: "urn:oid:2.16.840.1.113883.19" } }),
 });
 
-// bundle.type === "message"; entry[0] is a MessageHeader, then Patient + Encounter.
-// Encounter.subject and every reference resolve to a urn:uuid: fullUrl inside the bundle.
+const json = JSON.parse(serializeResource(bundle)) as {
+  type: string;
+  entry: { resource: { resourceType: string } }[];
+};
+json.type; // => "message"
+json.entry.map((e) => e.resource.resourceType); // => ["MessageHeader", "Patient", "Encounter"]
+issues.map((i) => i.code); // => ["TRANSFORM_REQUIRED_ELEMENT_UNKNOWN"]
 ```
 
-The same fail-safe rule holds at the message level: an unmapped patient class, a naked timestamp, or
-an unresolvable identifier authority becomes a typed issue, never a fabricated FHIR value. A message
-whose trigger the IG has **no message map** for is still assembled from the reusable segment maps and
-flagged `TRANSFORM_SEGMENT_ASSEMBLED`, never invented. The Table-0001/0004 maps the assembly applies
-are exported for inspection:
-
-```ts runnable
-import { ADMINISTRATIVE_GENDER_MAP, ENCOUNTER_CLASS_V3_MAP } from "@cosyte/transform";
-
-ADMINISTRATIVE_GENDER_MAP["F"]; // => "female"
-ENCOUNTER_CLASS_V3_MAP["I"].code; // => "IMP"
-```
-
-## Lab results (ORU^R01)
-
-An `ORU^R01` assembles into a **`DiagnosticReport`** per OBR with its **`Observation`** results, plus
-a **`Specimen`** per `SPM` that the report references, and each result's `NTE` comments as
-`Observation.note`. `OBX-2` discriminates the value type: `NM` → `valueQuantity`, `CWE` →
-`valueCodeableConcept`, `SN` → a structured range/ratio/comparator quantity, `DR` → `valuePeriod`,
-`NR` → `valueRange`, `TM` → `valueTime`, `NA` → `valueSampledData`, a `Base64` `ED` → the guide's
-named `valueAttachment` extension, `ST`/`TX` → `valueString`, so a result is **never**
-forced into a `Quantity` it isn't. The result-status maps are the clinical-safety heart of the graph
-and are exported for inspection: a **corrected** or **canceled** result is modeled exactly and
-**never emitted as `final`**, and a status the IG map has no target for leaves `status` absent (the
-resource is then withheld) rather than being guessed.
-
-```ts runnable
-import { OBSERVATION_STATUS_MAP, DIAGNOSTIC_REPORT_STATUS_MAP } from "@cosyte/transform";
-
-OBSERVATION_STATUS_MAP["C"]; // => "corrected"
-OBSERVATION_STATUS_MAP["X"]; // => "cancelled"
-DIAGNOSTIC_REPORT_STATUS_MAP["F"]; // => "final"
-```
+The one issue says that `MessageHeader.source.endpoint`, which FHIR requires, could not be derived
+from MSH-3 (an application name, not a URL), so it carries a `data-absent-reason` instead of an
+invented address. Every reference in the bundle points at a `urn:uuid:` `fullUrl` inside it.
 
 ## Next
 
-- [Core concepts](./concepts-archetype): the fail-safe rule, the diagnostic channel, the six converters.
-- **API reference**: every export, generated from source.
+- [Transform an admission message](./transform-an-admission.md): the tutorial, step by step, with
+  issues, an `OperationOutcome` and reproducible ids.
+- How-to guides: [resolve assigning authorities](./guides-overview.md),
+  [transform a lab result](./transform-lab-results.md), [transform an order and its
+  schedule](./transform-orders.md), [read, log and return the issues](./handle-issues.md), and
+  [emit a v2 message from a FHIR resource](./emit-v2-from-fhir.md).
+- [The reference](./api/README.md): every export, generated from the source.
