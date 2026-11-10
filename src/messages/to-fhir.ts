@@ -73,6 +73,7 @@ import { SegmentReachLedger } from "./segment-completeness.js";
 import { buildServiceRequest } from "./service-request.js";
 import { buildSpecimen } from "./specimen.js";
 import { readTq1 } from "./tq1-timing.js";
+import { viewTimestampIssues } from "./view-timestamp.js";
 
 /**
  * The immutable result of a message-level transform: the FHIR `Bundle` model and the value-free
@@ -204,6 +205,15 @@ function buildBundle(
       issues.push(issue(ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED, "MSH.7", "Bundle.timestamp"));
     }
   }
+  issues.push(
+    ...viewTimestampIssues(
+      msg.meta.timestamp,
+      msg.segments("MSH")[0],
+      7,
+      "MSH.7",
+      "Bundle.timestamp",
+    ),
+  );
 
   const entryNodes = entries.map((e) =>
     complex([
@@ -265,7 +275,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   let patientFullUrl: string | undefined;
   const patientView = msg.patient;
   if (patientView !== undefined) {
-    const built = buildPatient(patientView, ctx);
+    const built = buildPatient(patientView, ctx, msg.segments("PID")[0]);
     issues.push(...built.issues);
     if (built.value !== undefined && passesEmitGate(built.value, "PID", "Patient", issues)) {
       patientFullUrl = ids.next();
@@ -279,7 +289,7 @@ export function toFhir(msg: Hl7Message, opts: TransformOptions = {}): TransformR
   let encounterEntryIndex = -1;
   const visitView = msg.visit;
   if (visitView !== undefined) {
-    const built = buildEncounter(visitView, patientFullUrl, ctx);
+    const built = buildEncounter(visitView, patientFullUrl, ctx, msg.segments("PV1")[0]);
     issues.push(...built.issues);
     if (built.value !== undefined && passesEmitGate(built.value, "PV1", "Encounter", issues)) {
       encounterFullUrl = ids.next();

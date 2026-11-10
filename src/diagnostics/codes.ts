@@ -144,6 +144,13 @@ export const ISSUE_CODES = {
    * occurrence is located `[#n]` by its 1-based position among the segments of the message, with no
    * name part at all. */
   TRANSFORM_SEGMENT_NO_IG_MAP: "TRANSFORM_SEGMENT_NO_IG_MAP",
+  /** A valued v2 date/time field reached this library with no timestamp at all, because the
+   * `@cosyte/hl7` typed view it is read through hands back nothing for a value it cannot read:
+   * PID-7, PV1-44, PV1-45 and MSH-7. No value is emitted and nothing else changes. Distinct from
+   * {@link ISSUE_CODES.TRANSFORM_TIMESTAMP_INVALID}, which is raised for a timestamp that did arrive
+   * and could not be written; here there was nothing to try. Raised only when the field's own text
+   * does not read as a timestamp either, so a view a caller replaced on purpose raises nothing. */
+  TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER: "TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER",
 } as const;
 
 /** A value from {@link ISSUE_CODES}: the type consumers narrow `issue.code` against. */

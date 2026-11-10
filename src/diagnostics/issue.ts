@@ -195,6 +195,12 @@ export const ISSUE_REGISTRY: Readonly<Record<IssueCode, IssueMeta>> = Object.fre
     message:
       "segment occurrence reached no resource in the returned bundle, and the IG publishes no segment map for its name, or the name could not be classified at all; the bundle does not represent what this segment carried.",
   },
+  [ISSUE_CODES.TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER]: {
+    severity: "warning",
+    fhirIssueType: "value",
+    message:
+      "v2 date/time field is valued, but the parser's typed view could not read it and handed back no timestamp; no value emitted.",
+  },
 });
 
 /**

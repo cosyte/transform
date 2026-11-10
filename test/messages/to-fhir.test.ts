@@ -370,6 +370,12 @@ describe("toFhir: reference wiring & fail-safe edges", () => {
     expect(json).not.toContain('"period"');
     // The parser drops the unparseable discharge, so status falls back to the class map, not finished.
     expect(json).toContain('"status":"in-progress"');
+    // Neither loss is silent: each field the view could not read is named.
+    expect(
+      result.issues
+        .filter((i) => i.code === ISSUE_CODES.TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER)
+        .map((i) => `${i.v2Location}#${i.fhirPath ?? ""}`),
+    ).toEqual(["PV1.44#Encounter.period.start", "PV1.45#Encounter.period.end"]);
   });
 
   it("stays fail-safe when present fields carry only unmapped/empty parts (no fabricated values)", () => {

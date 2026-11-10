@@ -21,7 +21,7 @@
  * @packageDocumentation
  */
 
-import type { Visit } from "@cosyte/hl7";
+import type { Segment, Visit } from "@cosyte/hl7";
 import { complex, primitive, list, type FhirComplex, type FhirNode } from "@cosyte/fhir";
 
 import { toFhirDateTime } from "../datatypes/datetime.js";
@@ -31,6 +31,7 @@ import type { ConvertResult } from "../diagnostics/result.js";
 import type { TransformContext } from "../terminology/context.js";
 import { V2_0203_SYSTEM } from "../terminology/naming-system.js";
 import { coding, reference } from "./reference.js";
+import { viewTimestampIssues } from "./view-timestamp.js";
 
 /** The v3 ActCode canonical system (FHIR `Encounter.class` binding). */
 const V3_ACTCODE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ActCode";
@@ -92,6 +93,8 @@ function buildClass(
  * @param subjectFullUrl - The `urn:uuid:` fullUrl of the bundle's Patient, or `undefined` when none
  *   was produced (then `Encounter.subject` is omitted and flagged).
  * @param ctx - The transform context (carries the timezone policy for the period).
+ * @param pv1 - The PV1 segment the view was read from, so a PV1-44 or PV1-45 the view could not read
+ *   is reported rather than lost; omit it and no such report is made.
  * @example
  * ```ts
  * import { parseHL7 } from "@cosyte/hl7";
@@ -102,6 +105,7 @@ export function buildEncounter(
   visit: Visit,
   subjectFullUrl: string | undefined,
   ctx: TransformContext,
+  pv1?: Segment,
 ): ConvertResult<FhirComplex> {
   const issues: TransformIssue[] = [];
   const props: { name: string; value: FhirNode }[] = [
@@ -160,6 +164,12 @@ export function buildEncounter(
     issues.push(...end.issues);
     if (end.value !== undefined) periodProps.push({ name: "end", value: primitive(end.value) });
   }
+  // A PV1-44 or PV1-45 the view could not read is reported; the period and status are left as the
+  // view gave them, so an unreadable discharge does not make the encounter finished.
+  issues.push(
+    ...viewTimestampIssues(visit.admitDateTime, pv1, 44, "PV1.44", "Encounter.period.start"),
+    ...viewTimestampIssues(visit.dischargeDateTime, pv1, 45, "PV1.45", "Encounter.period.end"),
+  );
   if (periodProps.length > 0) props.push({ name: "period", value: complex(periodProps) });
 
   // Deferred, flagged: PV1-3 location, PV1-7/8 doctors need Location/Practitioner resources.

@@ -26,6 +26,11 @@ A missing FHIR element can come with a diagnostic explaining the refusal:
   `TRANSFORM_CODE_UNMAPPED` (no coding system at all). The code is preserved verbatim, never invented.
 - **`HumanName.use` / `Address.use` is absent** → the v2 code has no equivalent in the IG's table map
   (`TRANSFORM_NAME_USE_UNMAPPED` / `TRANSFORM_ADDRESS_USE_UNMAPPED`). It is surfaced, never guessed.
+- **`Patient.birthDate`, `Encounter.period` or `Bundle.timestamp` is absent** →
+  `TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER` at `PID.7`, `PV1.44`, `PV1.45` or `MSH.7`: the field was
+  valued, but `@cosyte/hl7`'s typed view could not read it as a date, so no timestamp reached the
+  transform. Nothing else changes: an unreadable PV1-45 does not make the encounter `finished`. If
+  the sender writes dates in another layout, declare it with `parseHL7(raw, { dateFormats })`.
 
 Some missing elements come with no diagnostic at all. A `Patient` is built from PID-3, PID-5, PID-7,
 PID-8 and PID-11 only, and from the first repetition of PID-5 and PID-11. PID-13 and PID-14
@@ -47,6 +52,13 @@ not be written: the offset was outside FHIR's range (a v2 DTM allows up to +2359
 only hours or hours and minutes, and FHIR needs seconds. On a `TS` you built by hand it can also mean
 a part had no place in FHIR: a time with no day or month, a day with no month, or a minute or second
 with no hour. The value keeps the date parts it can place.
+
+The same flag marks a part no calendar or clock has: hour 25, minute 60, month 13, or a day the
+month does not have, such as 31 February. That part is dropped with every part after it, and the
+value keeps the parts before it. `@cosyte/hl7` reads `20260231` as a valid date, so this can happen
+on a parsed message too. Fractional seconds that are not digits are dropped on their own, and the
+whole second is still written. A year FHIR cannot write (outside 0001 to 9999) leaves no value and
+raises `TRANSFORM_TIMESTAMP_INVALID`.
 
 ## My unit didn't populate `Quantity.code`
 

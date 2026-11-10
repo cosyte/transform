@@ -29,7 +29,7 @@
  * @packageDocumentation
  */
 
-import type { Patient } from "@cosyte/hl7";
+import type { Patient, Segment } from "@cosyte/hl7";
 import { complex, primitive, list, type FhirComplex, type FhirNode } from "@cosyte/fhir";
 
 import { toFhirIdentifier } from "../datatypes/identifier.js";
@@ -40,6 +40,7 @@ import { ISSUE_CODES } from "../diagnostics/codes.js";
 import { issue, type TransformIssue } from "../diagnostics/issue.js";
 import type { ConvertResult } from "../diagnostics/result.js";
 import type { TransformContext } from "../terminology/context.js";
+import { viewTimestampIssues } from "./view-timestamp.js";
 
 /**
  * HL7 v2 Table 0001 (Administrative Sex) → FHIR `administrative-gender`, exactly per the IG
@@ -68,13 +69,19 @@ function listOrUndefined(items: readonly FhirComplex[]): FhirNode | undefined {
  *
  * @param patient - The `@cosyte/hl7` `Patient` view (PID-derived).
  * @param ctx - The transform context; `ctx.namingSystem` resolves identifier assigning authorities.
+ * @param pid - The PID segment the view was read from, so a PID-7 the view could not read is
+ *   reported rather than lost; omit it and no such report is made.
  * @example
  * ```ts
  * import { parseHL7 } from "@cosyte/hl7";
  * // const { value } = buildPatient(parseHL7(raw).patient!, { namingSystem: createNamingSystem() });
  * ```
  */
-export function buildPatient(patient: Patient, ctx: TransformContext): ConvertResult<FhirComplex> {
+export function buildPatient(
+  patient: Patient,
+  ctx: TransformContext,
+  pid?: Segment,
+): ConvertResult<FhirComplex> {
   const issues: TransformIssue[] = [];
   const props: { name: string; value: FhirNode }[] = [
     { name: "resourceType", value: primitive("Patient") },
@@ -122,6 +129,7 @@ export function buildPatient(patient: Patient, ctx: TransformContext): ConvertRe
       }
     }
   }
+  issues.push(...viewTimestampIssues(patient.dateOfBirth, pid, 7, "PID.7", "Patient.birthDate"));
 
   // PID-11 → Patient.address (first repetition of the home address view).
   if (patient.address !== undefined) {

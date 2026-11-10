@@ -59,10 +59,12 @@ describe("the message header", () => {
     expect(issuesAt(result, "MSH.7")).toEqual([]);
   });
 
-  it("an unparseable MSH-7 gives the Bundle no timestamp and no precision flag", () => {
+  it("an unparseable MSH-7 gives the Bundle no timestamp, says so, and raises no precision flag", () => {
     const result = run([MSH_ADT_A01.replace("|20260721143000-0500|", "|20261399|"), PID_JANE]);
     expect(bundleJson(result)["timestamp"]).toBeUndefined();
-    expect(result.issues.map((i) => i.fhirPath)).not.toContain("Bundle.timestamp");
+    expect(issuesAt(result, "MSH.7").map((i) => i.code)).toEqual([
+      ISSUE_CODES.TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER,
+    ]);
   });
 
   it("an MSH-9 with a trigger but no message code is segment-assembled, never order-mapped", () => {
