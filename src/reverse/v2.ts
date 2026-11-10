@@ -66,6 +66,7 @@ export function segmentFields(
   byPosition: ReadonlyMap<number, RawField>,
 ): readonly (string | RawField)[] {
   const positions = [...byPosition.keys()];
+  /* v8 ignore next -- the only caller, emitMessage, returns before it for an empty map */
   const highest = positions.length === 0 ? 0 : Math.max(...positions);
   const out: (string | RawField)[] = [];
   for (let position = 1; position <= highest; position++) {
@@ -94,12 +95,16 @@ export function v2Timestamp(value: string): string | undefined {
   const parts = FHIR_DATETIME.exec(value);
   if (parts === null) return undefined;
   const [, year, month, day, hour, minute, second, fraction, zone] = parts;
+  /* v8 ignore next -- FHIR_DATETIME requires the year group, so a match always carries it */
   let out = year ?? "";
   if (month !== undefined) out += month;
   if (day !== undefined) out += day;
   if (hour === undefined) return out;
-  out += `${hour}${minute ?? ""}${second ?? ""}${fraction ?? ""}`;
-  return out + (zone === "Z" ? "+0000" : (zone ?? "").replace(":", ""));
+  /* v8 ignore next -- minute and second are required in the same optional group as the hour, so a match with an hour carries both */
+  out += `${hour}${minute ?? ""}${second ?? ""}`;
+  /* v8 ignore next -- the zone is required in the same optional group as the hour, so a match with an hour carries it */
+  const offset = zone ?? "";
+  return `${out}${fraction ?? ""}${offset === "Z" ? "+0000" : offset.replace(":", "")}`;
 }
 
 /**

@@ -126,6 +126,9 @@ export const SERVICE_REQUEST_PRIORITY_MAP: Readonly<Record<string, string>> = Ob
 const ORDER_INTENT = "order";
 
 /** The decoded value of a field on an optional segment (empty string when the segment is absent). */
+/** The CWE.3 values that name the v2-0485 priority table: empty, `HL70485`, or the bare `0485`. */
+const PRIORITY_TABLE_MNEMONICS: ReadonlySet<string> = new Set(["", "HL70485", "0485"]);
+
 function fieldValue(seg: Segment | undefined, index: number): string {
   return seg === undefined ? "" : seg.field(index).value;
 }
@@ -160,7 +163,9 @@ export function buildServiceRequest(
 ): ConvertResult<FhirComplex> {
   const issues: TransformIssue[] = [];
   // The TQ1 diagnostics are raised whatever becomes of the request (see the MedicationRequest note).
+  /* v8 ignore else -- the only caller, toFhir, always passes the reading readTq1 returned */
   if (tq1 !== undefined) issues.push(...tq1.issues);
+  /* v8 ignore if -- the only caller, toFhir, builds a ServiceRequest only for a group with an ORC or an OBR */
   if (orc === undefined && obr === undefined) return { value: undefined, issues };
 
   const props: { name: string; value: FhirNode }[] = [
@@ -198,6 +203,7 @@ export function buildServiceRequest(
   if (obr !== undefined && obr.field(4).value !== "") {
     const code = toFhirCodeableConcept(obr.field(4).asCwe(), ctx);
     issues.push(...code.issues);
+    /* v8 ignore else -- OBR-4 is valued (checked above), so CWE.1 is non-empty and toFhirCodeableConcept always returns a CodeableConcept */
     if (code.value !== undefined) props.push({ name: "code", value: code.value });
   }
 
@@ -208,8 +214,7 @@ export function buildServiceRequest(
   const obr5 = obr5cwe?.identifier ?? "";
   if (obr5 !== "") {
     const mnemonic = obr5cwe?.nameOfCodingSystem;
-    const fromTable =
-      mnemonic === undefined || mnemonic === "" || mnemonic === "HL70485" || mnemonic === "0485";
+    const fromTable = mnemonic === undefined || PRIORITY_TABLE_MNEMONICS.has(mnemonic);
     const priority =
       fromTable && Object.hasOwn(SERVICE_REQUEST_PRIORITY_MAP, obr5)
         ? SERVICE_REQUEST_PRIORITY_MAP[obr5]
@@ -257,6 +262,7 @@ export function buildServiceRequest(
   if (obr !== undefined && obr.field(31).value !== "") {
     const reason = toFhirCodeableConcept(obr.field(31).asCwe(), ctx);
     issues.push(...reason.issues);
+    /* v8 ignore else -- OBR-31 is valued (checked above), so CWE.1 is non-empty and toFhirCodeableConcept always returns a CodeableConcept */
     if (reason.value !== undefined) props.push({ name: "reasonCode", value: list([reason.value]) });
   }
 

@@ -177,10 +177,12 @@ export function flagUnmapped(
   for (const property of resource.properties) {
     if (mapped.has(property.name)) continue;
     const known = Object.hasOwn(targets, property.name);
+    /* v8 ignore next -- known means the library-owned table has the key, and every entry in each table is a string */
+    const location = known ? (targets[property.name] ?? segment) : segment;
     issues.push(
       issue(
         ISSUE_CODES.TRANSFORM_NO_V2_TARGET,
-        known ? (targets[property.name] ?? segment) : segment,
+        location,
         known ? `${resourceName}.${property.name}` : resourceName,
       ),
     );

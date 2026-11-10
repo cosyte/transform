@@ -316,7 +316,8 @@ function buildRangeValue(field: Field, issues: TransformIssue[]): FhirComplex | 
 function timeValue(raw: string): string | undefined {
   const parts = /^(\d{2})(\d{2})(\d{2})(\.\d{1,4})?$/.exec(raw);
   if (parts === null) return undefined;
-  const candidate = `${parts[1] ?? ""}:${parts[2] ?? ""}:${parts[3] ?? ""}${parts[4] ?? ""}`;
+  // Groups 1 to 3 are required by the pattern, so a match always carries all three.
+  const candidate = `${parts.slice(1, 4).join(":")}${parts[4] ?? ""}`;
   return validatePrimitiveValue(candidate, "time") === "ok" ? candidate : undefined;
 }
 
@@ -337,6 +338,7 @@ function timeValue(raw: string): string | undefined {
  */
 function buildSampledData(field: Field, issues: TransformIssue[]): FhirComplex | undefined {
   const rows = field.repetitions.map((r) => r.components.map((c) => c.subcomponents[0] ?? ""));
+  /* v8 ignore if -- the only caller reaches here after fieldEmpty(field) is false, which needs at least one repetition */
   if (rows.length === 0) return undefined;
   const width = Math.max(...rows.map((r) => r.length));
   const dimensions = rows.length === 1 ? 1 : width;

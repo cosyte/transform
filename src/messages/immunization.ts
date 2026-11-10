@@ -225,6 +225,7 @@ export function buildImmunization(
   if (rxa.field(5).value === "") return { value: undefined, issues };
   const vaccineCode = toFhirCodeableConcept(rxa.field(5).asCwe(), ctx);
   issues.push(...vaccineCode.issues);
+  /* v8 ignore if -- RXA-5 is valued (checked above), so CWE.1 is non-empty and toFhirCodeableConcept always returns a CodeableConcept */
   if (vaccineCode.value === undefined) return { value: undefined, issues };
 
   const props: { name: string; value: FhirNode }[] = [
@@ -311,11 +312,13 @@ export function buildImmunization(
   if (rxa.field(18).value !== "") {
     const reason = toFhirCodeableConcept(rxa.field(18).asCwe(), ctx);
     issues.push(...reason.issues);
+    /* v8 ignore else -- RXA-18 is valued (checked above), so CWE.1 is non-empty and toFhirCodeableConcept always returns a CodeableConcept */
     if (reason.value !== undefined) props.push({ name: "statusReason", value: reason.value });
   }
   if (rxa.field(19).value !== "") {
     const indication = toFhirCodeableConcept(rxa.field(19).asCwe(), ctx);
     issues.push(...indication.issues);
+    /* v8 ignore else -- RXA-19 is valued (checked above), so CWE.1 is non-empty and toFhirCodeableConcept always returns a CodeableConcept */
     if (indication.value !== undefined)
       props.push({ name: "reasonCode", value: list([indication.value]) });
   }

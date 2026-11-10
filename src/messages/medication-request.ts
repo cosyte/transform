@@ -284,12 +284,14 @@ export function buildMedicationRequest(
 
   // The TQ1 diagnostics are raised whatever becomes of the request: a refused schedule is news even
   // when the order turns out to have no give code to prescribe.
+  /* v8 ignore else -- the only caller, toFhir, always passes the reading readTq1 returned */
   if (tq1 !== undefined) issues.push(...tq1.issues);
 
   // RXO-1 → medicationCodeableConcept (required 1..1). Absent → nothing emittable.
   if (rxo === undefined || rxo.field(1).value === "") return { value: undefined, issues };
   const medication = toFhirCodeableConcept(rxo.field(1).asCwe(), ctx);
   issues.push(...medication.issues);
+  /* v8 ignore if -- RXO-1 is valued (checked above), so CWE.1 is non-empty and toFhirCodeableConcept always returns a CodeableConcept */
   if (medication.value === undefined) return { value: undefined, issues };
 
   const props: { name: string; value: FhirNode }[] = [

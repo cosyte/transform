@@ -350,6 +350,7 @@ function obxFields(
   if (value !== undefined) {
     const obx2 = v2Field([[value.valueType]]);
     const obx5 = v2Field([value.value]);
+    /* v8 ignore else -- OBX-2 is a fixed type name, and every value observationValue returns has a non-empty component (a magnitude, a code, a string or a timestamp) */
     if (obx2 !== undefined && obx5 !== undefined) {
       fields.set(2, obx2);
       fields.set(5, obx5);
@@ -373,6 +374,7 @@ function obxFields(
       issues.push(issue(ISSUE_CODES.TRANSFORM_CODE_NOT_INVERTIBLE, "OBX.11", "Observation.status"));
     } else {
       const obx11 = v2Field([[code]]);
+      /* v8 ignore else -- every code in OBSERVATION_STATUS_TO_V2 is a non-empty v2 status, so the field is never empty */
       if (obx11 !== undefined) fields.set(11, obx11);
     }
   }
@@ -395,6 +397,7 @@ function obxFields(
       );
     } else {
       const obx14 = v2Field([[dtm]]);
+      /* v8 ignore else -- v2Timestamp returns either undefined (handled above) or a DTM of at least a four-digit year */
       if (obx14 !== undefined) fields.set(14, obx14);
     }
   }

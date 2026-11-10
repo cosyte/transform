@@ -173,6 +173,7 @@ export function buildDocumentReference(
   if (txa.field(2).value !== "") {
     const type = toFhirCodeableConcept(txa.field(2).asCwe(), ctx);
     issues.push(...type.issues);
+    /* v8 ignore else -- TXA-2 is valued (checked above), so CWE.1 is non-empty and toFhirCodeableConcept always returns a CodeableConcept */
     if (type.value !== undefined) props.push({ name: "type", value: type.value });
   }
 
@@ -224,9 +225,7 @@ export function buildDocumentReference(
 
   // OBX body → content (required 1..*). No groundable content → resource withheld by the emit gate.
   const contents: FhirComplex[] = [];
-  for (let i = 0; i < obxs.length; i++) {
-    const obx = obxs[i];
-    if (obx === undefined) continue;
+  for (const [i, obx] of obxs.entries()) {
     const content = buildContent(obx, i, issues);
     if (content !== undefined) contents.push(content);
   }

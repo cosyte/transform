@@ -2,17 +2,29 @@ import { cosyteVitest } from "@cosyte/vitest-config";
 
 /**
  * Vitest config for @cosyte/transform from the shared @cosyte/vitest-config standard, which owns the
- * coverage provider, reporters, include and exclude sets and the 90% gate. What follows is only what
- * this repository adds.
+ * coverage provider, reporters, and include and exclude sets. What follows is only what this
+ * repository adds.
  *
- * `coverageDirs` holds each of these `src/` directories to the 90% gate (lines, branches, functions,
- * statements) on its own, so a well-covered directory cannot carry a poorly covered one. This is a
- * transformation library (a consumer of `@cosyte/hl7` and `@cosyte/fhir`), not a byte parser, so the
- * gated directories are the datatype converters, the diagnostic channel, the terminology resolver,
- * the message assemblers and the FHIR to v2 path. Add a directory here when one lands.
+ * Coverage is gated at 100% for lines, branches, functions and statements across every file in
+ * `src/` (barrels excepted, per the shared standard), and `coverageDirs` holds each listed `src/`
+ * directory to the same 100% on its own, so a well-covered directory cannot carry a poorly covered
+ * one. This is a transformation library (a consumer of `@cosyte/hl7` and `@cosyte/fhir`), not a byte
+ * parser, so the gated directories are the datatype converters, the diagnostic channel, the
+ * terminology resolver, the message assemblers and the FHIR to v2 path. Add a directory here when one
+ * lands. A threshold only rises: a line that truly cannot be reached carries an inline `v8 ignore`
+ * comment naming its reason, never a lowered number here.
  */
+const COVERAGE_DIRS = ["datatypes", "diagnostics", "terminology", "messages", "reverse"];
+
+/** Every metric at 100. */
+const FULL = { lines: 100, branches: 100, functions: 100, statements: 100 };
+
 export default cosyteVitest({
-  coverageDirs: ["datatypes", "diagnostics", "terminology", "messages", "reverse"],
+  coverageDirs: COVERAGE_DIRS,
+  coverageThresholds: {
+    ...FULL,
+    ...Object.fromEntries(COVERAGE_DIRS.map((dir) => [`src/${dir}/**`, FULL])),
+  },
   test: {
     // ▶ THIS GLOB IS WHAT SELECTS THE SUITES, AND NO BRANCH RULESET CAN SEE IT.
     // `main` is protected by ruleset `ci-required-checks` (19914044), which requires the
@@ -30,11 +42,12 @@ export default cosyteVitest({
     // ruleset still satisfied.
     //
     // Coverage is a THIN and INCIDENTAL backstop, not a real one. Measured 2026-07-28 on
-    // `dfc7739`: excluding `test/messages/property.test.ts` alone takes `src/messages/**` branch
-    // coverage from 90.11% to 88.82%, which does breach the per-directory >= 90 gate, so today
-    // the deletion would be caught. That is a 1.29-point margin over an incidental fact -- the
-    // property run happens to be the only thing reaching some branches. Any example test that
-    // covers them restores the margin and the backstop goes quiet, and coverage could never see
+    // `dfc7739`, under the 90% gate of the time: excluding `test/messages/property.test.ts`
+    // alone took `src/messages/**` branch coverage from 90.11% to 88.82%, a 1.29-point margin.
+    // Measured again 2026-11-10 under the 100% gate: the same exclusion takes overall branch
+    // coverage from 100% to 98.99%, so today the deletion would be caught. Both rest on an
+    // incidental fact -- the property run happens to be the only thing reaching some branches.
+    // Any example test that covers them silences the backstop, and coverage could never see
     // the loss of the PROPERTIES themselves (never-throw, no unregistered issue code, no value
     // in a diagnostic, no dangling reference) since a trivial test hitting the same lines
     // satisfies it. Do not treat the gate as protecting this line. Change it only deliberately.

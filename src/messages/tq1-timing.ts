@@ -403,6 +403,7 @@ export function endPrecedesStart(start: string, end: string): boolean {
   const endMs = zoned(end);
   if (startMs !== undefined && endMs !== undefined) return endMs < startMs;
   // Day granularity: the earliest day the start could mean vs the latest day the end could mean.
+  /* v8 ignore next -- String.prototype.split always returns at least one element, so [0] is set */
   const datePart = (v: string): string => v.split("T")[0] ?? v;
   const widen = (v: string, high: boolean): string => {
     const d = datePart(v);
@@ -689,6 +690,7 @@ export function readTq1(
     return nothing(issues);
   }
   const tq1 = tq1s[0];
+  /* v8 ignore if -- tq1s holds exactly one segment here (the two checks above), filled by push from the message's own segments */
   if (tq1 === undefined) return nothing(issues);
 
   // TQ1-2 / TQ1-9: the IG maps these to the dose and the priority, which the RXO/OBR path already

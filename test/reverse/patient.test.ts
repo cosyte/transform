@@ -331,3 +331,25 @@ describe("toV2Patient: the never-throw guardrail on malformed input", () => {
     expect(codes(result)).toContain(ISSUE_CODES.TRANSFORM_RESOURCE_MALFORMED);
   });
 });
+
+describe("toV2Patient: an identifier with nothing to key on", () => {
+  it("leaves an identifier with no value out of PID-3, keeps the others, and flags it", () => {
+    const { value, issues } = toV2Patient(
+      patient({
+        identifier: [{ system: "urn:oid:2.16.840.1.113883.19" }, { value: "MRN12345" }],
+        name: [{ family: "Public", given: ["Jane"] }],
+      }),
+      "A28",
+    );
+    const round = parseHL7(value?.toString() ?? "");
+    expect(round.get("PID.3")).toBe("MRN12345");
+    expect(round.segments("PID")[0]?.field(3).repetitions).toHaveLength(1);
+    expect(issues).toContainEqual(
+      expect.objectContaining({
+        code: ISSUE_CODES.TRANSFORM_NO_V2_TARGET,
+        v2Location: "CX.1",
+        fhirPath: "Patient.identifier",
+      }),
+    );
+  });
+});

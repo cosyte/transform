@@ -320,6 +320,56 @@ describe("toFhir: ORU value-type discrimination edges", () => {
     expect(json).not.toContain('"valueQuantity"');
   });
 
+  /** The one Observation an SN OBX-5 produced, as plain JSON. */
+  const snObservation = (sn: string): Record<string, unknown> => {
+    const result = toFhir(
+      wrap(obx({ 1: "1", 2: "SN", 3: "S^Structured^LN", 5: sn, 6: "mg^mg^UCUM", 11: "F" })),
+      { generateId: seq() },
+    );
+    const bundle = JSON.parse(serializeResource(result.bundle)) as {
+      entry: { resource: Record<string, unknown> }[];
+    };
+    const found = bundle.entry
+      .map((e) => e.resource)
+      .filter((r) => r["resourceType"] === "Observation");
+    expect(found).toHaveLength(1);
+    return found[0] as Record<string, unknown>;
+  };
+
+  it.each([
+    ["a range with no second number", "^10^-"],
+    ["a range with no first number", "^^-^20"],
+    ["a ratio with no denominator", "^1^:"],
+    ["a ratio with a non-decimal denominator", "^1^/^2x"],
+  ])("an SN %s keeps its raw text as valueString, never a half-built value", (_label, sn) => {
+    const observation = snObservation(sn);
+    expect(observation["valueString"]).toBeDefined();
+    expect(observation["valueRange"]).toBeUndefined();
+    expect(observation["valueRatio"]).toBeUndefined();
+    expect(observation["valueQuantity"]).toBeUndefined();
+  });
+
+  it.each([
+    [">^5", ">"],
+    ["<=^5", "<="],
+  ])("an SN %s carries its FHIR comparator on valueQuantity", (sn, comparator) => {
+    const quantity = snObservation(sn)["valueQuantity"] as Record<string, unknown>;
+    expect(quantity["comparator"]).toBe(comparator);
+    expect(quantity["value"]).toBe(5);
+  });
+
+  it.each(["=^5", "^5"])("an SN %s (equal, or no comparator) is a plain valueQuantity", (sn) => {
+    const quantity = snObservation(sn)["valueQuantity"] as Record<string, unknown>;
+    expect(quantity["comparator"]).toBeUndefined();
+    expect(quantity["value"]).toBe(5);
+  });
+
+  it("an SN whose number is not a FHIR decimal keeps its raw text as valueString", () => {
+    const observation = snObservation(">^+5");
+    expect(observation["valueQuantity"]).toBeUndefined();
+    expect(observation["valueString"]).toBeDefined();
+  });
+
   it("a DT-typed OBX → valueDateTime", () => {
     const result = toFhir(wrap(obx({ 1: "1", 2: "DT", 3: "D^Date^LN", 5: "20260721", 11: "F" })), {
       generateId: seq(),
