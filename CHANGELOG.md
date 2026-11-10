@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.2.0
+
+### Minor Changes
+
+- 7e40e60: `toFhir` now reports a PID-7, PV1-44, PV1-45 or MSH-7 that is valued but could not be read as a date. These four fields reach the transform through `@cosyte/hl7`'s typed views, which hand back no timestamp at all for a value they cannot read, so a date of birth such as `20261399` was dropped from `Patient.birthDate` with no issue, and the same for `Encounter.period.start`, `Encounter.period.end` and `Bundle.timestamp`.
+
+  The new issue code `TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER` (severity `warning`) names the field and the FHIR element it would have filled. Nothing else changes: no value is written in its place, and an unreadable PV1-45 still does not make the encounter `finished`. An empty or `""` field raises nothing.
+
+### Patch Changes
+
+- 05e3769: `toFhirDateTime` no longer fills in a time part a timestamp does not have, or writes a part where FHIR does not expect it. A `TS` built by hand can claim a precision its parts do not carry. One that claimed `second` or `fraction` precision but had no `minute` or no `second` came out with `00` in that place, and one with no `day` or no `month` came out as `2026-07T14:30:00+00:00` or `2026-21T14:30:00+00:00`, which is not a FHIR `dateTime` or puts the day where the month goes. A day with no month did the same at date precision (`2026-21`).
+
+  Now every part a timestamp carries is either written in its FHIR place or dropped and flagged with `TRANSFORM_ELEMENT_DROPPED`. A time needs the full date and the minute and second; without them the value is reduced to the date it can place. A day with no month is dropped and the year kept. A minute or second with no hour is dropped and flagged rather than lost without a word. Timestamps from `@cosyte/hl7`'s parser always carry the parts their precision names, so parsed messages are unaffected.
+
+- 05e3769: `toFhirDateTime` no longer writes a timezone offset that FHIR cannot carry. FHIR R4 allows offsets from -14:00 to +14:00 in whole minutes, but a v2 timestamp can carry up to +2359. Before this fix, `20260721143000+1500` became `2026-07-21T14:30:00+15:00`, which is not a valid FHIR `dateTime`. It went out in `Condition`, `Procedure`, `Observation`, `DiagnosticReport` and `Specimen`, and the emit gate did not stop it.
+
+  Now an offset outside that range is treated as no usable offset. The value is reduced to its date and flagged with `TRANSFORM_ELEMENT_DROPPED`. The same applies to `assumeTimezoneOffsetMinutes`: a value that is not a whole number of minutes from -840 to 840 (for example `900`, `90.5` or `NaN`) is ignored, so a naked timestamp is still reduced to its date and flagged with `TRANSFORM_TIMESTAMP_NO_TIMEZONE`.
+
+- 7e40e60: `toFhirDateTime` no longer writes a timestamp part that is out of range. A `TS` built by hand with hour 25 came out as `2026-07-21T25:30:00+00:00`, and minute 60 or month 13 were written the same way, none of them a FHIR `dateTime`. A day the month does not have, such as 31 February, was written too, and that one reaches `toFhir` from parsed messages, because `@cosyte/hl7` reads `20260231` as a valid date. Fractional seconds that were not digits, such as `5x`, were written after the dot as given, and an empty fraction left a bare dot.
+
+  Now a part out of range is dropped with every part after it and flagged with `TRANSFORM_ELEMENT_DROPPED`, and the value keeps the parts before it: hour 25 gives the date, 31 February gives `2026-02`, month 13 gives the year. Fractional seconds that are not digits are dropped on their own and flagged, and the whole second is still written. A fraction carried at a precision with no place for it is flagged rather than left out without a word. A year outside 0001 to 9999 gives no value and `TRANSFORM_TIMESTAMP_INVALID`.
+
+- 76ce907: The package overview in the type declarations no longer lists OBR-5 order priority among the fields `toFhirCodeableConceptVia` translates. Priority is a lookup in `SERVICE_REQUEST_PRIORITY_MAP`, and the overview now says so. Only the doc comment changes; no code or output does.
+- d1b6c50: `toFhir` now reports the PID fields it does not carry into `Patient`. PID-10 race, PID-15 primary language, PID-19 SSN, PID-22 ethnic group, PID-29 death date and time and PID-30 death indicator were dropped with no issue at all, so a `Patient` from a PID that records a death came out with no `deceased[x]` and nothing said so, and looked like a living patient.
+
+  Each of these fields that is valued now raises `TRANSFORM_ELEMENT_DROPPED` at its own location (`PID.10`, `PID.15`, `PID.19`, `PID.22`, `PID.29` or `PID.30`), with the FHIR element the HL7 v2 to FHIR guide maps it to: `Patient.communication.language`, `Patient.identifier`, `Patient.deceasedDateTime` or `Patient.deceasedBoolean`. Race and ethnic group name no element, because the guide's PID to Patient map has no row for them. An empty field or the HL7 null `""` raises nothing. The `Patient` itself is unchanged: none of these fields is mapped yet, and the issues carry no field values.
+
+- d1b6c50: The `TRANSFORM_ELEMENT_DROPPED` for unmapped patient telecom now points at the field the phone came from. It was always located at `PID.13`, even when the only phone was a PID-14 business number. Now a valued PID-13 raises one at `PID.13` and a valued PID-14 raises one at `PID.14`, so a PID valuing both raises two. The `Patient` is unchanged; telecom is still not mapped.
+
 ## 0.1.5
 
 ### Patch Changes
