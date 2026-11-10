@@ -1,15 +1,15 @@
 ---
 id: concepts-archetype
-title: Core concepts
-sidebar_position: 1
-description: "The ideas behind @cosyte/transform: the fail-safe rule, value-free issues and their locations, and mappings grounded on the guide."
+title: How the transform works
+sidebar_label: How the transform works
+description: "The fail-safe rule, the value-free issue channel, how a message becomes a Bundle, and how the library reports what the Bundle does not carry."
 ---
 
-# Core concepts
+# How the transform works
 
-`@cosyte/transform` borrows the Cosyte parser suite's **disciplines**: fail-safe on ambiguity, stable
-typed diagnostics, immutable output, without being a byte parser. There is no wire format here; both
-endpoints are typed models. What replaces Postel's Law is the **fail-safe rule**.
+`@cosyte/transform` is not a byte parser: both ends of every conversion are typed models, a parsed
+`@cosyte/hl7` message or composite on one side and `@cosyte/fhir` nodes on the other. What shapes
+its behavior is one rule about ambiguity, and one channel for reporting it.
 
 ## The fail-safe rule
 
@@ -17,9 +17,9 @@ A transformed message drives treatment, filing, and identity matching, so the co
 guess. On any of these ambiguities:
 
 - a v2 timestamp with a time-of-day but **no timezone** (FHIR forbids time without a zone),
-- an assigning authority that can't be **resolved to a system URI**,
+- an assigning authority that cannot be **resolved to a system URI**,
 - a code with an **unrecognized or absent coding system**,
-- a unit that isn't valid **UCUM**,
+- a unit that is not valid **UCUM**,
 - a source component with **no FHIR target**,
 
 the converter produces the value it *can* faithfully emit (often reduced in precision) and raises a
@@ -30,19 +30,39 @@ never synthesizes an identifier system, and never coerces an unmapped code to a 
 
 Every diagnostic is a `TransformIssue`: a stable `code`, a severity, the **v2 location** (a segment /
 field / component index, never a value), and the **FHIR path** it concerns. Messages are static and
-per-code, so **no patient data can reach a log line**: the same value-free `OperationOutcome`
-discipline `@cosyte/fhir` proves. Render a list of issues as a real FHIR `OperationOutcome` with
-`toOperationOutcome(issues)`.
+per-code, so **no value from the message reaches an issue**, and an issue is safe to log. The
+property tests thread a marker through every generated field and check that no issue ever carries
+it. Render a list of issues as a FHIR `OperationOutcome` with `toOperationOutcome(issues)`.
 
 Codes are `key === value` entries in `ISSUE_CODES` (non-fatal) and `FATAL_CODES`. Consumers branch on
 them, so a code's name is part of the public contract: renaming or removing one is a **breaking
 change**, and new codes are additions only.
 
+## How a message becomes a Bundle
+
+`toFhir(msg)` returns a FHIR message `Bundle`: a `MessageHeader` first, then the resources the
+message describes, each with a `urn:uuid:` `fullUrl`. Every reference between them points at a
+`fullUrl` in the same bundle.
+
+- **Message maps and segment maps.** The guide publishes message maps for some triggers (the ADT
+  triggers in `IG_MAPPED_ADT_TRIGGERS`, `ORU^R01`, `ORM^O01`, `OML^O21`, `VXU^V04`, `SIU^S12`,
+  `MDM^T02`). For any other trigger, the graph is built from the guide's reusable segment maps and
+  the bundle carries `TRANSFORM_SEGMENT_ASSEMBLED`, so you can tell the two apart. No message map is
+  invented.
+- **The emit gate.** Each resource is checked against a small required-element schema before it
+  joins the bundle. One that fails is withheld with `TRANSFORM_RESOURCE_INVALID`, and anything that
+  would have pointed at it is dropped rather than left dangling. The gate is a floor, not a
+  conformance claim; [Conformance](./conformance.md) says what is actually measured.
+- **Required elements nobody sent.** When FHIR requires an element and the message gives no faithful
+  source for it (`MessageHeader.source.endpoint` from an MSH-3 that is not a URL, `Coverage.status`,
+  `MedicationRequest.status`), the element carries a `data-absent-reason` or the code FHIR defines
+  for "unknown", with `TRANSFORM_REQUIRED_ELEMENT_UNKNOWN`. Read it as unknown.
+
 ## What the bundle did not represent
 
-An issues list that says nothing about a segment used to mean one of two very different things: the
-segment reached the bundle, or nobody looked. Two codes now tell them apart, and both are raised once
-per segment occurrence that contributed nothing to a resource the returned bundle contains:
+Silence about a segment could mean two very different things: the segment reached the bundle, or
+nobody looked. Two codes tell them apart, and one of them is raised for each segment occurrence that
+contributed nothing to a resource the returned bundle contains:
 
 | Code | What it tells you | What to do with it |
 |---|---|---|
@@ -73,11 +93,10 @@ shapes:
   name it will not reproduce: an unescaped line break inside a narrative field can forge a "segment"
   whose name is clinical text.
 
-**Two index conventions now coexist on one issues list, and this is the one place that says so.**
-The locations these two codes emit are 1-based, as above. The per-occurrence locations the library
-already emitted elsewhere (`NK1[0]`, `OBX[0]`, on the emit-gate and dropped-element codes) are
-**0-based**, and they have not changed. If you correlate two issues about the same occurrence, the
-same segment is `NK1[0]` on the older code and `NK1[1]` on these.
+**Two index conventions share one issues list.** The locations these two codes carry are 1-based,
+as above. The per-occurrence locations on the other codes (`NK1[0]`, `OBX[0]`, on the emit-gate and
+dropped-element codes) are **0-based**. If you correlate two issues about the same occurrence, the
+same segment is `NK1[0]` on the other code and `NK1[1]` on these.
 
 **A damaged segment identifier reads as a standard gap, and the code therefore means two things.** A
 line whose identifier arrived as `AL11` carries a name that could not be classified, so it takes
@@ -106,19 +125,23 @@ the value is surfaced, **never guessed**.
 
 ## The six datatype converters
 
-| Converter | v2 → FHIR | Key fail-safe |
-|---|---|---|
-| `toFhirDateTime` | DTM/TS → `dateTime` | naked timestamp → date precision, never a guessed zone |
-| `toFhirIdentifier` | CX → `Identifier` | HD.1-only → value with no system, never synthesized |
-| `toFhirCodeableConcept` | CWE/CE → `CodeableConcept` | unmapped code → preserved, never coerced |
-| `toFhirHumanName` | XPN → `HumanName` | unmapped name-use → absent, never guessed |
-| `toFhirAddress` | XAD → `Address` | unmapped address-type → absent, never guessed |
-| `toFhirQuantity` | NM + units → `Quantity` | non-UCUM unit → verbatim, magnitude never converted |
-
-Each returns `{ value, issues }`; each output is designed to pass `@cosyte/fhir`'s `validateResource`
-when embedded in a resource: the transform's emit gate.
+The message assembly is built on six converters, each usable on its own: `toFhirDateTime`,
+`toFhirIdentifier`, `toFhirCodeableConcept`, `toFhirHumanName`, `toFhirAddress` and
+`toFhirQuantity`. Each returns `{ value, issues }`, where `value` is `undefined` when nothing could
+be emitted safely. [Convert a single datatype](./convert-datatypes.md) shows each one and its
+fail-safe.
 
 ## Immutability
 
 Produced nodes are `@cosyte/fhir` immutable model nodes, and the input v2 composites are never
 mutated. A converted value is safe to share across a pipeline without defensive copying.
+
+## Guides that apply this
+
+- [Transform an admission message](./transform-an-admission.md): the rule and the issues, step by
+  step.
+- [Read, log and return the issues](./handle-issues.md): branch on codes, find unreached segments,
+  return an `OperationOutcome`.
+- [Resolve assigning authorities](./guides-overview.md) and [Keep the time on a timestamp with no
+  offset](./supply-a-sender-timezone.md): the two refusals you can resolve yourself.
+- [Convert a single datatype](./convert-datatypes.md): the six converters.

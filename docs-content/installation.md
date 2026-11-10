@@ -1,11 +1,11 @@
 ---
 id: installation
-title: Installation
-sidebar_position: 1
+title: Install @cosyte/transform
+sidebar_label: Installation
 description: "Install @cosyte/transform beside its two peer dependencies, @cosyte/hl7 and @cosyte/fhir, and check which release you have."
 ---
 
-# Installation
+# Install @cosyte/transform
 
 `@cosyte/transform` ships dual **ESM + CJS** builds with per-condition type declarations, so it works
 from either module system without configuration. Its own **third-party runtime dependencies are
@@ -38,10 +38,11 @@ This repo's own tests install both peers from the registry, exactly as a consume
 
 Once it is installed, confirm the package resolves and reports the release you actually have:
 
-```ts
+```ts runnable
 import { VERSION } from "@cosyte/transform";
 
 console.log(VERSION);
+typeof VERSION; // => "string"
 ```
 
 `VERSION` is the package's own `version`, kept in lockstep with it by the release tooling, so from
@@ -53,4 +54,5 @@ the next release onward what it prints is the release you are running.
 > constant is lying, not your install. Read the manifest instead, which was always correct:
 > `node -p "require('@cosyte/transform/package.json').version"`.
 
-Head to the [Quickstart](./quickstart).
+Next, the [Quickstart](./quickstart.md) converts a name and then a whole message. The
+[reference](./api/README.md#version) documents `VERSION`.
