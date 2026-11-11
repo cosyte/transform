@@ -80,15 +80,22 @@ function main(argv) {
     "| Import | Median |",
     "| --- | --- |",
   ];
+  const brief = [];
   try {
     for (const [label, target, preload] of rows) {
-      lines.push(`| ${label} | ${median(target, preload, runs).toFixed(2)} ms |`);
+      const ms = median(target, preload, runs).toFixed(2);
+      lines.push(`| ${label} | ${ms} ms |`);
+      brief.push(`${label}: ${ms} ms`);
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
   const text = `${lines.join("\n")}\n`;
   process.stdout.write(text);
+  // On a GitHub runner the split is also an annotation, so it shows on the check itself.
+  if (process.env.GITHUB_ACTIONS === "true") {
+    process.stdout.write(`::notice title=Cold import, by module::${brief.join("; ")}\n`);
+  }
   if (summary !== undefined) writeFileSync(summary, text);
   return 0;
 }

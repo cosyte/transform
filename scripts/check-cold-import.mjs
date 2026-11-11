@@ -103,6 +103,10 @@ function main() {
   }
   const { over, line } = verdict(readColdImport(target));
   process.stdout.write(`${line}\n`);
+  // On a GitHub runner the reading is also an annotation, so it shows on the check itself.
+  if (process.env.GITHUB_ACTIONS === "true") {
+    process.stdout.write(`::${over ? "error" : "notice"} title=Cold import::${line}\n`);
+  }
   const summary = process.env.GITHUB_STEP_SUMMARY;
   if (summary !== undefined && summary !== "") appendFileSync(summary, `${line}\n`);
   return over ? 1 : 0;
