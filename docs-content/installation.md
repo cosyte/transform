@@ -30,7 +30,8 @@ npm install @cosyte/transform @cosyte/hl7 @cosyte/fhir
 
 `@cosyte/hl7` and `@cosyte/fhir` are declared as **peer dependencies**: `transform` maps between the
 models they own, so a consumer supplies them. Both are on the registry, and the command above
-installs them beside this package.
+installs them beside this package. `@cosyte/fhir` must be 0.1.12 or later: the emit gate hands
+`validateResource` a schema registry it builds once, an option older releases do not read.
 
 This repo's own tests install both peers from the registry, exactly as a consumer does.
 

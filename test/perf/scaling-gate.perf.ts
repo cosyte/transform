@@ -65,29 +65,38 @@ import {
 
 const namingSystem = createNamingSystem(AUTHORITIES);
 
-/** Admissions on the count axis: an admission takes a few ms, so 16 clear the 4 ms floor easily. */
-const ADMISSIONS = 16;
+/**
+ * The fixtures are sized for room over the gate's 4 ms phase floor, not to clear it: one runner can
+ * be twice as fast as another on the same code, and a phase under the floor skips, which this file
+ * counts as a failure. Each axis's clean base phase is aimed at 12 ms or more on the fastest runner
+ * measured (about 20 ms on a typical one), and {@link MIN_BASE_PHASE_MS} holds every axis to 8 ms, so
+ * a fixture that drifts toward the floor fails here first, with its numbers. Only input counts grow;
+ * the floor, the ceiling and the repetitions are the shared contract's.
+ *
+ * Admissions on the count axis: 32 measured 3.37 ms on the fastest runner once the emit gate reused
+ * one schema registry per type on `@cosyte/fhir` 0.1.12.
+ */
+const ADMISSIONS = 128;
 /** OBX lines in the size axis's base messages; the scaled phase's have 4 times as many. */
 const RESULTS = 24;
-/** Lab results in each size-axis phase: one of 12 lines measured 1.3 ms, under the floor. */
-const LAB_MESSAGES = 3;
-/** Notes on the long note's count axis, each of 20 lines. */
-const NOTES = 32;
+/** Lab results in each size-axis phase: 8 of 24 lines measured 3.61 ms on the fastest runner. */
+const LAB_MESSAGES = 32;
+/** Notes on the long note's count axis, each of 20 lines: 64 measured 3.27 ms on the fastest runner. */
+const NOTES = 256;
+/** Long notes in each size-axis phase: one note of 2,000 lines measured 2.6 ms. */
+const NOTE_MESSAGES = 6;
 /** TX lines in the long note's base message. */
 const NOTE_LINES = 2_000;
-/**
- * Observations on the reverse path's count axis. 400 measured 2.85 ms on a runner once the code map
- * stopped being inverted per call, under the 4 ms floor, so the axis skipped; 1,000 clear it.
- */
-const OBSERVATIONS = 1_000;
+/** Observations on the reverse path's count axis: 1,000 measured 11.2 ms on a slower runner. */
+const OBSERVATIONS = 3_000;
 /**
  * Entries in each of the reverse path's base Bundles, and the Bundles in a phase: an Observation
- * takes tens of microseconds to write back, so a phase needs hundreds of them to clear 4 ms, and the
- * self-check's quadratic regression needs them spread over several short Bundles to keep a regressed
- * pass short enough to warm up.
+ * takes tens of microseconds to write back, and 24 Bundles of 32 measured 3.05 ms on the fastest
+ * runner. The self-check's quadratic regression needs the entries spread over several short Bundles
+ * to keep a regressed pass short enough to warm up, so the Bundles grow, not the entries.
  */
 const ENTRIES = 32;
-const BUNDLES = 24;
+const BUNDLES = 120;
 
 const transform = (msg: Hl7Message): TransformResult => toFhir(msg, { namingSystem });
 
@@ -174,7 +183,11 @@ function noteOptions(): ScalingGateOptions<Hl7Message, TransformResult> {
     parse: transform,
     weigh: (result) => result.issues.length + 1,
     count: { n: NOTES, generate: (i) => parseHL7(longNote(i, 20)) },
-    size: { inputs: 1, size: NOTE_LINES, generate: (i, size) => parseHL7(longNote(i, size)) },
+    size: {
+      inputs: NOTE_MESSAGES,
+      size: NOTE_LINES,
+      generate: (i, size) => parseHL7(longNote(i, size)),
+    },
   };
 }
 
@@ -195,10 +208,42 @@ const reverseOptions: ScalingGateOptions<readonly FhirComplex[], ReverseResult[]
   size: { inputs: BUNDLES, size: ENTRIES, generate: observations },
 };
 
-/** A skip is not a pass: a gate that could not measure says so here, rather than reading green. */
+/** Write one line to the run's output, where a passing run's numbers are kept. */
+function print(line: string): void {
+  process.stdout.write(`${line}\n`);
+}
+
+/**
+ * The least a clean base phase may measure, in milliseconds: twice the shared contract's 4 ms floor,
+ * so an axis whose fixture drifts toward the floor fails here, by name, before it starts skipping.
+ */
+const MIN_BASE_PHASE_MS = 8;
+
+/**
+ * A skip is not a pass: a gate that could not measure says so here, rather than reading green. Each
+ * axis's ratio and both phase times are printed on a pass too, so every run's headroom is on record.
+ */
 function expectMeasured(report: ReturnType<typeof scalingGate>): void {
-  expect(report.count.status, report.count.diagnostic).toBe("measured");
-  expect(report.size.status, report.size.diagnostic).toBe("measured");
+  for (const axis of [report.count, report.size]) {
+    expect(axis.status, axis.diagnostic).toBe("measured");
+    if (axis.status !== "measured") continue;
+    print(
+      `${report.name}, ${axis.axis} axis: ratio ${axis.ratio.toFixed(3)}, ` +
+        `base min ${axis.base.min.toFixed(2)} ms, scaled min ${axis.scaled.min.toFixed(2)} ms`,
+    );
+    expect(axis.base.min, `${report.name}, ${axis.axis} axis base phase`).toBeGreaterThanOrEqual(
+      MIN_BASE_PHASE_MS,
+    );
+  }
+}
+
+/** Print what a self-check measured: the regressed signal, its margin over the ceiling, the clean bases. */
+function printSelfCheck(report: ReturnType<typeof assertScalingGateFires>): void {
+  print(
+    `${report.name}, self-check on the ${report.axis} axis: signal ${report.signal.toFixed(3)}, ` +
+      `margin ${report.margin.toFixed(3)}x, clean base min ${report.cleanBaseMinMs.count.toFixed(2)} ms ` +
+      `(count) / ${report.cleanBaseMinMs.size.toFixed(2)} ms (size)`,
+  );
 }
 
 describe("the scaling gate: toFhir", () => {
@@ -211,6 +256,7 @@ describe("the scaling gate: toFhir", () => {
       regressedParse: transformRevalidating,
       equals: sameIssues,
     });
+    printSelfCheck(report);
     expect(report.margin).toBeGreaterThan(1);
   });
 });
@@ -225,6 +271,7 @@ describe("the scaling gate: toFhir on a long note", () => {
       regressedParse: transformRebuildingNote,
       equals: sameIssues,
     });
+    printSelfCheck(report);
     expect(report.margin).toBeGreaterThan(1);
   });
 });
@@ -242,6 +289,7 @@ describe("the scaling gate: toV2Observation", () => {
       },
       equals: (a, b) => a.length === b.length && a.every((r, k) => sameIssues(r, b[k] ?? r)),
     });
+    printSelfCheck(report);
     expect(report.margin).toBeGreaterThan(1);
   });
 });
