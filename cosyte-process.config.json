@@ -4,6 +4,7 @@
       "src/**/*.{ts,md}",
       "test/**/*.ts",
       "scripts/**/*.{ts,mjs}",
+      "bench/**/*.{mjs,mts}",
       "examples/**/*.{ts,js,json,md}",
       "*.{json,md,yml}"
     ]

@@ -409,6 +409,10 @@ const OVERRIDE_LOG_PATH = join(REPO_ROOT, "phi-scan-overrides.md");
  * `examples` holds the runnable example programs, which carry inline v2
  * segments like the test fixtures do, so the walk reads them on every run.
  *
+ * `bench` holds the benchmarks and the code that builds their synthetic v2 and
+ * FHIR inputs, the same inputs the scaling gates under `test/perf` use, so the
+ * walk reads it on every run too.
+ *
  * `.claude` holds the agent settings file that enables the Cosyte crew bundles. It
  * carries no message content, and the walk reads it like every other tracked
  * file rather than excusing it.
@@ -440,6 +444,7 @@ const WALK_ROOT_NAMES = [
   ".changeset",
   ".claude",
   ".github",
+  "bench",
   "docs-content",
   "documentation",
   "examples",

@@ -16,10 +16,27 @@ The numbers for the current release are in [Current numbers](#current-numbers) b
 
 ## What we measure
 
-We do not run benchmarks on `@cosyte/transform` yet, and no CI job guards its speed. The performance
-standard names what a benchmark measures: throughput, latency at the 50th, 95th and 99th
-percentiles, peak memory, import time and bundle size. For this package, each of those reads "not
-measured" in the section below until a benchmark runs on it.
+The benchmarks in the repository's `bench/` folder run on `@cosyte/bench` against the built package,
+on synthetic inputs built in code in the shapes real traffic has:
+
+- an ADT^A01 admission of about 1 KiB, the message a feed sends all day, and HL7 batch files of 100
+  and 1,000 of them;
+- an ORU^R01 lab result of 10, 500 and 5,000 OBX lines;
+- an MDM^T02 note of 20, 1,000 and 20,000 text lines, the shape a long clinical document reaches v2
+  in;
+- an ORU^R01 carrying one base64 PDF of 64 KiB and of 4 MiB;
+- the Observations of a searchset Bundle of 1 to 5,000 entries written back to v2, and a Patient
+  written back to an ADT^A28.
+
+Each is measured for throughput, latency at the 50th, 95th and 99th percentiles, allocations per
+call, peak heap as a multiple of the input, and whether the heap stays flat over a long run, beside
+the cold import time and the gzipped size of what an import loads. Parsing is done before anything
+is timed, so the numbers are the transform's own.
+
+Two checks run on every pull request. A scaling gate fails the pull request when the cost of
+`toFhir` or `toV2Observation` grows faster than its input. A comparison times the pull request's
+build against `main`'s on one machine and posts the numbers without failing anything. A full reading,
+with a CPU and heap profile of the hottest paths, runs on a GitHub-hosted runner on demand.
 
 ## What each call does
 
