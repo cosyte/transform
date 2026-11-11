@@ -65,18 +65,26 @@ import {
 
 const namingSystem = createNamingSystem(AUTHORITIES);
 
-/** Admissions on the count axis: an admission takes a few ms, so the base phase clears 4 ms. */
-const ADMISSIONS = 8;
-/** OBX lines in the size axis's base message; the scaled phase's has 4 times as many. */
-const RESULTS = 12;
+/** Admissions on the count axis: an admission takes a few ms, so 16 clear the 4 ms floor easily. */
+const ADMISSIONS = 16;
+/** OBX lines in the size axis's base messages; the scaled phase's have 4 times as many. */
+const RESULTS = 24;
+/** Lab results in each size-axis phase: one of 12 lines measured 1.3 ms, under the floor. */
+const LAB_MESSAGES = 3;
 /** Notes on the long note's count axis, each of 20 lines. */
 const NOTES = 32;
 /** TX lines in the long note's base message. */
 const NOTE_LINES = 2_000;
 /** Observations on the reverse path's count axis. */
 const OBSERVATIONS = 400;
-/** Entries in the reverse path's base Bundle. */
-const ENTRIES = 120;
+/**
+ * Entries in each of the reverse path's base Bundles, and the Bundles in a phase: an Observation
+ * takes tens of microseconds to write back, so a phase needs hundreds of them to clear 4 ms, and the
+ * self-check's quadratic regression needs them spread over several short Bundles to keep a regressed
+ * pass short enough to warm up.
+ */
+const ENTRIES = 32;
+const BUNDLES = 24;
 
 const transform = (msg: Hl7Message): TransformResult => toFhir(msg, { namingSystem });
 
@@ -149,7 +157,11 @@ function labOptions(): ScalingGateOptions<Hl7Message, TransformResult> {
     parse: transform,
     weigh: (result) => result.issues.length + 1,
     count: { n: ADMISSIONS, generate: (i) => parseHL7(admission(i)) },
-    size: { inputs: 1, size: RESULTS, generate: (i, size) => parseHL7(labResult(i, size)) },
+    size: {
+      inputs: LAB_MESSAGES,
+      size: RESULTS,
+      generate: (i, size) => parseHL7(labResult(i, size)),
+    },
   };
 }
 
@@ -177,7 +189,7 @@ const reverseOptions: ScalingGateOptions<readonly FhirComplex[], ReverseResult[]
   parse: reverseAll,
   weigh: (results) => results.length,
   count: { n: OBSERVATIONS, generate: (i) => observations(i, 1) },
-  size: { inputs: 1, size: ENTRIES, generate: observations },
+  size: { inputs: BUNDLES, size: ENTRIES, generate: observations },
 };
 
 /** A skip is not a pass: a gate that could not measure says so here, rather than reading green. */
