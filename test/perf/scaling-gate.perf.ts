@@ -208,6 +208,11 @@ const reverseOptions: ScalingGateOptions<readonly FhirComplex[], ReverseResult[]
   size: { inputs: BUNDLES, size: ENTRIES, generate: observations },
 };
 
+/** Write one line to the run's output, where a passing run's numbers are kept. */
+function print(line: string): void {
+  process.stdout.write(`${line}\n`);
+}
+
 /**
  * The least a clean base phase may measure, in milliseconds: twice the shared contract's 4 ms floor,
  * so an axis whose fixture drifts toward the floor fails here, by name, before it starts skipping.
@@ -222,7 +227,7 @@ function expectMeasured(report: ReturnType<typeof scalingGate>): void {
   for (const axis of [report.count, report.size]) {
     expect(axis.status, axis.diagnostic).toBe("measured");
     if (axis.status !== "measured") continue;
-    console.info(
+    print(
       `${report.name}, ${axis.axis} axis: ratio ${axis.ratio.toFixed(3)}, ` +
         `base min ${axis.base.min.toFixed(2)} ms, scaled min ${axis.scaled.min.toFixed(2)} ms`,
     );
@@ -234,7 +239,7 @@ function expectMeasured(report: ReturnType<typeof scalingGate>): void {
 
 /** Print what a self-check measured: the regressed signal, its margin over the ceiling, the clean bases. */
 function printSelfCheck(report: ReturnType<typeof assertScalingGateFires>): void {
-  console.info(
+  print(
     `${report.name}, self-check on the ${report.axis} axis: signal ${report.signal.toFixed(3)}, ` +
       `margin ${report.margin.toFixed(3)}x, clean base min ${report.cleanBaseMinMs.count.toFixed(2)} ms ` +
       `(count) / ${report.cleanBaseMinMs.size.toFixed(2)} ms (size)`,
