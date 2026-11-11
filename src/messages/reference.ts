@@ -11,8 +11,6 @@
  * @packageDocumentation
  */
 
-import { randomUUID } from "node:crypto";
-
 import type { Field } from "@cosyte/hl7";
 import { complex, primitive, list, type FhirComplex } from "@cosyte/fhir";
 
@@ -39,7 +37,10 @@ export class IdAllocator {
    * @param options - The transform options; `options.generateId` overrides the default UUID source.
    */
   constructor(options: TransformOptions | undefined) {
-    this.gen = options?.generateId ?? (() => randomUUID());
+    // The global Web Crypto object, read when an id is minted rather than `node:crypto` imported
+    // at the top: a static import loads the whole crypto module on every cold import of this
+    // package, a few milliseconds, even for a caller that supplies its own generateId.
+    this.gen = options?.generateId ?? (() => globalThis.crypto.randomUUID());
   }
 
   /** Mint one fresh `urn:uuid:<id>` fullUrl. */
