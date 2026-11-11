@@ -14,7 +14,9 @@
     "oru",
     "healthcare",
     "interoperability",
-    "typescript"
+    "typescript",
+    "hl7-to-fhir",
+    "converter"
   ],
   "homepage": "https://docs.cosyte.com/transform",
   "bugs": {
