@@ -10,7 +10,7 @@ No message is clean on that measure. Every message and every finding is listed b
 
 Against the base R4 4.0.1 definitions alone, without any profile, 6 of 7 are clean: `ADT_A01`, `ORM_O01`, `OML_O21`, `ORU_R01`, `MDM_T02`, `VXU_V04`.
 
-49 resources were validated in total, producing 38 error-severity results.
+49 resources were validated in total, producing 36 error-severity results.
 
 **This says nothing about mapping correctness.** A message with zero findings carries FHIR that is well formed and conforms to the profiles named here. It does not say the right v2 field reached the right FHIR element; no published artifact settles that, and this measurement does not try to.
 
@@ -92,26 +92,24 @@ One row per error-severity finding, per resource instance: a table's rows count 
 
 ### ORM_O01
 
-7 resources validated, 5 error-severity results.
+7 resources validated, 4 error-severity results.
 
 | resource | in the Bundle | validated against | element | finding | what it means |
 |---|---|---|---|---|---|
 | Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.identifier.system` | CARDINALITY_MIN | Required element is missing. |
 | Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.type` | CARDINALITY_MIN | Required element is missing. |
 | Coverage | entry 5 | `us-core-coverage` 9.0.0 | `Coverage` | INVARIANT_VIOLATED (us-core-15) | A resource invariant (content-validation constraint) was violated. |
-| Coverage | entry 5 | `us-core-coverage` 9.0.0 | `Coverage.identifier.type` | CARDINALITY_MIN | Required element is missing. |
 | Coverage | entry 5 | `us-core-coverage` 9.0.0 | `Coverage.relationship` | CARDINALITY_MIN | Required element is missing. |
 
 ### OML_O21
 
-7 resources validated, 5 error-severity results.
+7 resources validated, 4 error-severity results.
 
 | resource | in the Bundle | validated against | element | finding | what it means |
 |---|---|---|---|---|---|
 | Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.identifier.system` | CARDINALITY_MIN | Required element is missing. |
 | Encounter | entry 3 | `us-core-encounter` 9.0.0 | `Encounter.type` | CARDINALITY_MIN | Required element is missing. |
 | Coverage | entry 5 | `us-core-coverage` 9.0.0 | `Coverage` | INVARIANT_VIOLATED (us-core-15) | A resource invariant (content-validation constraint) was violated. |
-| Coverage | entry 5 | `us-core-coverage` 9.0.0 | `Coverage.identifier.type` | CARDINALITY_MIN | Required element is missing. |
 | Coverage | entry 5 | `us-core-coverage` 9.0.0 | `Coverage.relationship` | CARDINALITY_MIN | Required element is missing. |
 
 ### ORU_R01
@@ -175,14 +173,14 @@ Every pair below is a line somebody wrote on purpose. A pair declared conformant
 | MDM_T02 | Patient | `us-core-patient` | no (1) |
 | OML_O21 | AllergyIntolerance | `us-core-allergyintolerance` | yes |
 | OML_O21 | Bundle | base R4 4.0.1 only | yes |
-| OML_O21 | Coverage | `us-core-coverage` | no (3) |
+| OML_O21 | Coverage | `us-core-coverage` | no (2) |
 | OML_O21 | Encounter | `us-core-encounter` | no (2) |
 | OML_O21 | MessageHeader | base R4 4.0.1 only | yes |
 | OML_O21 | Patient | `us-core-patient` | yes |
 | OML_O21 | ServiceRequest | `us-core-servicerequest` | yes |
 | ORM_O01 | AllergyIntolerance | `us-core-allergyintolerance` | yes |
 | ORM_O01 | Bundle | base R4 4.0.1 only | yes |
-| ORM_O01 | Coverage | `us-core-coverage` | no (3) |
+| ORM_O01 | Coverage | `us-core-coverage` | no (2) |
 | ORM_O01 | Encounter | `us-core-encounter` | no (2) |
 | ORM_O01 | MessageHeader | base R4 4.0.1 only | yes |
 | ORM_O01 | Patient | `us-core-patient` | yes |

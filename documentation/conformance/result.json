@@ -1859,18 +1859,6 @@
                 {
                   "code": "CARDINALITY_MIN",
                   "severity": "error",
-                  "path": "Coverage.identifier.type",
-                  "message": "Required element is missing."
-                },
-                {
-                  "code": "MUST_SUPPORT_ABSENT",
-                  "severity": "information",
-                  "path": "Coverage.identifier.type",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
-                },
-                {
-                  "code": "CARDINALITY_MIN",
-                  "severity": "error",
                   "path": "Coverage.relationship",
                   "message": "Required element is missing."
                 },
@@ -1887,10 +1875,10 @@
                   "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
-              "errorCount": 3
+              "errorCount": 2
             }
           ],
-          "errorCount": 3
+          "errorCount": 2
         },
         {
           "resourceType": "ServiceRequest",
@@ -1963,7 +1951,7 @@
           "errorCount": 0
         }
       ],
-      "errorCount": 5
+      "errorCount": 4
     },
     {
       "message": "OML_O21",
@@ -2481,18 +2469,6 @@
                 {
                   "code": "CARDINALITY_MIN",
                   "severity": "error",
-                  "path": "Coverage.identifier.type",
-                  "message": "Required element is missing."
-                },
-                {
-                  "code": "MUST_SUPPORT_ABSENT",
-                  "severity": "information",
-                  "path": "Coverage.identifier.type",
-                  "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
-                },
-                {
-                  "code": "CARDINALITY_MIN",
-                  "severity": "error",
                   "path": "Coverage.relationship",
                   "message": "Required element is missing."
                 },
@@ -2509,10 +2485,10 @@
                   "message": "Profile marks this element must-support; it is absent. Must-support is a system obligation, not an instance-presence requirement, this is informational, never an error."
                 }
               ],
-              "errorCount": 3
+              "errorCount": 2
             }
           ],
-          "errorCount": 3
+          "errorCount": 2
         },
         {
           "resourceType": "ServiceRequest",
@@ -2585,7 +2561,7 @@
           "errorCount": 0
         }
       ],
-      "errorCount": 5
+      "errorCount": 4
     },
     {
       "message": "ORU_R01",
@@ -4723,6 +4699,6 @@
     "messagesWithZeroErrors": 0,
     "messagesWithZeroErrorNames": [],
     "resourcesValidated": 49,
-    "errorFindings": 38
+    "errorFindings": 36
   }
 }

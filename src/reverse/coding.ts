@@ -71,6 +71,62 @@ export interface ReverseContext {
   readonly envelope: Omit<BuildMessageInit, "type">;
 }
 
+/** The inversion of the default registry alone: its seed is frozen, so it is built once. */
+let defaultMnemonics: Readonly<Record<string, string>> | undefined;
+
+/** A caller's `codeSystems` object, the entries it held when it was inverted, and the inversion. */
+interface InvertedSeed {
+  readonly entries: readonly (readonly [string, string])[];
+  readonly mnemonics: Readonly<Record<string, string>>;
+}
+
+/** The last inversion of each caller `codeSystems` object, keyed by the object itself. */
+const invertedSeeds = new WeakMap<object, InvertedSeed>();
+
+/** Whether two entry lists hold the same keys and values in the same order. */
+function sameEntries(
+  a: readonly (readonly [string, string])[],
+  b: readonly (readonly [string, string])[],
+): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const left = a[i] as readonly [string, string];
+    const right = b[i] as readonly [string, string];
+    if (left[0] !== right[0] || left[1] !== right[1]) return false;
+  }
+  return true;
+}
+
+/**
+ * The inverted registry a conversion resolves systems through: {@link DEFAULT_V2_CODE_SYSTEMS} plus
+ * the caller's entries, inverted. Inverting it on every call cost a tenth of a reverse conversion, so
+ * the default inversion is built once, and a caller's object is inverted again only when its entries
+ * differ from the ones it held last time: an options object reused across calls costs one read of
+ * its entries, and one changed between calls is never answered from a stale inversion.
+ */
+function mnemonicsFor(
+  codeSystems: Readonly<Record<string, string>> | undefined,
+): Readonly<Record<string, string>> {
+  if (codeSystems === undefined) {
+    defaultMnemonics ??= invertCodeMap(DEFAULT_V2_CODE_SYSTEMS);
+    return defaultMnemonics;
+  }
+  // A null or a non-object (only reachable from untyped code) cannot key a WeakMap: it is merged and
+  // inverted on every call, exactly as before.
+  const supplied: unknown = codeSystems;
+  if (typeof supplied !== "object" || supplied === null) {
+    return invertCodeMap({ ...DEFAULT_V2_CODE_SYSTEMS, ...(supplied as object | null) });
+  }
+  // Read once, as the spread this replaces read it, so a getter on the caller's object runs once a
+  // call; the merged object below is built from these entries, never from a second read.
+  const entries = Object.entries(codeSystems);
+  const seen = invertedSeeds.get(codeSystems);
+  if (seen !== undefined && sameEntries(seen.entries, entries)) return seen.mnemonics;
+  const mnemonics = invertCodeMap({ ...DEFAULT_V2_CODE_SYSTEMS, ...Object.fromEntries(entries) });
+  invertedSeeds.set(codeSystems, { entries, mnemonics });
+  return mnemonics;
+}
+
 /**
  * Resolve a {@link ReverseOptions} into the lookups a conversion consults.
  *
@@ -82,7 +138,7 @@ export interface ReverseContext {
  * ```
  */
 export function reverseContext(options: ReverseOptions = {}): ReverseContext {
-  const mnemonics = invertCodeMap({ ...DEFAULT_V2_CODE_SYSTEMS, ...options.codeSystems });
+  const mnemonics = mnemonicsFor(options.codeSystems);
   const authorities = options.assigningAuthorities ?? {};
   return {
     mnemonicFor: (system) => (Object.hasOwn(mnemonics, system) ? mnemonics[system] : undefined),

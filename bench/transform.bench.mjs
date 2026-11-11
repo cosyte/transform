@@ -108,7 +108,7 @@ const weighCount = (n) => n;
 // where one call takes seconds: an admission takes milliseconds to map and an OBX about half of one,
 // so a 1 MiB batch is already several seconds a call. The pull request comparison runs only the
 // sizes marked `compare`: one admission, the report with a 64 KiB PDF (which maps an ORU^R01 and its
-// Observations) and the 100 entry Bundle. A comparison runs every case 24 times in fresh processes
+// Observations) and the 100 entry Bundle, with and without caller code systems. A comparison runs every case 24 times in fresh processes
 // within a 600 second budget, and a toFhir case's warmup alone can take seconds. A reading measures
 // every size.
 const benchmarks = [
@@ -184,6 +184,35 @@ const benchmarks = [
         weight += result.issues.length + (result.value === undefined ? 0 : 1);
       }
       return weight;
+    },
+    weigh: weighCount,
+  }),
+  defineBenchmark({
+    // The same write-back with the caller's own coding systems, as a feed that names local codes
+    // passes them: one options object for every call, the way a long-running service holds it. The
+    // registry the reverse path inverts is the default seed plus these entries.
+    name: "toV2Observation: searchset Bundle, caller code systems",
+    sizes: fhirSizes(
+      [
+        {
+          label: "100 entries, 43 KiB",
+          inputs: 4,
+          build: (i) => observationBundle(i, 100),
+          compare: true,
+        },
+      ],
+      entryResources,
+    ),
+    bind: (transform) => {
+      const options = { ...REVERSE_OPTIONS, codeSystems: AUTHORITIES.codeSystems };
+      return (resources) => {
+        let weight = 0;
+        for (const resource of resources) {
+          const result = transform.toV2Observation(resource, "R01", options);
+          weight += result.issues.length + (result.value === undefined ? 0 : 1);
+        }
+        return weight;
+      };
     },
     weigh: weighCount,
   }),

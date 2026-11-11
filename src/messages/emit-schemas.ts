@@ -214,3 +214,11 @@ export const EMIT_SCHEMAS: readonly ResourceSchema[] = Object.freeze([
     },
   },
 ]);
+
+/**
+ * Each {@link EMIT_SCHEMAS} entry by the resource type it describes, built once, so the gate hands
+ * the validator the one schema the resource is checked against rather than all of them.
+ */
+export const EMIT_SCHEMA_BY_TYPE: ReadonlyMap<string, ResourceSchema> = new Map(
+  EMIT_SCHEMAS.map((schema) => [schema.type, schema]),
+);
