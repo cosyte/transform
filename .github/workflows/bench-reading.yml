@@ -2,8 +2,9 @@ name: Bench reading
 
 # A reading of this build on a GitHub-hosted runner: every case of bench/transform.bench.mjs
 # (throughput, latency p50/p95/p99, allocations, peak heap, a long run for leaks, the cold import with
-# every file it loads and its gzip size), the budgets read from it (bench/budgets.mjs), and a CPU and
-# heap profile of the hottest paths (bench/profile.mjs). The tables go to the run's summary; the
+# every file it loads and its gzip size), the budgets read from it (bench/budgets.mjs), the cold
+# import split by module (bench/import-share.mjs), and a CPU and heap profile of the hottest paths
+# (bench/profile.mjs). The tables go to the run's summary; the
 # results document, its Markdown and the raw profiles are kept as the `bench-reading` artifact.
 #
 # Advisory: it fails only when it could not take a reading at all. A budget it finds exceeded is a
@@ -69,6 +70,13 @@ jobs:
           out="${RUNNER_TEMP}/bench-reading"
           node bench/budgets.mjs "${out}/reading.json" --summary "${out}/budgets.md"
           { echo; cat "${out}/budgets.md"; } >> "${GITHUB_STEP_SUMMARY}"
+      - name: Cold import, by module
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="${RUNNER_TEMP}/bench-reading"
+          node bench/import-share.mjs dist/index.mjs --summary "${out}/import-share.md"
+          { echo; cat "${out}/import-share.md"; } >> "${GITHUB_STEP_SUMMARY}"
       - name: CPU and heap profile
         shell: bash
         run: |
