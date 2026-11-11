@@ -27,11 +27,11 @@ importers:
         specifier: ^0.1.4
         version: 0.1.4(eslint@10.14.0)(typescript@5.9.3)
       '@cosyte/fhir':
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.8
+        version: 0.1.8
       '@cosyte/hl7':
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.1.8
+        version: 0.1.8(fast-check@4.10.2)
       '@cosyte/prettier-config':
         specifier: ^0.1.2
         version: 0.1.2
@@ -194,13 +194,18 @@ packages:
       eslint: ^9.0.0 || ^10.0.0
       typescript: '>=5.0.0'
 
-  '@cosyte/fhir@0.1.0':
-    resolution: {integrity: sha512-N2bwMyjCGeBRi/5AZijJi+a2QX4KWW7+aWC+xzAJFmzRVmz4XpvI19tBJ4nNHHN9SaAvmw58YmlVcxm3iQj+HA==}
+  '@cosyte/fhir@0.1.8':
+    resolution: {integrity: sha512-3jZxM1OS84o+TyyBkF8JZfmC89PzgrJp3xskOXPh7l9lgBB3vSwEYz2eCbeJIWzjULlWU9PKfiFJLmSlT8jCJg==}
     engines: {node: '>=22.0.0'}
 
-  '@cosyte/hl7@0.1.0':
-    resolution: {integrity: sha512-vscdMcPWyB+VsXzmRzzFNsYWtiNotl5wm+kO2OTvGFw2T94BmHPXfFpswSbyiqBH4DlKBIrgi4PJIzOU78v6pw==}
+  '@cosyte/hl7@0.1.8':
+    resolution: {integrity: sha512-5xlmD818oeuSKUkSB283RsR/l/qmfXhyZ+PcnULIu/BXXcz+2CP3k2S9bi8ysS9UOqMRLOEpa0hXoTZWKo0+sw==}
     engines: {node: '>=22.0.0'}
+    peerDependencies:
+      fast-check: ^4.0.0
+    peerDependenciesMeta:
+      fast-check:
+        optional: true
 
   '@cosyte/prettier-config@0.1.2':
     resolution: {integrity: sha512-bpcOjNAU+IBscFxZk7CBODgd7VRwOirg8LlffJLAQUTobI1JunbvAZa98u1BNv+/m5ILMGVNFopGW9HPNA2H5Q==}
@@ -2255,9 +2260,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@cosyte/fhir@0.1.0': {}
+  '@cosyte/fhir@0.1.8': {}
 
-  '@cosyte/hl7@0.1.0': {}
+  '@cosyte/hl7@0.1.8(fast-check@4.10.2)':
+    optionalDependencies:
+      fast-check: 4.10.2
 
   '@cosyte/prettier-config@0.1.2': {}
 

@@ -75,8 +75,11 @@ const LAB_MESSAGES = 3;
 const NOTES = 32;
 /** TX lines in the long note's base message. */
 const NOTE_LINES = 2_000;
-/** Observations on the reverse path's count axis. */
-const OBSERVATIONS = 400;
+/**
+ * Observations on the reverse path's count axis. 400 measured 2.85 ms on a runner once the code map
+ * stopped being inverted per call, under the 4 ms floor, so the axis skipped; 1,000 clear it.
+ */
+const OBSERVATIONS = 1_000;
 /**
  * Entries in each of the reverse path's base Bundles, and the Bundles in a phase: an Observation
  * takes tens of microseconds to write back, so a phase needs hundreds of them to clear 4 ms, and the

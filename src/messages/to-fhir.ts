@@ -59,7 +59,7 @@ import { buildDiagnosticReport } from "./diagnostic-report.js";
 import { buildDocumentReference, collectDocument } from "./document-reference.js";
 import { buildEncounter, emitEncounterDiagnosis } from "./encounter.js";
 import { buildProcedure, collectProcedures, deferredProcedureIssues } from "./procedure.js";
-import { EMIT_SCHEMAS } from "./emit-schemas.js";
+import { EMIT_SCHEMA_BY_TYPE } from "./emit-schemas.js";
 import { buildImmunization, collectImmunizationGroups } from "./immunization.js";
 import { buildMedicationRequest } from "./medication-request.js";
 import { buildMessageHeader } from "./message-header.js";
@@ -154,11 +154,18 @@ interface Entry {
  * resource, while the resource's other elements degrade to warnings rather than false rejections.
  */
 function clearsEmitGate(resource: FhirComplex): boolean {
-  const result =
-    resourceType(resource) === "Patient"
-      ? validateResource(resource, { mode: "strict" })
-      : validateResource(resource, { mode: "lenient", schemas: EMIT_SCHEMAS });
-  return result.valid;
+  const type = resourceType(resource);
+  if (type === "Patient") return validateResource(resource, { mode: "strict" }).valid;
+  // Only the resource's own schema is handed over. The validator looks a schema up for the root type
+  // alone, so the other entries never decided anything, yet it merged every one of them into a new
+  // registry on every call. A type with no emit schema is handed none, which is the registry the
+  // validator builds once and keeps.
+  const own = EMIT_SCHEMA_BY_TYPE.get(String(type));
+  return (
+    own === undefined
+      ? validateResource(resource, { mode: "lenient" })
+      : validateResource(resource, { mode: "lenient", schemas: [own] })
+  ).valid;
 }
 
 function passesEmitGate(
