@@ -27,8 +27,8 @@ importers:
         specifier: ^0.1.4
         version: 0.1.4(eslint@10.14.0)(typescript@5.9.3)
       '@cosyte/fhir':
-        specifier: ^0.1.8
-        version: 0.1.8
+        specifier: ^0.1.12
+        version: 0.1.12(fast-check@4.10.2)
       '@cosyte/hl7':
         specifier: ^0.1.8
         version: 0.1.8(fast-check@4.10.2)
@@ -194,9 +194,14 @@ packages:
       eslint: ^9.0.0 || ^10.0.0
       typescript: '>=5.0.0'
 
-  '@cosyte/fhir@0.1.8':
-    resolution: {integrity: sha512-3jZxM1OS84o+TyyBkF8JZfmC89PzgrJp3xskOXPh7l9lgBB3vSwEYz2eCbeJIWzjULlWU9PKfiFJLmSlT8jCJg==}
+  '@cosyte/fhir@0.1.12':
+    resolution: {integrity: sha512-TFaTpuMdDSXk+WODYJ4VGROlU9eIIoSByL5xfo8xBWUX7k/j//l/N118+O7yBgDxzEl1Cr017QaEthDkj1DdFA==}
     engines: {node: '>=22.0.0'}
+    peerDependencies:
+      fast-check: ^4.0.0
+    peerDependenciesMeta:
+      fast-check:
+        optional: true
 
   '@cosyte/hl7@0.1.8':
     resolution: {integrity: sha512-5xlmD818oeuSKUkSB283RsR/l/qmfXhyZ+PcnULIu/BXXcz+2CP3k2S9bi8ysS9UOqMRLOEpa0hXoTZWKo0+sw==}
@@ -2260,7 +2265,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@cosyte/fhir@0.1.8': {}
+  '@cosyte/fhir@0.1.12(fast-check@4.10.2)':
+    optionalDependencies:
+      fast-check: 4.10.2
 
   '@cosyte/hl7@0.1.8(fast-check@4.10.2)':
     optionalDependencies:

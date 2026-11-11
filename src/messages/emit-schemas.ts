@@ -44,7 +44,7 @@
  * @packageDocumentation
  */
 
-import { UNBOUNDED, type ResourceSchema } from "@cosyte/fhir";
+import { UNBOUNDED, buildRegistry, type ResourceSchema, type SchemaRegistry } from "@cosyte/fhir";
 
 /** The required-cardinality schemas the emit gate applies (lenient) to the non-`Patient` resources. */
 export const EMIT_SCHEMAS: readonly ResourceSchema[] = Object.freeze([
@@ -222,3 +222,50 @@ export const EMIT_SCHEMAS: readonly ResourceSchema[] = Object.freeze([
 export const EMIT_SCHEMA_BY_TYPE: ReadonlyMap<string, ResourceSchema> = new Map(
   EMIT_SCHEMAS.map((schema) => [schema.type, schema]),
 );
+
+/** The options the emit gate validates a resource of a type with an emit schema with. */
+export interface EmitGateOptions {
+  readonly mode: "lenient";
+  /** The type's own registry, built once by `buildRegistry`, read by `@cosyte/fhir` 0.1.12 and later. */
+  readonly registry: SchemaRegistry;
+  /**
+   * The type's own schema alone, the same array on every call. `@cosyte/fhir` 0.1.12 and later do not
+   * read it when `registry` is given; an older release, which does not read `registry`, reads this, so
+   * the gate checks the same schema on any release rather than silently checking none.
+   */
+  readonly schemas: readonly ResourceSchema[];
+}
+
+/** The gate's options for each type with an emit schema, made the first time the gate checks one. */
+const optionsByType = new Map<string, EmitGateOptions>();
+
+/**
+ * The options the emit gate validates a resource of `type` with: lenient, against `@cosyte/fhir`'s
+ * built-in schemas with that type's own {@link EMIT_SCHEMAS} entry merged in. The registry is built
+ * by `buildRegistry` once, at the first resource of the type, and the same options are returned for
+ * every later one, so the validator reads it exactly as it read `schemas: [own]` without merging a new
+ * registry on every call. `undefined` for a type with no emit schema, which the validator checks
+ * against its own built-in registry.
+ *
+ * @param type - The resource type of the resource being gated.
+ * @returns The options for that type, or `undefined` when it has no emit schema.
+ * @example
+ * ```ts
+ * emitGateOptions("Encounter") === emitGateOptions("Encounter"); // true, built once
+ * emitGateOptions("Specimen"); // undefined, no emit schema
+ * ```
+ */
+export function emitGateOptions(type: string): EmitGateOptions | undefined {
+  const cached = optionsByType.get(type);
+  if (cached !== undefined) return cached;
+  const own = EMIT_SCHEMA_BY_TYPE.get(type);
+  if (own === undefined) return undefined;
+  const schemas = Object.freeze([own]);
+  const options: EmitGateOptions = Object.freeze({
+    mode: "lenient",
+    registry: buildRegistry(schemas),
+    schemas,
+  });
+  optionsByType.set(type, options);
+  return options;
+}
