@@ -52,6 +52,14 @@ with a CPU and heap profile of the hottest paths, runs on a GitHub-hosted runner
 Parsing is not part of any of these: `parseHL7` and `parseResource` run before them, in the sibling
 packages.
 
+## What an import loads
+
+Importing `@cosyte/transform` loads its two peers, `@cosyte/hl7` and `@cosyte/fhir`, and no Node.js
+built-in module of its own. The default `generateId` reads the global Web Crypto `randomUUID` when
+the first id is minted, so a cold start does not load `node:crypto` for it. Most of a cold import is
+the peers' own load time; the full reading splits the time by module, so the share that is ours is
+plain.
+
 ## What these numbers are not
 
 - **Not a guarantee for your machine.** Absolute times depend on the hardware and its load.
