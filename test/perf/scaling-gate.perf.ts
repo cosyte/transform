@@ -65,14 +65,28 @@ import {
 
 const namingSystem = createNamingSystem(AUTHORITIES);
 
-/** Admissions on the count axis: an admission takes a few ms, so 16 clear the 4 ms floor easily. */
-const ADMISSIONS = 16;
+/**
+ * Admissions on the count axis. 16 measured 3.95 ms on a runner once the emit gate reused one schema
+ * registry per type on `@cosyte/fhir` 0.1.12, under the 4 ms floor, so the axis skipped; 32 clear it.
+ */
+const ADMISSIONS = 32;
 /** OBX lines in the size axis's base messages; the scaled phase's have 4 times as many. */
 const RESULTS = 24;
-/** Lab results in each size-axis phase: one of 12 lines measured 1.3 ms, under the floor. */
-const LAB_MESSAGES = 3;
-/** Notes on the long note's count axis, each of 20 lines. */
-const NOTES = 32;
+/**
+ * Lab results in each size-axis phase: one of 12 lines measured 1.3 ms, under the floor, and 3 of 24
+ * lines measured 2.42 ms on a runner once the emit gate reused its registries; 8 clear it.
+ */
+const LAB_MESSAGES = 8;
+/**
+ * Notes on the long note's count axis, each of 20 lines. 32 measured 3.71 ms on a runner once the
+ * emit gate reused its registries, under the floor; 64 clear it.
+ */
+const NOTES = 64;
+/**
+ * Long notes in each size-axis phase. One note of 2,000 lines measured 2.6 ms once the emit gate
+ * reused its registries, under the floor; 3 clear it.
+ */
+const NOTE_MESSAGES = 3;
 /** TX lines in the long note's base message. */
 const NOTE_LINES = 2_000;
 /**
@@ -174,7 +188,11 @@ function noteOptions(): ScalingGateOptions<Hl7Message, TransformResult> {
     parse: transform,
     weigh: (result) => result.issues.length + 1,
     count: { n: NOTES, generate: (i) => parseHL7(longNote(i, 20)) },
-    size: { inputs: 1, size: NOTE_LINES, generate: (i, size) => parseHL7(longNote(i, size)) },
+    size: {
+      inputs: NOTE_MESSAGES,
+      size: NOTE_LINES,
+      generate: (i, size) => parseHL7(longNote(i, size)),
+    },
   };
 }
 
