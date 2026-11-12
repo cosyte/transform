@@ -66,6 +66,7 @@ const json = JSON.parse(serializeResource(toFhir(parseHL7(raw)).bundle)) as {
 };
 const patient = json.entry[1]?.resource;
 
+// The values below are synthetic: what the Patient holds, asserted and not printed.
 patient?.["name"]; // => [{ family: "Public", given: ["Jane", "Q"] }]
 patient?.["birthDate"]; // => "1980-01-15"
 patient?.["gender"]; // => "female"

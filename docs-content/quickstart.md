@@ -25,6 +25,7 @@ const { value, issues } = toFhirHumanName({
   nameTypeCode: "L", // HL7 Table 0200 "Legal name", FHIR name use "official"
 });
 
+// The name below is synthetic: it is asserted here, and a real one is never logged.
 value === undefined ? undefined : serializeResource(value); // => '{"use":"official","family":"Public","given":["Jane"]}'
 issues; // => []
 ```

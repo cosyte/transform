@@ -38,7 +38,8 @@ console.log("Bundle type:", json.type);
 console.log("Entries:", types.join(", "));
 
 const patient = json.entry.find((e) => e.resource.resourceType === "Patient")?.resource;
-console.log("Patient:", JSON.stringify(patient));
+// The Patient is a person's record: it is checked below, never printed.
+console.log("Patient found:", patient !== undefined);
 
 // Every reference in the Bundle resolves to an entry's fullUrl.
 const fullUrls = new Set(json.entry.map((e) => e.fullUrl));

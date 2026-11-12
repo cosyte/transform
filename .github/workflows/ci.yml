@@ -106,3 +106,4 @@ jobs:
       - run: pnpm check:claude-card
       - run: pnpm check:catalog
       - run: pnpm check:process
+      - run: pnpm check:docs-content

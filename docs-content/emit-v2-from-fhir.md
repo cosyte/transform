@@ -37,6 +37,7 @@ const { value, issues } = toV2Patient(resource, "A28", {
   envelope: { sendingApp: "EHR", sendingFacility: "MAIN", controlId: "MSG0100" },
 });
 
+// The PID segment below is synthetic: it is asserted here, and a real one is never logged.
 value?.toString().split("\r")[1]; // => "PID|||MRN12345^^^HOSP||Public^Jane||19800115|F"
 issues; // => []
 ```
