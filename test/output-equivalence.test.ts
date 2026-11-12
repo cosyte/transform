@@ -9,8 +9,7 @@
  * threw. `test/_support/output-digests.json` holds the digests, taken from the base tree by
  * `scripts/capture-output-digests.ts`, and the file says which commit and which peer releases.
  *
- * A change that means to move an output names the input and the reason in `DELIBERATE` below; none
- * does today.
+ * A change that means to move an output names the input and the reason in `DELIBERATE` below.
  */
 
 import { readFileSync } from "node:fs";
@@ -36,8 +35,11 @@ const captured = JSON.parse(
   readFileSync(join(import.meta.dirname, "_support", "output-digests.json"), "utf8"),
 ) as Captured;
 
-/** Inputs whose output a change moved on purpose, with the reason. Empty: nothing moved. */
-const DELIBERATE: Readonly<Record<string, string>> = {};
+/** Inputs whose output a change moved on purpose, with the reason. */
+const DELIBERATE: Readonly<Record<string, string>> = {
+  "forward/ig/ADT_A01~6":
+    "a seeded edit values PID-37 strain, which now raises TRANSFORM_ELEMENT_DROPPED at PID.37",
+};
 
 describe("output equivalence against the base tree", () => {
   const head = corpusDigests();

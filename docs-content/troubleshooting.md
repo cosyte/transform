@@ -36,10 +36,12 @@ A missing FHIR element can come with a diagnostic explaining the refusal:
 
 A `Patient` is built from PID-3, PID-5, PID-7, PID-8 and PID-11 only, and from the first repetition
 of PID-5 and PID-11. PID-10 race, PID-13 and PID-14 telecom, PID-15 primary language, PID-19 SSN,
-PID-22 ethnic group, PID-29 death date and time and PID-30 death indicator each raise a
-`TRANSFORM_ELEMENT_DROPPED` at their own field when valued. One at `PID.29` or `PID.30` means the
-PID carried a death date or a death indicator that the `Patient`, which has no `deceased[x]`, does
-not. Some
+PID-22 ethnic group, PID-29 death date and time, PID-30 death indicator, PID-35 species, PID-36
+breed, PID-37 strain and PID-38 production class each raise a `TRANSFORM_ELEMENT_DROPPED` at their
+own field when valued. One at `PID.29` or `PID.30` means the PID carried a death date or a death
+indicator that the `Patient`, which has no `deceased[x]`, does not. One at `PID.35` to `PID.38`
+means the patient is an animal whose species, breed, strain or production class the `Patient` does
+not carry. Some
 missing elements come with no diagnostic at all: every other PID field is dropped with no issue.
 Read those fields from the parsed message if you need them.
 
