@@ -616,7 +616,7 @@ envelope the forward converters return, in the other direction.
 ```ts
 import { toV2Patient } from "@cosyte/transform";
 // const { value, issues } = toV2Patient(patientNode, "A28");
-// value?.toString() -> "MSH|^~\\&|...|ADT^A28|...\rPID|||MRN1\r"
+// value is a v2 message of type ADT^A28 with an MSH segment followed by a PID segment
 void toV2Patient;
 ```
 

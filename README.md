@@ -311,7 +311,7 @@ const { value, issues } = toV2Patient(resource, "A28", {
   assigningAuthorities: { "urn:oid:2.16.840.1.113883.19": "HOSP" },
   envelope: { sendingApp: "EHR", sendingFacility: "MAIN" },
 });
-// value.toString() -> "MSH|^~\\&|EHR|MAIN|...|ADT^A28|...\rPID|||MRN1||Public^Jane\r"
+// value is a v2 message of type ADT^A28 with an MSH segment followed by a PID segment
 ```
 
 **The trigger is required and is never inferred.** No FHIR resource carries an HL7 v2 message
