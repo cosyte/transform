@@ -1,5 +1,5 @@
 ---
-id: guides-overview
+id: resolve-assigning-authorities
 title: Resolve assigning authorities
 sidebar_label: Resolve assigning authorities
 description: "Give each identifier a FHIR Identifier.system: seed the naming system with your authorities, and know which ones resolve on their own."

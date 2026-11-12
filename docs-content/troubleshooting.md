@@ -2,7 +2,7 @@
 id: troubleshooting
 title: Troubleshooting
 sidebar_label: Troubleshooting
-description: "Why a value or element is missing from the output, whether diagnostics are safe to log, and the known limitations."
+description: "Why a value or element is missing from the output, whether diagnostics are safe to log, and where the limits are."
 ---
 
 # Troubleshooting
@@ -22,7 +22,7 @@ A missing FHIR element can come with a diagnostic explaining the refusal:
 
 - **`Identifier.system` is absent** → `TRANSFORM_IDENTIFIER_SYSTEM_UNRESOLVED`: the assigning
   authority was not resolvable. Seed it with `createNamingSystem({ authorities })`
-  ([Resolve assigning authorities](./guides-overview.md)). The value is never attached to a guessed
+  ([Resolve assigning authorities](./resolve-assigning-authorities.md)). The value is never attached to a guessed
   system.
 - **`Coding.system` is absent** → `TRANSFORM_CODE_SYSTEM_UNRESOLVED` (unknown mnemonic) or
   `TRANSFORM_CODE_UNMAPPED` (no coding system at all). The code is preserved verbatim, never invented.
@@ -51,7 +51,7 @@ with no issue. Read those fields from the parsed message if you need them.
 `TRANSFORM_TIMESTAMP_NO_TIMEZONE`: the v2 timestamp had a time but no offset, and FHIR forbids a time
 without a zone, so it was reduced to date precision rather than assuming UTC (which would shift the
 clinical instant by hours). Supply `assumeTimezoneOffsetMinutes` if you know the sender's offset
-([Keep the time on a timestamp with no offset](./supply-a-sender-timezone.md)). It
+([Supply a sender timezone for a timestamp with no offset](./supply-a-sender-timezone.md)). It
 must be a whole number of minutes from -840 to 840 (-14:00 to +14:00), the range FHIR can write; any
 other value is ignored and the timestamp is still reduced to its date.
 
@@ -122,8 +122,8 @@ maps the segment, this library does not carry it) or `TRANSFORM_SEGMENT_NO_IG_MA
 no segment by that name, or the name could not be read). [How the transform
 works](./concepts-archetype.md#what-the-bundle-did-not-represent) explains both and their locations.
 
-## Known limitations
+## It is not in the output at all
 
-[Mapping scope](./mapping-scope.md) lists, family by family, what reaches a resource and what is
-left out. In short: no terminology content, no unit conversion, R4 only, and a narrow FHIR to v2
-path ([Why FHIR to v2 is narrow](./reverse-direction.md)).
+If the library does not carry what you expect by design, [Limitations](./limitations.md) lists what
+it leaves out, and [Mapping scope](./mapping-scope.md) lists, family by family, what reaches a
+resource.

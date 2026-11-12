@@ -20,7 +20,7 @@
       "type": "category",
       "label": "How-to guides",
       "items": [
-        "guides-overview",
+        "resolve-assigning-authorities",
         "supply-a-sender-timezone",
         "convert-datatypes",
         "transform-lab-results",
@@ -38,7 +38,7 @@
     {
       "type": "category",
       "label": "Reference",
-      "items": ["issue-codes", "mapping-scope"]
+      "items": ["issue-codes", "mapping-scope", "limitations"]
     },
     {
       "type": "category",

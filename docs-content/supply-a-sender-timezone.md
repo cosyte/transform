@@ -1,11 +1,11 @@
 ---
 id: supply-a-sender-timezone
-title: Keep the time on a timestamp with no offset
-sidebar_label: Supply a sender's timezone
+title: Supply a sender timezone for a timestamp with no offset
+sidebar_label: Supply a sender timezone
 description: "Assert the sending system's UTC offset so a v2 timestamp without one keeps its time of day, instead of being cut to its date."
 ---
 
-# Keep the time on a timestamp with no offset
+# Supply a sender timezone for a timestamp with no offset
 
 Many senders write timestamps with no UTC offset: `20260721143000`. FHIR does not allow a time of day
 without a zone, and assuming UTC would move the moment by hours, so by default the library keeps
