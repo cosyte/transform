@@ -7,12 +7,18 @@
  * `TRANSFORM_ELEMENT_DROPPED` at its own field, with the FHIR element the IG's PID to Patient map
  * sends it to (none for race and ethnic group, which that map gives no row). PID-13 home and PID-14
  * business telecom are reported the same way, each at its own field, and so are the animal fields
- * PID-35 species, PID-36 breed, PID-37 strain and PID-38 production class, on an ADT and an ORU.
+ * PID-37 strain and PID-38 production class, on an ADT and an ORU. PID-35 species and PID-36 breed
+ * are carried instead, in the FHIR R4 core `patient-animal` extension, and are reported only when a
+ * value cannot be carried there.
  *
  * Every fixture is synthetic; every person-identifying literal comes from the PHI allow-list.
  */
 
+import { parseHL7 } from "@cosyte/hl7";
+import { validateResource } from "@cosyte/fhir";
 import { describe, expect, it } from "vitest";
+
+import { buildPatient } from "../../src/messages/patient.js";
 
 import {
   MSH_ADT_A01,
@@ -156,20 +162,45 @@ const ANIMAL: Readonly<Record<number, string>> = {
   38: "ZZPROD1^Synthetic production class one^L",
 };
 
-describe("animal PID fields with no conversion raise TRANSFORM_ELEMENT_DROPPED", () => {
+/** The canonical URL of the FHIR R4 core extension an animal patient's species and breed go to. */
+const PATIENT_ANIMAL = "http://hl7.org/fhir/StructureDefinition/patient-animal";
+
+/** The `Patient.extension` the transform wrote, or `undefined`. */
+function extensionOf(lines: readonly string[]): unknown {
+  return patientOf(lines)["extension"];
+}
+
+/** The patient-animal extension a species and an optional breed CWE are expected to become. */
+function animal(
+  species: Record<string, unknown>,
+  breed?: Record<string, unknown>,
+): Record<string, unknown>[] {
+  const parts: Record<string, unknown>[] = [{ url: "species", valueCodeableConcept: species }];
+  if (breed !== undefined) parts.push({ url: "breed", valueCodeableConcept: breed });
+  return [{ url: PATIENT_ANIMAL, extension: parts }];
+}
+
+const SPECIES_ONE = { coding: [{ code: "ZZSPECIES1", display: "Synthetic species one" }] };
+const BREED_ONE = { coding: [{ code: "ZZBREED1", display: "Synthetic breed one" }] };
+
+describe("PID-35 species and PID-36 breed map to the patient-animal extension", () => {
   for (const [name, msh] of [
     ["ADT^A01", MSH_ADT_A01],
     ["ORU^R01", MSH_ORU_R01],
   ] as const) {
-    it(`reports PID-35 to PID-38 each at its own field, at information severity, in ${name}`, () => {
+    it(`writes species and breed as CodeableConcepts from the CWE, in ${name}`, () => {
+      expect(extensionOf([msh, pid(ANIMAL)])).toEqual(animal(SPECIES_ONE, BREED_ONE));
+    });
+
+    it(`flags only PID-37 and PID-38 as dropped, each at its own field, in ${name}`, () => {
       const result = run([msh, pid(ANIMAL)]);
       expect(drops([msh, pid(ANIMAL)])).toEqual([
-        "TRANSFORM_ELEMENT_DROPPED@PID.35#",
-        "TRANSFORM_ELEMENT_DROPPED@PID.36#",
         "TRANSFORM_ELEMENT_DROPPED@PID.37#",
         "TRANSFORM_ELEMENT_DROPPED@PID.38#",
       ]);
-      for (const field of [35, 36, 37, 38]) {
+      expect(issuesAt(result, "PID.35")).toEqual([]);
+      expect(issuesAt(result, "PID.36")).toEqual([]);
+      for (const field of [37, 38]) {
         const at = issuesAt(result, `PID.${field}`);
         expect(at, `one issue at PID.${field}`).toHaveLength(1);
         expect(at[0]?.severity).toBe("information");
@@ -184,17 +215,121 @@ describe("animal PID fields with no conversion raise TRANSFORM_ELEMENT_DROPPED",
     });
   }
 
+  it("resolves a known coding system and keeps the alternate coding and original text", () => {
+    const lines = [
+      MSH_ADT_A01,
+      pid({
+        35: "ZZSPECIES2^Synthetic species two^SCT^ZZALT2^Synthetic alternate two^L^^^Fake text",
+      }),
+    ];
+    expect(extensionOf(lines)).toEqual(
+      animal({
+        coding: [
+          {
+            system: "http://snomed.info/sct",
+            code: "ZZSPECIES2",
+            display: "Synthetic species two",
+          },
+          { code: "ZZALT2", display: "Synthetic alternate two" },
+        ],
+        text: "Fake text",
+      }),
+    );
+  });
+
+  it("flags an unresolved coding system the way any CWE does, never inventing one", () => {
+    const result = run([MSH_ADT_A01, pid({ 35: "ZZSPECIES1^Synthetic species one^L" })]);
+    expect(labels(result)).toContain("TRANSFORM_CODE_SYSTEM_UNRESOLVED@CWE.3#Coding.system");
+  });
+
+  it("writes species alone when PID-36 is not valued", () => {
+    expect(extensionOf([MSH_ADT_A01, pid({ 35: ANIMAL[35] ?? "" })])).toEqual(animal(SPECIES_ONE));
+  });
+
+  it("drops a breed with no species, since the extension requires species, and flags it", () => {
+    const lines = [MSH_ADT_A01, pid({ 36: ANIMAL[36] ?? "" })];
+    expect(extensionOf(lines)).toBeUndefined();
+    expect(drops(lines)).toEqual([
+      "TRANSFORM_ELEMENT_DROPPED@PID.36#Patient.extension[patient-animal].extension[breed]",
+    ]);
+  });
+
+  it("flags a species valued only where the CWE has no code or text, and drops its breed too", () => {
+    const lines = [MSH_ADT_A01, pid({ 35: "^^^^^^ZZVERSION1", 36: ANIMAL[36] ?? "" })];
+    expect(extensionOf(lines)).toBeUndefined();
+    expect(drops(lines)).toEqual([
+      "TRANSFORM_ELEMENT_DROPPED@PID.35#Patient.extension[patient-animal].extension[species]",
+      "TRANSFORM_ELEMENT_DROPPED@PID.36#Patient.extension[patient-animal].extension[breed]",
+    ]);
+  });
+
+  it("flags a breed valued only where the CWE has no code or text, keeping the species", () => {
+    const lines = [MSH_ADT_A01, pid({ 35: ANIMAL[35] ?? "", 36: "^^^^^^ZZVERSION1" })];
+    expect(extensionOf(lines)).toEqual(animal(SPECIES_ONE));
+    expect(drops(lines)).toEqual([
+      "TRANSFORM_ELEMENT_DROPPED@PID.36#Patient.extension[patient-animal].extension[breed]",
+    ]);
+  });
+
+  it("flags a repetition after the first, which the one species and one breed cannot hold", () => {
+    const lines = [
+      MSH_ADT_A01,
+      pid({ 35: `${ANIMAL[35] ?? ""}~ZZSPECIES3`, 36: `${ANIMAL[36] ?? ""}~ZZBREED3` }),
+    ];
+    expect(extensionOf(lines)).toEqual(animal(SPECIES_ONE, BREED_ONE));
+    expect(drops(lines)).toEqual([
+      "TRANSFORM_ELEMENT_DROPPED@PID.35#Patient.extension[patient-animal].extension[species]",
+      "TRANSFORM_ELEMENT_DROPPED@PID.36#Patient.extension[patient-animal].extension[breed]",
+    ]);
+  });
+
+  it("never infers genderStatus from PID-8", () => {
+    for (const sex of ["F", "M", "O", "U", "A", "N"]) {
+      const lines = [MSH_ADT_A01, pid({ 8: sex, ...ANIMAL })];
+      expect(JSON.stringify(patientOf(lines))).not.toContain("genderStatus");
+      expect(extensionOf(lines)).toEqual(animal(SPECIES_ONE, BREED_ONE));
+    }
+  });
+
+  it("builds a Patient from a PID that carries only a species", () => {
+    const lines = [MSH_ADT_A01, segment("PID", { 1: "1", 35: ANIMAL[35] ?? "" })];
+    expect(patientOf(lines)).toEqual({
+      resourceType: "Patient",
+      extension: animal(SPECIES_ONE),
+    });
+  });
+
+  it("emits a Patient that @cosyte/fhir validates in strict mode", () => {
+    const msg = parseHL7([MSH_ADT_A01, pid(ANIMAL)].join("\r"));
+    const view = msg.patient;
+    if (view === undefined) throw new Error("expected a PID view");
+    const built = buildPatient(view, {}, msg.segments("PID")[0]).value;
+    if (built === undefined) throw new Error("expected a Patient");
+    const result = validateResource(built, { mode: "strict" });
+    const errors = result.issues.filter((i) => i.severity === "error" || i.severity === "fatal");
+    expect(errors).toEqual([]);
+    expect(result.valid).toBe(true);
+  });
+
   it("reports only the animal field that is valued", () => {
     expect(drops([MSH_ADT_A01, pid({ 37: "ZZSTRAIN1" })])).toEqual([
       "TRANSFORM_ELEMENT_DROPPED@PID.37#",
     ]);
   });
 
-  it('raises nothing for animal fields sent as the HL7 null ""', () => {
-    expect(drops([MSH_ADT_A01, pid({ 35: '""', 36: '""', 37: '""', 38: '""' })])).toEqual([]);
+  it('writes and raises nothing for animal fields sent as the HL7 null ""', () => {
+    const lines = [MSH_ADT_A01, pid({ 35: '""', 36: '""', 37: '""', 38: '""' })];
+    expect(drops(lines)).toEqual([]);
+    expect(extensionOf(lines)).toBeUndefined();
   });
 
-  it("still builds the same Patient: the report is all that changes", () => {
-    expect(patientOf([MSH_ADT_A01, pid(ANIMAL)])).toEqual(patientOf([MSH_ADT_A01, pid({})]));
+  it("changes nothing else in the Patient: only the extension is added", () => {
+    const withAnimal = { ...patientOf([MSH_ADT_A01, pid(ANIMAL)]) };
+    delete withAnimal["extension"];
+    expect(withAnimal).toEqual(patientOf([MSH_ADT_A01, pid({})]));
+  });
+
+  it("writes no extension for a PID with no animal field", () => {
+    expect(extensionOf([MSH_ADT_A01, pid({})])).toBeUndefined();
   });
 });

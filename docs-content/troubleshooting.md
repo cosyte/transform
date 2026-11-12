@@ -34,16 +34,17 @@ A missing FHIR element can come with a diagnostic explaining the refusal:
   transform. Nothing else changes: an unreadable PV1-45 does not make the encounter `finished`. If
   the sender writes dates in another layout, declare it with `parseHL7(raw, { dateFormats })`.
 
-A `Patient` is built from PID-3, PID-5, PID-7, PID-8 and PID-11 only, and from the first repetition
-of PID-5 and PID-11. PID-10 race, PID-13 and PID-14 telecom, PID-15 primary language, PID-19 SSN,
-PID-22 ethnic group, PID-29 death date and time, PID-30 death indicator, PID-35 species, PID-36
-breed, PID-37 strain and PID-38 production class each raise a `TRANSFORM_ELEMENT_DROPPED` at their
-own field when valued. One at `PID.29` or `PID.30` means the PID carried a death date or a death
-indicator that the `Patient`, which has no `deceased[x]`, does not. One at `PID.35` to `PID.38`
-means the patient is an animal whose species, breed, strain or production class the `Patient` does
-not carry. Some
-missing elements come with no diagnostic at all: every other PID field is dropped with no issue.
-Read those fields from the parsed message if you need them.
+A `Patient` is built from PID-3, PID-5, PID-7, PID-8, PID-11, PID-35 and PID-36 only, and from the
+first repetition of PID-5, PID-11, PID-35 and PID-36. PID-10 race, PID-13 and PID-14 telecom, PID-15 primary language, PID-19 SSN,
+PID-22 ethnic group, PID-29 death date and time, PID-30 death indicator, PID-37 strain and PID-38
+production class each raise a `TRANSFORM_ELEMENT_DROPPED` at their own field when valued. One at
+`PID.29` or `PID.30` means the PID carried a death date or a death indicator that the `Patient`,
+which has no `deceased[x]`, does not. One at `PID.37` or `PID.38` means the patient is an animal
+whose strain or production class the `Patient` does not carry. PID-35 species and PID-36 breed go
+to the `patient-animal` extension; one at `PID.35` or `PID.36` means that value could not be
+written there: its CWE had no code and no text, a breed came with no species, or the field
+repeated. Some missing elements come with no diagnostic at all: every other PID field is dropped
+with no issue. Read those fields from the parsed message if you need them.
 
 ## My timestamp lost its time of day
 
