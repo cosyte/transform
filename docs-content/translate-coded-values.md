@@ -77,7 +77,7 @@ issues.map((i) => i.code); // => ["TRANSFORM_CODE_SYSTEM_UNRESOLVED"]
 ```
 
 Seed the naming system with `99LOCAL`'s URI ([Resolve assigning
-authorities](./guides-overview.md#seed-coding-systems-too)) and the coding gets its system, still
+authorities](./resolve-assigning-authorities.md#seed-coding-systems-too)) and the coding gets its system, still
 untranslated.
 
 ## What is not translated

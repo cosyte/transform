@@ -142,6 +142,6 @@ mutated. A converted value is safe to share across a pipeline without defensive 
   step.
 - [Read, log and return the issues](./handle-issues.md): branch on codes, find unreached segments,
   return an `OperationOutcome`.
-- [Resolve assigning authorities](./guides-overview.md) and [Keep the time on a timestamp with no
+- [Resolve assigning authorities](./resolve-assigning-authorities.md) and [Supply a sender timezone for a timestamp with no
   offset](./supply-a-sender-timezone.md): the two refusals you can resolve yourself.
 - [Convert a single datatype](./convert-datatypes.md): the six converters.

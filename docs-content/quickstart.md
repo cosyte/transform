@@ -52,7 +52,7 @@ issues[0]?.fhirPath; // => "Identifier.system"
 
 Register the authority, `createNamingSystem({ authorities: { HOSPMRN: "urn:oid:..." } })`, and the
 same call sets `Identifier.system` and raises nothing. [Resolve assigning
-authorities](./guides-overview.md) shows how.
+authorities](./resolve-assigning-authorities.md) shows how.
 
 ## Assemble a message
 
@@ -91,7 +91,7 @@ invented address. Every reference in the bundle points at a `urn:uuid:` `fullUrl
 
 - [Transform an admission message](./transform-an-admission.md): the tutorial, step by step, with
   issues, an `OperationOutcome` and reproducible ids.
-- How-to guides: [resolve assigning authorities](./guides-overview.md),
+- How-to guides: [resolve assigning authorities](./resolve-assigning-authorities.md),
   [transform a lab result](./transform-lab-results.md), [transform an order and its
   schedule](./transform-orders.md), [read, log and return the issues](./handle-issues.md), and
   [emit a v2 message from a FHIR resource](./emit-v2-from-fhir.md).

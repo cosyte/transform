@@ -224,8 +224,7 @@ successful one.
 
 ## Not covered
 
-No terminology content (no SNOMED CT, LOINC or RxNorm content is bundled), no unit conversion, and
-R4 only.
+[Limitations](./limitations.md) lists what the library leaves out by design.
 
 ## See also
 

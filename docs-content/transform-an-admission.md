@@ -141,7 +141,7 @@ Read them in order:
   no map for it. `ZPD[1]` is its first occurrence.
 
 The fix for the first one is in your hands: if you know the sender's offset, pass
-`assumeTimezoneOffsetMinutes`. [Keep the time on a timestamp with no offset](./supply-a-sender-timezone.md)
+`assumeTimezoneOffsetMinutes`. [Supply a sender timezone for a timestamp with no offset](./supply-a-sender-timezone.md)
 shows how.
 
 ## Step 5: make the ids repeatable and return the issues as FHIR
@@ -187,12 +187,14 @@ outcome.issue.map((i) => i.details.coding[0]?.code); // => ["TRANSFORM_TIMESTAMP
 With the offset asserted, the admit time keeps its time of day. The timezone issue is still raised,
 because the offset came from you and not from the message; it marks the value as sender-asserted.
 
-## What we built, and where to go next
+## What you built
 
-We transformed an admission into a FHIR message `Bundle`, resolved the record number's system, read
+You transformed an admission into a FHIR message `Bundle`, resolved the record number's system, read
 each issue, and returned the issues as an `OperationOutcome`.
 
-- [Resolve assigning authorities](./guides-overview.md): every way a system URI is found.
+## Next
+
+- [Resolve assigning authorities](./resolve-assigning-authorities.md): every way a system URI is found.
 - [Read, log and return the issues](./handle-issues.md): branch on codes and severities.
 - [Transform a lab result](./transform-lab-results.md): the same steps for an `ORU^R01`.
 - [How the transform works](./concepts-archetype.md): why the library refuses to guess.

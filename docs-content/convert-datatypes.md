@@ -39,7 +39,7 @@ toFhirDateTime(parseDtm("20260721143000")).value; // => "2026-07-21"
 ```
 
 A date-only value keeps its precision and is never zero-filled. A time with no offset is cut to its
-date with `TRANSFORM_TIMESTAMP_NO_TIMEZONE`; [Keep the time on a timestamp with no
+date with `TRANSFORM_TIMESTAMP_NO_TIMEZONE`; [Supply a sender timezone for a timestamp with no
 offset](./supply-a-sender-timezone.md) shows the option that keeps it.
 
 ## An identifier
@@ -61,7 +61,7 @@ value === undefined ? undefined : JSON.parse(serializeResource(value)); // => { 
 issues; // => []
 ```
 
-[Resolve assigning authorities](./guides-overview.md) covers every way a system is found.
+[Resolve assigning authorities](./resolve-assigning-authorities.md) covers every way a system is found.
 
 ## A coded element
 
