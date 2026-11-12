@@ -129,7 +129,7 @@ const { bundle, issues } = toFhir(parseHL7(raw), {
 | Segment | FHIR resource        | key maps                                                                                                                   |
 | ------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | MSH     | `MessageHeader`      | MSH-9 → `eventCoding`; MSH-7/10 → `Bundle.timestamp`/`.identifier`                                                         |
-| PID     | `Patient`            | PID-3/5/7/8/11 → `identifier`/`name`/`birthDate`/`gender`/`address`                                                        |
+| PID     | `Patient`            | PID-3/5/7/8/11 → `identifier`/`name`/`birthDate`/`gender`/`address`; PID-35/36 → the `patient-animal` extension            |
 | PV1     | `Encounter`          | PV1-2 → `class`/`status` (HL70004); PV1-19/44/45 → `identifier`/`period`                                                   |
 | NK1     | `RelatedPerson`      | NK1-2/3/4 → `name`/`relationship`/`address`                                                                                |
 | AL1     | `AllergyIntolerance` | AL1-2 → `category` + `type` (two maps); AL1-3/4/5 → `code`/`criticality`/`reaction`                                        |
@@ -139,11 +139,13 @@ const { bundle, issues } = toFhir(parseHL7(raw), {
 
 The PID row is everything that reaches `Patient`, and PID-5 and PID-11 contribute their first
 repetition only. PID-10 race, PID-13 and PID-14 telecom, PID-15 primary language, PID-19 SSN,
-PID-22 ethnic group, PID-29 death date and time, PID-30 death indicator, PID-35 species, PID-36
-breed, PID-37 strain and PID-38 production class are not mapped: each one that is valued raises a
-`TRANSFORM_ELEMENT_DROPPED` at its own field, such as `PID.29` or `PID.35`. So a `Patient` from a
-PID that records a death has no `deceased[x]`, and `issues` says so. Every other
-PID field is dropped with no issue. Read those fields from the parsed message if you need them.
+PID-22 ethnic group, PID-29 death date and time, PID-30 death indicator, PID-37 strain and PID-38
+production class are not mapped: each one that is valued raises a `TRANSFORM_ELEMENT_DROPPED` at its
+own field, such as `PID.29` or `PID.37`. So a `Patient` from a PID that records a death has no
+`deceased[x]`, and `issues` says so. PID-35 species and PID-36 breed go to the `species` and `breed`
+parts of the FHIR R4 core extension `http://hl7.org/fhir/StructureDefinition/patient-animal`, each a
+`CodeableConcept` from the CWE; its `genderStatus` is never inferred from PID-8. Every other PID
+field is dropped with no issue. Read those fields from the parsed message if you need them.
 
 An allergy is a field a downstream system may act on before prescribing, so the AL1 rows are read
 strictly. `clinicalStatus` is the `active` the IG assigns (its constraint ait-1 needs one, and no AL1

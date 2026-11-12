@@ -17,7 +17,7 @@ target for is reported, never guessed.
 | Segment | FHIR resource | Key fields |
 | --- | --- | --- |
 | MSH | `MessageHeader` | MSH-9 to `eventCoding`; MSH-7 and MSH-10 to `Bundle.timestamp` and `Bundle.identifier` |
-| PID | `Patient` | PID-3, PID-5, PID-7, PID-8, PID-11 to `identifier`, `name`, `birthDate`, `gender`, `address` |
+| PID | `Patient` | PID-3, PID-5, PID-7, PID-8, PID-11 to `identifier`, `name`, `birthDate`, `gender`, `address`; PID-35, PID-36 to the `patient-animal` extension |
 | PV1 | `Encounter` | PV1-2 to `class` and `status` (Table 0004); PV1-19, PV1-44, PV1-45 to `identifier` and `period` |
 | NK1 | `RelatedPerson` | NK1-2, NK1-3, NK1-4 to `name`, `relationship`, `address` |
 | AL1 | `AllergyIntolerance` | AL1-2 to `category` and `type` (two maps); AL1-3, AL1-4, AL1-5 to `code`, `criticality`, `reaction` |
@@ -48,15 +48,38 @@ and profiles are not implemented.
 
 ## Patients and visits
 
-A `Patient` is built from PID-3, PID-5, PID-7, PID-8 and PID-11 only, and from the first repetition
-of PID-5 and PID-11. PID-10 race, PID-13 and PID-14 telecom, PID-15 primary language, PID-19 SSN,
-PID-22 ethnic group, PID-29 death date and time, PID-30 death indicator, PID-35 species, PID-36
-breed, PID-37 strain and PID-38 production class are not mapped: each one that is valued raises a
-`TRANSFORM_ELEMENT_DROPPED` whose `v2Location` is that field, such as `PID.14`, `PID.29` or
-`PID.35`. A `Patient` from a PID that records a death therefore has no `deceased[x]`, and `issues`
-says so; a `Patient` from a veterinary PID has no species or breed, and `issues` says that too. The
-four animal fields name no `fhirPath`, because FHIR R4 `Patient` has no element for them. Every other PID field is dropped with no issue. Read those fields from the
-parsed message if you need them.
+A `Patient` is built from PID-3, PID-5, PID-7, PID-8, PID-11, PID-35 and PID-36 only, and from the
+first repetition of PID-5, PID-11, PID-35 and PID-36. PID-10 race, PID-13 and PID-14 telecom, PID-15
+primary language, PID-19 SSN, PID-22 ethnic group, PID-29 death date and time, PID-30 death
+indicator, PID-37 strain and PID-38 production class are not mapped: each one that is valued raises
+a `TRANSFORM_ELEMENT_DROPPED` whose `v2Location` is that field, such as `PID.14`, `PID.29` or
+`PID.37`. A `Patient` from a PID that records a death therefore has no `deceased[x]`, and `issues`
+says so. PID-37 and PID-38 name no `fhirPath`, because FHIR R4 has no element for them. Every other
+PID field is dropped with no issue. Read those fields from the parsed message if you need them.
+
+### Animal patients
+
+A veterinary PID's species and breed are carried in the FHIR R4 core extension
+`http://hl7.org/fhir/StructureDefinition/patient-animal`, written as the `Patient`'s first
+`extension`:
+
+- PID-35 Species Code becomes the `species` part, a `valueCodeableConcept` converted from the CWE
+  like any other coded field (an unknown coding system is kept off `system` and flagged).
+- PID-36 Breed Code becomes the `breed` part the same way.
+- The `genderStatus` part is never written. The extension's own v2 mapping gives it no field, and
+  PID-8 administrative sex does not say whether an animal is neutered, so it is never inferred from
+  PID-8.
+
+These two rows follow the FHIR R4 core definition of the extension, whose own v2 mapping names
+PID-35 for `species` and "PID-35 (where more detailed value is present)" for `breed`. v2 gives breed
+its own field, PID-36, so breed is read from there. We have not checked these rows against the HL7
+Version 2 to FHIR guide's PID to Patient map, which every other PID row here follows.
+
+The extension requires `species`, so a breed with no species is not written. PID-35 and PID-36 raise
+a `TRANSFORM_ELEMENT_DROPPED` at their own field, with `fhirPath`
+`Patient.extension[patient-animal].extension[species]` or `[breed]`, when the value cannot be
+carried: the CWE has no code and no text, the breed has no species beside it, or a repetition after
+the first is valued.
 
 PID-7, PV1-44, PV1-45 and MSH-7 that are valued but could not be read as a date by `@cosyte/hl7`
 raise `TRANSFORM_TIMESTAMP_DROPPED_BY_PARSER`, and the element is left out.
