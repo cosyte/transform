@@ -118,6 +118,25 @@ lines.length > 0; // => true
 lines.some((line) => line.includes("MRN12345") || line.includes("Public")); // => false
 ```
 
+## What is safe to log
+
+Log what says what happened, never what the message said.
+
+- **Safe:** each issue's `code`, `severity`, `v2Location`, `fhirPath` and `message`, which are fixed
+  text or positions; the message type; a count of issues, resources or entries; a length; a
+  boolean.
+- **Not safe:** the `value` a converter returns, the `bundle` or a resource inside it, the message
+  you parsed, a segment or field read from it, and anything in a `Patient` such as a name, a record
+  number, a birth date, an address or a phone number. A free-text note is not safe either.
+
+No field of a `TransformIssue` holds raw input: the transform never copies a value into an issue,
+so there is no snippet to scrub. The parser's errors are a different matter. `Hl7ParseError.snippet` from `@cosyte/hl7` carries up
+to 40 characters of the raw message, unredacted, so catching a parse failure before you call
+`toFhir` is where one can reach a log. Do not log `snippet`; log the error's code.
+
+To show what a field holds in your own code, read it into a variable or assert on it, and mark a
+sample value as synthetic in a comment. Do not pass it to `console.log` or any other logger.
+
 ## Return them as an OperationOutcome
 
 `toOperationOutcome` turns a list of issues into a FHIR `OperationOutcome` resource. Each issue keeps

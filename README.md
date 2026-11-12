@@ -66,6 +66,13 @@ and any wider FHIR → v2 conversion are not implemented.
 npm install @cosyte/transform @cosyte/hl7 @cosyte/fhir
 ```
 
+Below 1.0 a break can ship in a patch release, so a caret range does not protect a consumer. Pin
+the exact version:
+
+```bash
+npm install --save-exact @cosyte/transform
+```
+
 `@cosyte/hl7` and `@cosyte/fhir` are **peer dependencies**: the transform maps between the models
 they own, so you install them beside it and parse with `@cosyte/hl7` before you transform. Its own
 third-party runtime dependencies are **zero**.
@@ -89,9 +96,10 @@ const { value, issues } = toFhirHumanName({
   nameTypeCode: "L", // HL7 Table 0200 "Legal name" → FHIR name-use "official"
 });
 
-console.log(value === undefined ? "no value" : serializeResource(value));
-// {"use":"official","family":"Public","given":["Jane"]}
-console.log(issues); // [] (clean, fully mapped)
+// The name is a person's, so it is read, never printed. This value is synthetic.
+const json = value === undefined ? undefined : serializeResource(value);
+json; // => '{"use":"official","family":"Public","given":["Jane"]}'
+console.log("Issues:", issues.length); // 0 (clean, fully mapped)
 ```
 
 Each converter returns `{ value, issues }`: the FHIR datatype node it could faithfully produce, plus
@@ -303,7 +311,7 @@ const { value, issues } = toV2Patient(resource, "A28", {
   assigningAuthorities: { "urn:oid:2.16.840.1.113883.19": "HOSP" },
   envelope: { sendingApp: "EHR", sendingFacility: "MAIN" },
 });
-// value.toString() -> "MSH|^~\\&|EHR|MAIN|...|ADT^A28|...\rPID|||MRN1||Public^Jane\r"
+// value is a v2 message of type ADT^A28 with an MSH segment followed by a PID segment
 ```
 
 **The trigger is required and is never inferred.** No FHIR resource carries an HL7 v2 message

@@ -1,0 +1,7 @@
+{
+  "examplePrint": {
+    "required": true,
+    "accessors": ["familyName", "givenName", "idNumber"],
+    "wholeValues": ["bundle"]
+  }
+}

@@ -43,7 +43,7 @@ import { segmentFields } from "./v2.js";
  * ```ts
  * import { toV2Patient } from "@cosyte/transform";
  * // const { value, issues } = toV2Patient(patientNode, "A28");
- * // value?.toString() -> "MSH|^~\\&|...|ADT^A28|...\rPID|||MRN1\r"
+ * // value is a v2 message of type ADT^A28 with an MSH segment followed by a PID segment
  * void toV2Patient;
  * ```
  */
@@ -278,8 +278,8 @@ export interface ReverseShape {
  * @param issues - The issue sink.
  * @example
  * ```ts
- * // emitMessage(PATIENT_SHAPE, "A28", fields, ctx, issues)?.toString()
- * // -> "MSH|^~\\&|...|ADT^A28|...\rPID|||MRN1||Public^Jane\r"
+ * // emitMessage(PATIENT_SHAPE, "A28", fields, ctx, issues) returns a v2 message of type
+ * // ADT^A28 with an MSH segment followed by a PID segment
  * ```
  */
 export function emitMessage(

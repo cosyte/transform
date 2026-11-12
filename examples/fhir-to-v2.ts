@@ -49,13 +49,11 @@ console.log(
 
 // The emitted message parses back under the parser that owns the wire format.
 const back = parseHL7(wire);
-console.log(
-  "Parsed back:",
-  back.meta.type,
-  back.get("PID.3.1"),
-  back.get("PID.5.1"),
-  back.get("PID.7"),
-);
+// The record number, name and birth date are a patient's: read here and checked below, never printed.
+const mrn = back.get("PID.3.1"); // "MRN12345", synthetic
+const familyName = back.get("PID.5.1"); // "Public", synthetic
+const birthDate = back.get("PID.7"); // "19800115", synthetic
+console.log("Parsed back:", back.meta.type, "| birth date length:", birthDate?.length);
 
 // With no trigger there is no message: one diagnostic, and nothing built.
 const refused = toV2Patient(resource, "");
@@ -67,10 +65,10 @@ console.log(
 
 assert.deepEqual(issues, []);
 assert.equal(back.meta.type, "ADT^A28");
-assert.equal(back.get("PID.3.1"), "MRN12345");
+assert.equal(mrn, "MRN12345");
 assert.equal(back.get("PID.3.4"), "HOSP");
-assert.equal(back.get("PID.5.1"), "Public");
-assert.equal(back.get("PID.7"), "19800115");
+assert.equal(familyName, "Public");
+assert.equal(birthDate, "19800115");
 assert.equal(back.get("PID.8"), "F");
 assert.equal(refused.value, undefined);
 assert.deepEqual(

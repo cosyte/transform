@@ -57,6 +57,7 @@ const { value, issues } = toFhirIdentifier(
   { namingSystem: createNamingSystem() },
 );
 
+// MRN12345 is a synthetic record number
 value === undefined ? undefined : JSON.parse(serializeResource(value)); // => { type: { coding: [{ system: "http://terminology.hl7.org/CodeSystem/v2-0203", code: "MR" }] }, system: "urn:oid:2.16.840.1.113883.19", value: "MRN12345" }
 issues; // => []
 ```
@@ -90,6 +91,7 @@ map](./translate-coded-values.md).
 ```ts runnable
 import { toFhirHumanName } from "@cosyte/transform";
 
+// Public and Jane are synthetic names
 toFhirHumanName({ familyName: "Public", givenName: "Jane", nameTypeCode: "L" }).issues; // => []
 toFhirHumanName({ familyName: "Public", nameTypeCode: "ZZ" }).issues.map((i) => i.code); // => ["TRANSFORM_NAME_USE_UNMAPPED"]
 ```
