@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.4
+
+### Patch Changes
+
+- 671cf8b: `toFhir` now reports the animal fields of a PID that it does not carry into `Patient`. PID-37 strain and PID-38 production class were dropped with no issue at all, so a veterinary ADT or ORU converted to FHIR lost them and nothing said so.
+
+  Each of these fields that is valued now raises one `TRANSFORM_ELEMENT_DROPPED` at `information` severity at its own location (`PID.37` or `PID.38`), with no `fhirPath`, because FHIR R4 `Patient` has no element for them. An empty field or the HL7 null `""` raises nothing. The issues carry no field values, and the public API is unchanged: a caller that counts or filters issues sees up to two more on a veterinary message. PID-35 species and PID-36 breed are carried into the `patient-animal` extension, as described in the separate changeset for that output.
+
+- 43ff24a: `toFhir` now carries a veterinary PID's species and breed into `Patient`. PID-35 Species Code and PID-36 Breed Code go to the `species` and `breed` parts of the FHIR R4 core extension `http://hl7.org/fhir/StructureDefinition/patient-animal`, each a `valueCodeableConcept` converted from the CWE the way every other coded field is. The extension is written as the `Patient`'s first `extension`. Its `genderStatus` part is never written, and is never inferred from PID-8. PID-37 strain and PID-38 production class are still not carried and still raise `TRANSFORM_ELEMENT_DROPPED`.
+
+  This is new output: a `Patient` from a PID that values PID-35 now has an `extension` it did not have, and a PID that values only PID-35 now yields a `Patient`. PID-35 and PID-36 raise `TRANSFORM_ELEMENT_DROPPED` (now with a `fhirPath` naming the extension part) only when a value cannot be written: a CWE with no code and no text, a breed with no species (the extension requires species), or a repetition after the first. The public API is unchanged; a caller that read species and breed from the parsed message can read them from `Patient.extension` instead.
+
 ## 0.2.3
 
 ### Patch Changes
