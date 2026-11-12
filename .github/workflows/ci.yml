@@ -88,6 +88,36 @@ jobs:
       - run: pnpm examples
       - run: pnpm phi-scan:examples
 
+  # The cold import budget, read on every run: a new Node.js process imports dist/index.mjs, both
+  # peers included, twenty times, and the median must be 15 ms or less on this runner. It is read
+  # here rather than on a developer's machine, where other work moves the number by milliseconds.
+  # The split by module runs after it, pass or fail, so the reading says where the time goes; the
+  # split is advisory and fails nothing.
+  cold-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      # The lowest Node line the package supports, the one the bench jobs read on.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Cold import budget (pnpm check:cold-import)
+        run: pnpm check:cold-import
+      - name: Cold import, by module (advisory)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node bench/import-share.mjs dist/index.mjs --summary "${RUNNER_TEMP}/import-share.md"
+          { echo; cat "${RUNNER_TEMP}/import-share.md"; } >> "${GITHUB_STEP_SUMMARY}"
+
   # The house checks from @cosyte/script-utils, plus `pnpm check:process`, which fails when a
   # build, test, lint, typecheck or format script stops delegating exactly to the shared
   # @cosyte/process, or when cosyte-process.config.json is invalid.

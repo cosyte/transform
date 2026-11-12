@@ -30,8 +30,8 @@ importers:
         specifier: ^0.1.12
         version: 0.1.12(fast-check@4.10.2)
       '@cosyte/hl7':
-        specifier: ^0.1.8
-        version: 0.1.8(fast-check@4.10.2)
+        specifier: ^0.1.12
+        version: 0.1.12(fast-check@4.10.2)
       '@cosyte/prettier-config':
         specifier: ^0.1.2
         version: 0.1.2
@@ -203,8 +203,8 @@ packages:
       fast-check:
         optional: true
 
-  '@cosyte/hl7@0.1.8':
-    resolution: {integrity: sha512-5xlmD818oeuSKUkSB283RsR/l/qmfXhyZ+PcnULIu/BXXcz+2CP3k2S9bi8ysS9UOqMRLOEpa0hXoTZWKo0+sw==}
+  '@cosyte/hl7@0.1.12':
+    resolution: {integrity: sha512-yxlth3ivO6oDwbG2sDlp0EGDrInczkWWHF/BVM9NTPd07a6Szs8QvV5Ma/l9n3gE/KC+lReOERWJ9EL3NrLzTw==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       fast-check: ^4.0.0
@@ -2269,7 +2269,7 @@ snapshots:
     optionalDependencies:
       fast-check: 4.10.2
 
-  '@cosyte/hl7@0.1.8(fast-check@4.10.2)':
+  '@cosyte/hl7@0.1.12(fast-check@4.10.2)':
     optionalDependencies:
       fast-check: 4.10.2
 

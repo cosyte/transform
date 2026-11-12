@@ -72,7 +72,7 @@
   "prettier": "@cosyte/prettier-config",
   "peerDependencies": {
     "@cosyte/fhir": "^0.1.12",
-    "@cosyte/hl7": "^0.1.8"
+    "@cosyte/hl7": "^0.1.12"
   },
   "scripts": {
     "build": "cosyte-process build",
@@ -86,6 +86,7 @@
     "check:claude-card": "cosyte-claude-card",
     "check:catalog": "cosyte-catalog",
     "check:process": "cosyte-process check",
+    "check:cold-import": "node scripts/check-cold-import.mjs",
     "lint": "cosyte-process lint",
     "lint:fix": "cosyte-process lint --fix",
     "format": "cosyte-process format",
@@ -117,7 +118,7 @@
     "@cosyte/bench": "^0.1.1",
     "@cosyte/eslint-config": "^0.1.4",
     "@cosyte/fhir": "^0.1.12",
-    "@cosyte/hl7": "^0.1.8",
+    "@cosyte/hl7": "^0.1.12",
     "@cosyte/prettier-config": "^0.1.2",
     "@cosyte/process": "^0.1.7",
     "@cosyte/script-utils": "^0.1.8",
