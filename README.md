@@ -139,9 +139,10 @@ const { bundle, issues } = toFhir(parseHL7(raw), {
 
 The PID row is everything that reaches `Patient`, and PID-5 and PID-11 contribute their first
 repetition only. PID-10 race, PID-13 and PID-14 telecom, PID-15 primary language, PID-19 SSN,
-PID-22 ethnic group, PID-29 death date and time and PID-30 death indicator are not mapped: each one
-that is valued raises a `TRANSFORM_ELEMENT_DROPPED` at its own field, such as `PID.29`. So a
-`Patient` from a PID that records a death has no `deceased[x]`, and `issues` says so. Every other
+PID-22 ethnic group, PID-29 death date and time, PID-30 death indicator, PID-35 species, PID-36
+breed, PID-37 strain and PID-38 production class are not mapped: each one that is valued raises a
+`TRANSFORM_ELEMENT_DROPPED` at its own field, such as `PID.29` or `PID.35`. So a `Patient` from a
+PID that records a death has no `deceased[x]`, and `issues` says so. Every other
 PID field is dropped with no issue. Read those fields from the parsed message if you need them.
 
 An allergy is a field a downstream system may act on before prescribing, so the AL1 rows are read

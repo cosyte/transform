@@ -19,10 +19,12 @@
  * Not mapped, and flagged: each of these fields that is valued raises one
  * {@link ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED} at `information` severity, located at its own
  * field: PID-10 race, PID-13 home and PID-14 business telecom (no XTN to ContactPoint converter),
- * PID-15 primary language, PID-19 SSN, PID-22 ethnic group, PID-29 death date and time and PID-30
- * death indicator. So a `Patient` built from a PID that records a death carries no `deceased[x]`
- * element, and the issues say that PID-29 or PID-30 was dropped. Read these fields from the parsed
- * message if you need them.
+ * PID-15 primary language, PID-19 SSN, PID-22 ethnic group, PID-29 death date and time, PID-30
+ * death indicator, and the animal fields PID-35 species, PID-36 breed, PID-37 strain and PID-38
+ * production class. So a `Patient` built from a PID that records a death carries no `deceased[x]`
+ * element, and the issues say that PID-29 or PID-30 was dropped; a veterinary PID likewise loses
+ * its species, breed, strain and production class with an issue for each. Read these fields from
+ * the parsed message if you need them.
  *
  * Not mapped, and NOT flagged: every other PID field is dropped with no issue at all, and so are
  * repetitions of PID-5 and PID-11 after the first.
@@ -64,7 +66,9 @@ export const ADMINISTRATIVE_GENDER_MAP: Readonly<Record<string, string>> = Objec
  * Patient** ConceptMap sends it to. PID-10 race and PID-22 ethnic group have no row in that map (the
  * US Core race and ethnicity extensions are a profile concern this library does not cover), so they
  * name no element. PID-13 and PID-14 wait on an XTN to ContactPoint converter, and PID-15, PID-19,
- * PID-29 and PID-30 on conversions not written yet. A valued field in this list raises one
+ * PID-29 and PID-30 on conversions not written yet. PID-35 species to PID-38 production class name
+ * no element either: FHIR R4 `Patient` has no element for an animal (it moved to an extension),
+ * and no conversion to that extension is written. A valued field in this list raises one
  * {@link ISSUE_CODES.TRANSFORM_ELEMENT_DROPPED} at its own location, never at a neighbour's.
  */
 const PID_DROPPED_FIELDS: readonly {
@@ -79,6 +83,10 @@ const PID_DROPPED_FIELDS: readonly {
   { field: 22 },
   { field: 29, fhirPath: "Patient.deceasedDateTime" },
   { field: 30, fhirPath: "Patient.deceasedBoolean" },
+  { field: 35 },
+  { field: 36 },
+  { field: 37 },
+  { field: 38 },
 ]);
 
 /**

@@ -6,7 +6,8 @@
  * and PID-30 death indicator have no conversion here. Each one that is valued raises one
  * `TRANSFORM_ELEMENT_DROPPED` at its own field, with the FHIR element the IG's PID to Patient map
  * sends it to (none for race and ethnic group, which that map gives no row). PID-13 home and PID-14
- * business telecom are reported the same way, each at its own field.
+ * business telecom are reported the same way, each at its own field, and so are the animal fields
+ * PID-35 species, PID-36 breed, PID-37 strain and PID-38 production class, on an ADT and an ORU.
  *
  * Every fixture is synthetic; every person-identifying literal comes from the PHI allow-list.
  */
@@ -140,5 +141,60 @@ describe("dropped telecom is reported at the field it came from", () => {
 
   it('raises nothing for telecom sent as the HL7 null ""', () => {
     expect(drops([MSH_ADT_A01, pid({ 13: '""', 14: '""' })])).toEqual([]);
+  });
+});
+
+/** An `ORU^R01` MSH, so the animal fields are checked on a result message as well as an ADT. */
+const MSH_ORU_R01 =
+  "MSH|^~\\&|SENDAPP|SENDFAC|RCVAPP|RCVFAC|20260721143000-0500||ORU^R01^ORU_R01|MSG00002|P|2.5.1";
+
+/** PID-35 species, PID-36 breed, PID-37 strain and PID-38 production class, each plainly fake. */
+const ANIMAL: Readonly<Record<number, string>> = {
+  35: "ZZSPECIES1^Synthetic species one^L",
+  36: "ZZBREED1^Synthetic breed one^L",
+  37: "ZZSTRAIN1",
+  38: "ZZPROD1^Synthetic production class one^L",
+};
+
+describe("animal PID fields with no conversion raise TRANSFORM_ELEMENT_DROPPED", () => {
+  for (const [name, msh] of [
+    ["ADT^A01", MSH_ADT_A01],
+    ["ORU^R01", MSH_ORU_R01],
+  ] as const) {
+    it(`reports PID-35 to PID-38 each at its own field, at information severity, in ${name}`, () => {
+      const result = run([msh, pid(ANIMAL)]);
+      expect(drops([msh, pid(ANIMAL)])).toEqual([
+        "TRANSFORM_ELEMENT_DROPPED@PID.35#",
+        "TRANSFORM_ELEMENT_DROPPED@PID.36#",
+        "TRANSFORM_ELEMENT_DROPPED@PID.37#",
+        "TRANSFORM_ELEMENT_DROPPED@PID.38#",
+      ]);
+      for (const field of [35, 36, 37, 38]) {
+        const at = issuesAt(result, `PID.${field}`);
+        expect(at, `one issue at PID.${field}`).toHaveLength(1);
+        expect(at[0]?.severity).toBe("information");
+      }
+    });
+
+    it(`carries no animal field value into an issue, in ${name}`, () => {
+      const text = JSON.stringify(run([msh, pid(ANIMAL)]).issues);
+      for (const value of ["ZZSPECIES1", "ZZBREED1", "ZZSTRAIN1", "ZZPROD1", "Synthetic"]) {
+        expect(text).not.toContain(value);
+      }
+    });
+  }
+
+  it("reports only the animal field that is valued", () => {
+    expect(drops([MSH_ADT_A01, pid({ 37: "ZZSTRAIN1" })])).toEqual([
+      "TRANSFORM_ELEMENT_DROPPED@PID.37#",
+    ]);
+  });
+
+  it('raises nothing for animal fields sent as the HL7 null ""', () => {
+    expect(drops([MSH_ADT_A01, pid({ 35: '""', 36: '""', 37: '""', 38: '""' })])).toEqual([]);
+  });
+
+  it("still builds the same Patient: the report is all that changes", () => {
+    expect(patientOf([MSH_ADT_A01, pid(ANIMAL)])).toEqual(patientOf([MSH_ADT_A01, pid({})]));
   });
 });
